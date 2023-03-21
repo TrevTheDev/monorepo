@@ -1,0 +1,51 @@
+{
+  "name": "toolbelt",
+  "version": "0.0.01",
+  "description": "miscellaneous functions and utilities",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "build/"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint && npm run build",
+    "preversion": "npm run lint",
+    "publish": "npm version patch && git push --tags origin master",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "keywords": [],
+  "author": "TrevTheDev",
+  "license": "MIT",
+  "homepage": "https://github.com/TrevTheDev/toolbelt",
+  "bugs": {
+    "url": "https://github.com/TrevTheDev/toolbelt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TrevTheDev/toolbelt.git"
+  },
+  "private": false,
+  "devDependencies": {
+    "@types/node": "^18.15.0",
+    "@typescript-eslint/eslint-plugin": "^5.54.1",
+    "@typescript-eslint/parser": "^5.54.1",
+    "eslint": "^8.36.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-node": "^11.1.0",
+    "prettier": "2.8.4",
+    "promises-aplus-tests": "^2.1.2",
+    "typescript": "^5.0.0-dev.20230217",
+    "vite": "^4.1.4",
+    "vitest": "^0.29.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

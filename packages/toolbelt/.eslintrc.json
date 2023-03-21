@@ -1,0 +1,56 @@
+{
+  "env": {
+    "browser": false,
+    "node": true,
+    "es2021": true
+  },
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["node", "@typescript-eslint"],
+  "extends": [
+    "airbnb-base",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "max-len": ["error", { "code": 180 }],
+    "no-console": "off",
+    "no-debugger": "off",
+    "no-param-reassign": "off",
+    "nonblock-statement-body-position": ["error", "any"],
+    "curly": ["error", "multi-or-nest"],
+    "no-underscore-dangle": "off",
+    "semi": [2, "never"],
+    "import/extensions": "off",
+    "node/no-unpublished-import": "off",
+    "node/no-unsupported-features/es-syntax": [
+      "error",
+      {
+        "version": ">=17.0.0",
+        "ignores": ["modules"]
+      }
+    ],
+    "func-call-spacing": "off",
+    "comma-spacing": "off",
+    "no-spaced-func": "off",
+    "implicit-arrow-linebreak": "off",
+    "no-use-before-define": "off",
+    "@typescript-eslint/no-use-before-define": ["error", { "typedefs": false }],
+    "@typescript-eslint/comma-spacing": ["error"],
+    "@typescript-eslint/func-call-spacing": ["error"],
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "_.*" }]
+  },
+  "settings": {
+    "node": {
+      "tryExtensions": [".js", ".json", ".ts", ".d.ts"]
+    },
+    "import/resolver": {
+      "typescript": {}
+    }
+  }
+}

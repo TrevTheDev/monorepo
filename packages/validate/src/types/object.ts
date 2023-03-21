@@ -1,0 +1,560 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { difference } from 'toolbelt'
+import type { DeepWriteable, Identity, IsStrictAny, Union, ResultError } from 'toolbelt'
+import defaultErrorFn from './defaultErrors'
+import { createBaseValidationBuilder, vNeverInstance, vUnknownInstance } from './init'
+import type { VArrayInfinite } from './array'
+import type {
+  MinimumSafeParsableObject,
+  SingleValidationError,
+  ValidationArray,
+  ValidationErrors,
+  VInfer,
+  ValidationItem,
+  SafeParseFn,
+  SafeParsableObjectBase,
+  ParseFn,
+} from './base'
+
+import type { VIntersectionT } from './intersection'
+import type { VOptional, VUnion, VNullable, VNullish } from './union'
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * parsers
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
+
+export type SingleObjectValidationError = [key: keyof any, errors: SingleValidationError[]]
+
+export const defaultObjectErrors = {
+  invalidObjectFn: defaultErrorFn.parseObject,
+  invalidObjectPropertiesFn: defaultErrorFn.invalidObjectPropertiesFn,
+  missingProperty: defaultErrorFn.missingProperty,
+  missingPropertyInDef: defaultErrorFn.missingPropertyInDef,
+}
+
+export type ObjectErrorOptions = typeof defaultObjectErrors
+
+export type ObjectDefinition = { [key: keyof any]: MinimumSafeParsableObject }
+
+type ObjectParserFn<T extends object> = (value: unknown) => ResultError<ValidationErrors, T>
+
+type ObjectOptions<T extends object = object> = ObjectErrorOptions & {
+  parser?: ObjectParserFn<T>
+  type: string
+}
+
+export interface MinimumObjectDefinition {
+  propertyParsers: ObjectDefinition
+  unmatchedPropertyParser: MinimumSafeParsableObject
+  options: { type: string }
+}
+
+interface FullObjectDefinition extends MinimumObjectDefinition {
+  options: ObjectOptions
+}
+
+type IsOptional<T extends MinimumSafeParsableObject, Then, Else> = T extends {
+  isOptional(): infer V
+}
+  ? V extends true
+    ? Then
+    : Else
+  : Else
+
+type ObjectDefToObjectType<
+  T extends MinimumObjectDefinition,
+  T1 extends ObjectDefinition = T['propertyParsers'],
+  RT = Identity<
+    {
+      [K in keyof T1 as IsOptional<T1[K], K, never>]?: VInfer<T1[K]>
+    } & {
+      [K in keyof T1 as IsOptional<T1[K], never, K>]: VInfer<T1[K]>
+    }
+  >,
+  TypeForUnmatchedProperties = VInfer<T['unmatchedPropertyParser']>,
+  T3 = [TypeForUnmatchedProperties] extends [never]
+    ? RT
+    : IsStrictAny<
+        TypeForUnmatchedProperties,
+        RT & { [P: keyof any]: unknown },
+        RT & { [P: keyof any]: TypeForUnmatchedProperties }
+      >,
+> = T3
+
+export type ParseObjectErrorMessageFns = Pick<
+  ObjectErrorOptions,
+  'invalidObjectFn' | 'missingProperty' | 'invalidObjectPropertiesFn'
+>
+
+export function parseObject<T extends MinimumObjectDefinition>(
+  objectDefinition: T,
+  errorMessageFns: ParseObjectErrorMessageFns = defaultObjectErrors,
+): (value: unknown) => ResultError<ValidationErrors, ObjectDefToObjectType<T>> {
+  const definedKeys = [
+    ...Object.keys(objectDefinition.propertyParsers),
+    ...Object.getOwnPropertySymbols(objectDefinition.propertyParsers),
+  ]
+  const unmatchedParser = objectDefinition.unmatchedPropertyParser
+  return function ParseObject(
+    value: unknown,
+  ): ResultError<ValidationErrors, ObjectDefToObjectType<T>> {
+    if (typeof value === 'object' && value !== null) {
+      const errors = [] as SingleValidationError[]
+      const propertyErrors = [] as SingleObjectValidationError[]
+
+      const { propertyParsers } = objectDefinition
+
+      const allKeysToValidate = [
+        ...Object.keys(propertyParsers),
+        ...Object.getOwnPropertySymbols(objectDefinition.propertyParsers),
+      ]
+
+      allKeysToValidate.forEach((key) => {
+        const parser = propertyParsers[key] as MinimumSafeParsableObject
+        if (key in value) {
+          const result = parser.safeParse(value[key])
+          if (result[0] !== undefined) propertyErrors.push([key, result[0].errors])
+        } else if (!parser.isOptional())
+          propertyErrors.push([key, [errorMessageFns.missingProperty(value, key)]])
+      })
+
+      const valueKeys = [...Object.keys(value), ...Object.getOwnPropertySymbols(value)]
+      const diff = difference(valueKeys, definedKeys)
+      diff.forEach((key) => {
+        const result = unmatchedParser.safeParse(value[key])
+        if (result[0] !== undefined) propertyErrors.push([key, result[0].errors])
+      })
+
+      if (propertyErrors.length !== 0) {
+        errors.push(
+          errorMessageFns.invalidObjectPropertiesFn(
+            value,
+            objectDefinition.options.type,
+            propertyErrors,
+          ),
+        )
+      }
+
+      return errors.length === 0
+        ? [undefined, value as ObjectDefToObjectType<T>]
+        : [{ input: value, errors }, undefined]
+    }
+    return [
+      {
+        input: value,
+        errors: [errorMessageFns.invalidObjectFn(value, objectDefinition.options.type)],
+      },
+      undefined,
+    ]
+  }
+}
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * validators
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
+
+// export function catchAll(objectDefinition: FullObjectDefinition, parser: MinimumSafeParsableObject) {
+//   const definedKeys = [
+//     ...Object.keys(objectDefinition.propertyParsers),
+//     ...Object.getOwnPropertySymbols(objectDefinition.propertyParsers),
+//   ]
+//   return (value: object) => {
+//     const errors = [] as SingleObjectValidationError[]
+//     const valueKeys = [...Object.keys(value), ...Object.getOwnPropertySymbols(value)]
+//     const diff = difference(valueKeys, definedKeys)
+//     diff.forEach((key) => {
+//       const result = parser.safeParse(value[key])
+//       if (result[0] !== undefined) errors.push([key, result[0].errors])
+//     })
+//     return errors.length !== 0 ? errors : undefined
+//   }
+// }
+
+// export function onlyDefinedKeys(
+//   objectDefinition: FullObjectDefinition,
+//   errorReturnValueFn: (
+//     invalidValue: object,
+//     extraKeys: (string | symbol)[],
+//     objectDef: FullObjectDefinition,
+//   ) => SingleValidationError = defaultErrorFn.extraKeysFound,
+// ) {
+//   const ca = catchAll(objectDefinition, vNeverInstance)
+//   return (value: object) => {
+//     const result = ca(value)
+//     if (result === undefined) return undefined
+//     return errorReturnValueFn(
+//       value,
+//       result.map(([key]) => key as string),
+//       objectDefinition,
+//     )
+//   }
+// }
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * all validations
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
+export type ObjectValidations = DeepWriteable<typeof objectValidations_>
+
+const objectValidations_ = [
+  [
+    'customValidation',
+    (
+        customValidator: (
+          value: object,
+          ...otherArgs: unknown[]
+        ) => SingleValidationError | undefined,
+        ...otherArgs: unknown[]
+      ) =>
+      (value: object) =>
+        customValidator(value, ...otherArgs),
+  ],
+] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
+
+export const objectValidations = objectValidations_ as ObjectValidations
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * vString
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
+export interface MinimumObject extends MinimumSafeParsableObject {
+  readonly shape: MinimumObjectDefinition
+  safeParse(
+    input: unknown,
+    parser?: SafeParseFn<unknown, object>,
+  ): ResultError<ValidationErrors, object>
+}
+
+type MinimumObjectDefinitionToRequired<T extends MinimumObjectDefinition> = {
+  propertyParsers: {
+    [K in keyof T['propertyParsers']]: ReturnType<T['propertyParsers'][K]['required']>
+  }
+  unmatchedPropertyParser: T['unmatchedPropertyParser']
+  options: T['options'] | { type: string }
+}
+
+type MinimumObjectDefinitionToPartial<T extends MinimumObjectDefinition> = {
+  propertyParsers: {
+    [K in keyof T['propertyParsers']]: ReturnType<T['propertyParsers'][K]['optional']>
+  }
+  unmatchedPropertyParser: T['unmatchedPropertyParser']
+  options: T['options'] | { type: string }
+}
+
+type DeepOptional<T extends MinimumSafeParsableObject> = T extends {
+  deepPartial(): MinimumSafeParsableObject
+}
+  ? ReturnType<ReturnType<T['deepPartial']>['optional']>
+  : ReturnType<T['optional']>
+
+type MinimumObjectDefinitionToDeepPartial<T extends MinimumObjectDefinition> = {
+  propertyParsers: {
+    [K in keyof T['propertyParsers']]: DeepOptional<T['propertyParsers'][K]>
+  }
+  unmatchedPropertyParser: T['unmatchedPropertyParser']
+  options: T['options'] | { type: string }
+}
+
+type DeepRequired<T extends MinimumSafeParsableObject> = T extends {
+  deepRequired(): MinimumSafeParsableObject
+}
+  ? ReturnType<T['deepRequired']>
+  : ReturnType<T['required']>
+
+type MinimumObjectDefinitionToDeepRequired<T extends MinimumObjectDefinition> = {
+  propertyParsers: {
+    [K in keyof T['propertyParsers']]: DeepRequired<T['propertyParsers'][K]>
+  }
+  unmatchedPropertyParser: T['unmatchedPropertyParser']
+  options: T['options'] | { type: string }
+}
+
+interface VObject2<
+  T extends MinimumObjectDefinition,
+  Output extends object = ObjectDefToObjectType<T>,
+  Input = unknown,
+> extends MinimumObject {
+  // SafeParsableObjectBase
+  parse: ParseFn<Input, Output>
+  safeParse: SafeParseFn<Input, Output>
+  array(): VArrayInfinite<this>
+  or<R extends MinimumSafeParsableObject>(type: R): VUnion<[this, R]>
+  and<R extends MinimumSafeParsableObject>(type: R): VIntersectionT<[this, R]>
+  default(value: Output): SafeParsableObjectBase<Output, T['options']['type'], Input>
+  partial(): VObject<MinimumObjectDefinitionToPartial<T>>
+  deepPartial(): VObject<MinimumObjectDefinitionToDeepPartial<T>>
+  required(): VObject<MinimumObjectDefinitionToRequired<T>>
+  deepRequired(): VObject<MinimumObjectDefinitionToDeepRequired<T>>
+  // SafeParsableObject
+  optional(): VOptional<this>
+  nullable(): VNullable<this>
+  nullish(): VNullish<this>
+  isOptional(): false
+  isNullable(): false
+  isNullish(): false
+
+  readonly type: T['options']['type']
+  readonly shape: T
+  pick<S extends (keyof T['propertyParsers'])[]>(
+    ...keys: S
+  ): VObject<{
+    propertyParsers: Pick<T['propertyParsers'], S[number]>
+    unmatchedPropertyParser: T['unmatchedPropertyParser']
+    options: T['options'] | { type: string }
+  }>
+  omit<S extends (keyof T['propertyParsers'])[]>(
+    ...keys: S
+  ): VObject<{
+    propertyParsers: Omit<T['propertyParsers'], S[number]>
+    unmatchedPropertyParser: T['unmatchedPropertyParser']
+    options: T['options'] | { type: string }
+  }>
+  catchAll<S extends MinimumSafeParsableObject>(
+    propertyParser: S,
+  ): VObject<{
+    propertyParsers: T['propertyParsers']
+    unmatchedPropertyParser: S
+    options: T['options'] | { type: string }
+  }>
+  passThrough(): VObject<{
+    propertyParsers: T['propertyParsers']
+    unmatchedPropertyParser: typeof vUnknownInstance
+    options: T['options'] | { type: string }
+  }>
+  strict(): VObject<{
+    propertyParsers: T['propertyParsers']
+    unmatchedPropertyParser: typeof vNeverInstance
+    options: T['options'] | { type: string }
+  }>
+  extends<R extends ObjectDefinition>(
+    extendedPropertyParsers: R,
+  ): VObject<{
+    propertyParsers: Union<T['propertyParsers'], R>
+    unmatchedPropertyParser: T['unmatchedPropertyParser']
+    options: T['options'] | { type: string }
+  }>
+  extends<
+    R extends ObjectDefinition,
+    S extends MinimumSafeParsableObject = T['unmatchedPropertyParser'],
+    O extends { type: string } = T['options'] | { type: string },
+  >(
+    extendedPropertyParsers: R,
+    unmatchedPropertyParser?: S,
+    newOptions?: O,
+  ): VObject<{
+    propertyParsers: Union<T['propertyParsers'], R>
+    unmatchedPropertyParser: S
+    options: { type: string }
+  }>
+  merge<R extends VObject<any>>(
+    vObject: R,
+  ): R extends VObject<infer S extends MinimumObjectDefinition>
+    ? VObject<{
+        propertyParsers: Union<T['propertyParsers'], S['propertyParsers']>
+        unmatchedPropertyParser: S['unmatchedPropertyParser']
+        options: T['options'] | { type: string }
+      }>
+    : never
+}
+
+export type VObject<
+  T extends MinimumObjectDefinition,
+  Output extends object = ObjectDefToObjectType<T>,
+  Input = unknown,
+  Validations extends ValidationArray<object> = ObjectValidations,
+> = VObject2<T, Output, Input> & {
+  // default validations
+  [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
+    ? Validations[I] extends ValidationItem<any>
+      ? Validations[I][0]
+      : never
+    : never]: (...args: Parameters<Validations[I][1]>) => VObject<T, Output, Input, Validations>
+}
+
+export function vObject<T extends ObjectDefinition>(
+  propertyParsers: T,
+): VObject<{
+  propertyParsers: T
+  unmatchedPropertyParser: typeof vNeverInstance
+  options: { type: string }
+}>
+export function vObject<T extends ObjectDefinition, S extends MinimumSafeParsableObject>(
+  propertyParsers: T,
+  unmatchedPropertyParser: S,
+  options?: Partial<ObjectOptions<T>>,
+): VObject<{
+  propertyParsers: T
+  unmatchedPropertyParser: S
+  options: { type: string }
+}>
+export function vObject<
+  T extends ObjectDefinition,
+  RT = VObject<{
+    propertyParsers: T
+    unmatchedPropertyParser: typeof vNeverInstance
+    options: { type: string }
+  }>,
+>(
+  propertyParsers: T,
+  unmatchedPropertyParser: MinimumSafeParsableObject = vNeverInstance,
+  options: Partial<ObjectOptions<T>> = {},
+): RT {
+  const t1 = `{${Object.entries(propertyParsers).map(([key, value]) =>
+    value.isOptional() ? `${key}?:${(value.nonOptionalType as any).type}` : `${key}:${value.type}`,
+  )}}`
+  const t2 =
+    unmatchedPropertyParser.type === 'never'
+      ? t1
+      : `(${t1}&{[K in keyof Any]: ${unmatchedPropertyParser.type}}))`
+  const finalOptions: ObjectOptions<T> = {
+    ...defaultObjectErrors,
+    ...options,
+    type: options.type || t2,
+  }
+
+  const def: FullObjectDefinition = {
+    propertyParsers,
+    unmatchedPropertyParser,
+    options: finalOptions,
+  }
+
+  const parser = finalOptions.parser ? finalOptions.parser : parseObject(def, finalOptions)
+  type ReturnT = VObject<{
+    propertyParsers: T
+    unmatchedPropertyParser: typeof vNeverInstance
+    options: { type: string }
+  }>
+  const builder = createBaseValidationBuilder(
+    parser,
+    objectValidations,
+    finalOptions.type,
+  ) as unknown as ReturnT
+  Object.defineProperties(builder, {
+    shape: {
+      value: def,
+    },
+    pick: {
+      value(...keys: (keyof any)[]) {
+        const keyStrings = [] as string[]
+
+        const newPropertyParsers = keys.reduce((newPropertyParsersI, key) => {
+          if (key in propertyParsers) {
+            keyStrings.push(
+              `${String(key)}:${(propertyParsers[key] as MinimumSafeParsableObject).type}`,
+            )
+            return Object.assign(newPropertyParsersI, { [key]: propertyParsers[key] })
+          }
+          throw new Error(finalOptions.missingPropertyInDef(propertyParsers, key))
+        }, {})
+
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options)
+      },
+    },
+    omit: {
+      value(...keys: (keyof any)[]) {
+        const newPropertyParsers = Object.keys(propertyParsers)
+          .filter((key) => !keys.includes(key))
+          .reduce(
+            (newPropertyParsersI, key) =>
+              Object.assign(newPropertyParsersI, { [key]: propertyParsers[key] }),
+            {},
+          )
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options)
+      },
+    },
+    extends: {
+      value(
+        extendedPropertyParsers: ObjectDefinition,
+        newUnmatchedPropertyParser: MinimumSafeParsableObject = unmatchedPropertyParser,
+        newOptions: Partial<ObjectOptions<any>> = options,
+      ) {
+        return vObject(
+          { ...propertyParsers, ...extendedPropertyParsers },
+          newUnmatchedPropertyParser,
+          newOptions,
+        )
+      },
+    },
+    merge: {
+      value(vObj: VObject<any>) {
+        const {
+          propertyParsers: extendedPropertyParsers,
+          unmatchedPropertyParser: newUnmatchedPropertyParser,
+          options: newOptions,
+        } = vObj.shape
+        return builder.extends(extendedPropertyParsers, newUnmatchedPropertyParser, newOptions)
+      },
+    },
+    partial: {
+      value() {
+        const newPropertyParsers = Object.entries(propertyParsers).reduce(
+          (newPropertyParsersI, entry) => {
+            const [key, propertyParser] = entry
+            return Object.assign(newPropertyParsersI, { [key]: propertyParser.optional() })
+          },
+          {},
+        )
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options).optional()
+      },
+    },
+    deepPartial: {
+      value() {
+        const newPropertyParsers = Object.entries(propertyParsers).reduce(
+          (newPropertyParsersI, entry) => {
+            const [key, propertyParser] = entry
+            return Object.assign(newPropertyParsersI, {
+              [key]:
+                'deepPartial' in propertyParser
+                  ? (propertyParser as any).deepPartial().optional()
+                  : propertyParser.optional(),
+            })
+          },
+          {},
+        )
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options)
+      },
+    },
+    required: {
+      value() {
+        const newPropertyParsers = Object.entries(propertyParsers).reduce(
+          (newPropertyParsersI, entry) => {
+            const [key, propertyParser] = entry
+            return Object.assign(newPropertyParsersI, { [key]: (propertyParser as any).required() })
+          },
+          {},
+        )
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options)
+      },
+    },
+    catchAll: {
+      value(propertyParserForUnmatchedProperties: MinimumSafeParsableObject) {
+        return vObject(propertyParsers, propertyParserForUnmatchedProperties, options)
+      },
+    },
+    passThrough: {
+      value() {
+        return builder.catchAll(vUnknownInstance)
+      },
+    },
+    strict: {
+      value() {
+        return builder.catchAll(vNeverInstance)
+      },
+    },
+  })
+  return builder as unknown as RT
+}
