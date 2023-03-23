@@ -84,7 +84,7 @@ export type VLiteral<
 export type VNaN = VLiteral<number, 'number'>
 export type VUndefined = VLiteral<undefined, 'undefined'>
 export type VNull = VLiteral<null, 'null'>
-export type VNullish = VLiteral<null | undefined, 'null|undefined'>
+export type VNullishL = VLiteral<null | undefined, 'null|undefined'>
 export type VAny = VLiteral<any, 'any'>
 export type VUnknown = VLiteral<unknown, 'unknown'>
 export type VNever = VLiteral<never, 'never'>
@@ -112,7 +112,7 @@ function convertLiteralToString(literal: any) {
 }
 
 type VLiteralFn = {
-  <T>(literal: T): VLiteral<T>
+  <T>(literal: T & Readonly<T>): VLiteral<T>
   <T, Type extends string>(literal: T, options: LiteralOptions<T, Type>): VLiteral<T, Type>
 }
 
@@ -172,34 +172,34 @@ export function initLiteralTypes(createBaseValidationBuilder: CreateBaseValidati
     options: Partial<NullOptions> = { invalidValueFn: defaultErrorFn.parseNull },
   ): VNull => vLiteral<null, 'null'>(null, { ...options, type: 'null' }) as unknown as VNull
 
-  // type NullishOptions =
-  //   | { parser: SafeParseFn<unknown, null | undefined> }
-  //   | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
+  type NullishOptions =
+    | { parser: SafeParseFn<unknown, null | undefined> }
+    | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
-  // function vNullish(
-  //   options: Partial<NullishOptions> = {},
-  //   // parser?: ParseFn<unknown, null | undefined>,
-  //   // invalidNullFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseNullish,
-  // ): VNullish {
-  //   const invalidValueFn: (invalidValue: unknown) => SingleValidationError =
-  //     'invalidValueFn' in options ? options.invalidValueFn : defaultErrorFn.parseNullish
+  function vNullishL(
+    options: Partial<NullishOptions> = {},
+    // parser?: ParseFn<unknown, null | undefined>,
+    // invalidNullFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseNullish,
+  ): VNullishL {
+    const invalidValueFn: (invalidValue: unknown) => SingleValidationError =
+      'invalidValueFn' in options ? options.invalidValueFn : defaultErrorFn.parseNullish
 
-  //   const vOptions = {
-  //     parser: (value: unknown): ResultError<ValidationErrors, null | undefined> =>
-  //       value !== null && value !== undefined
-  //         ? [{ input: value, errors: [invalidValueFn(value)] }, undefined]
-  //         : [undefined, value],
+    const vOptions = {
+      parser: (value: unknown): ResultError<ValidationErrors, null | undefined> =>
+        value !== null && value !== undefined
+          ? [{ input: value, errors: [invalidValueFn(value)] }, undefined]
+          : [undefined, value],
 
-  //     ...options,
-  //   }
-  //   return vLiteral<null | undefined, 'null|undefined'>(
-  //     'null|undefined' as unknown as null | undefined,
-  //     {
-  //       parser: vOptions.parser,
-  //       type: 'null|undefined',
-  //     },
-  //   ) as unknown as VNullish
-  // }
+      ...options,
+    }
+    return vLiteral<null | undefined, 'null|undefined'>(
+      'null|undefined' as unknown as null | undefined,
+      {
+        parser: vOptions.parser,
+        type: 'null|undefined',
+      },
+    ) as unknown as VNullishL
+  }
 
   type AnyOptions = { parser: SafeParseFn<unknown, any> }
 
@@ -240,5 +240,5 @@ export function initLiteralTypes(createBaseValidationBuilder: CreateBaseValidati
     return vLiteral<never, 'never'>('never' as never, nOptions) as unknown as VNever
   }
 
-  return { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever }
+  return { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever, vNullishL }
 }

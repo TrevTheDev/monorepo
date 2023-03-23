@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
-import type { ResultError } from 'toolbelt'
+import { ResultError, isResult } from 'toolbelt'
 import type { VArrayFn, VArrayInfinite } from './array'
 import { VIntersectionFn, VIntersectionT } from './intersection'
 import type {
   VNullable,
   VNullableFn,
+  VNullish,
   VNullishFn,
   VOptional,
   VOptionalFn,
@@ -13,10 +14,31 @@ import type {
   VUnionFn,
 } from './union'
 
+// export const internalPartial = Symbol('internalPartial')
+// export type InternalPartial = typeof internalPartial
+export const internalDeepPartial = Symbol('internalDeepPartial')
+export type InternalDeepPartial = typeof internalDeepPartial
+
+export const parser = Symbol('parser')
+export type Parser = typeof parser
+export const validators = Symbol('validators')
+export type Validators = typeof validators
+
+// export const internalPartial = Symbol('internalPartial')
+// export type InternalPartial = typeof internalPartial
+
 export type SingleValidationError = string
 export type ValidationErrors = {
   input: unknown
   errors: SingleValidationError[]
+}
+export function firstError(validationErrors: ValidationErrors) {
+  return validationErrors.errors[0]
+}
+
+export function firstErrorFromResultError(resultError: ResultError<ValidationErrors, any>) {
+  if (isResult(resultError)) throw new Error('not an error!')
+  return firstError(resultError[0])
 }
 
 export type ParseFn<Input, Output> = (input: Input) => Output
@@ -28,16 +50,16 @@ export interface MinimumSafeParsableObject {
   readonly type: string
   optional(): MinimumSafeParsableObject
   partial?(): MinimumSafeParsableObject
-  deepRequired?(): MinimumSafeParsableObject
   deepPartial?(): MinimumSafeParsableObject
   nullable(): MinimumSafeParsableObject
   required(): MinimumSafeParsableObject
+  deepRequired?(): MinimumSafeParsableObject
   isOptional(): boolean
-  isNullable(): boolean
-  isNullish(): boolean
-  nonOptionalType?: MinimumSafeParsableObject
-  nonNullableType?: MinimumSafeParsableObject
-  nonNullishType?: MinimumSafeParsableObject
+  // isNullable(): boolean
+  // isNullish(): boolean
+  nonOptionalType?: MinimumSafeParsableObject | undefined
+  nonNullableType?: MinimumSafeParsableObject | undefined
+  nonNullishType?: MinimumSafeParsableObject | undefined
 }
 
 export interface SafeParsableObjectBase<Output, Type extends string, Input = unknown>
@@ -55,10 +77,11 @@ export interface SafeParsableObject<Output, Type extends string, Input = unknown
   extends SafeParsableObjectBase<Output, Type, Input> {
   optional(): VOptional<this>
   nullable(): VNullable<this>
+  nullish(): VNullish<this>
   required(): this
   isOptional(): false
-  isNullable(): false
-  isNullish(): false
+  // isNullable(): false
+  // isNullish(): false
 }
 
 export type VInfer<T extends MinimumSafeParsableObject> = ReturnType<
@@ -90,12 +113,12 @@ function validate<T>(validationFns: ValidationFn<T>[], breakOnFirstError = false
 }
 
 function parseAndValidate<Output, Input = unknown>(
-  parser: SafeParseFn<Input, Output>,
+  parserFn: SafeParseFn<Input, Output>,
   validations: ValidationFn<Output>[],
 ) {
   const validationFn = validate(validations, false)
   return (input: Input): ResultError<ValidationErrors, Output> => {
-    const parsedOutput = parser(input)
+    const parsedOutput = parserFn(input)
     if (parsedOutput[0] !== undefined || validations === undefined) return parsedOutput
     const validationErrors = validationFn(parsedOutput[1])
     return validationErrors
@@ -110,10 +133,11 @@ function createValidationBuilder<T>(baseObject: object, validations: ValidationA
       value(...args) {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const oldObject = this
-        return {
+        const newObj = {
           __proto__: oldObject,
-          _validators: [...oldObject._validators, validationFn(...args)],
+          [validators]: [...oldObject[validators], validationFn(...args)],
         }
+        return newObj
       },
     })
   })
@@ -133,6 +157,7 @@ type BaseInitialiser = {
     array: VArrayFn,
     union: VUnionFn,
     intersection: VIntersectionFn,
+    nullish: VNullishFn,
   ): void
   createBaseValidationBuilder<Output, Input>(
     defaultParser: SafeParseFn<Input, Output>,
@@ -170,25 +195,27 @@ export function baseInitialiser(): BaseInitialiser {
       validations: ValidationArray<Output>,
       type: string,
     ): MinimumSafeParsableObject {
-      type BaseObject = MinimumSafeParsableObject & {
+      interface BaseObject extends MinimumSafeParsableObject {
         and(safeParsableObject: MinimumSafeParsableObject): MinimumSafeParsableObject
         or(safeParsableObject: MinimumSafeParsableObject): MinimumSafeParsableObject
         nullable(): MinimumSafeParsableObject
         nullish(): MinimumSafeParsableObject
-        _validators: []
-        _parser(input: unknown, ...args: any[]): any
-        nonOptionalType: BaseObject | undefined
-        nonNullableType: BaseObject | undefined
+        [validators]: []
+        [parser](input: unknown, ...args: any[]): any
         parse(input: unknown): any
         array(): MinimumSafeParsableObject
         default(defaultValue: Output): MinimumSafeParsableObject
+        isNullable(): boolean
+        isNullish(): boolean
+        type: string
       }
       const obj = {
         nonOptionalType: undefined,
         nonNullableType: undefined,
+        nonNullishType: undefined,
         type,
         safeParse(value) {
-          return parseAndValidate(this._parser, this._validators)(value)
+          return parseAndValidate(this[parser], this[validators])(value)
         },
         parse(value) {
           const result = this.safeParse(value)
@@ -220,7 +247,7 @@ export function baseInitialiser(): BaseInitialiser {
         },
         required(): MinimumSafeParsableObject {
           if (this.isOptional()) return (this.nonOptionalType as any).required()
-          if (this.isNullable()) return (this.nonNullableType as any).required()
+          // if (this.isNullable()) return (this.nonNullableType as any).required()
           return this as MinimumSafeParsableObject
         },
         isOptional(): boolean {
@@ -256,8 +283,8 @@ export function baseInitialiser(): BaseInitialiser {
       const baseObject = createValidationBuilder(obj, validations)
       return {
         __proto__: baseObject,
-        _parser: defaultParser,
-        _validators: [],
+        [parser]: defaultParser,
+        [validators]: [],
       } as unknown as MinimumSafeParsableObject
     },
   } as BaseInitialiser

@@ -4,16 +4,18 @@ import type { DeepWriteable, Identity, IsStrictAny, Union, ResultError } from 't
 import defaultErrorFn from './defaultErrors'
 import { createBaseValidationBuilder, vNeverInstance, vUnknownInstance } from './init'
 import type { VArrayInfinite } from './array'
-import type {
+import {
   MinimumSafeParsableObject,
   SingleValidationError,
-  ValidationArray,
+  // ValidationArray,
   ValidationErrors,
   VInfer,
-  ValidationItem,
+  // ValidationItem,
   SafeParseFn,
-  SafeParsableObjectBase,
+  // SafeParsableObjectBase,
   ParseFn,
+  internalDeepPartial,
+  InternalDeepPartial,
 } from './base'
 
 import type { VIntersectionT } from './intersection'
@@ -239,31 +241,46 @@ export interface MinimumObject extends MinimumSafeParsableObject {
   ): ResultError<ValidationErrors, object>
 }
 
-type MinimumObjectDefinitionToRequired<T extends MinimumObjectDefinition> = {
+interface MinimumObjectDefinitionToRequired<
+  T extends MinimumObjectDefinition,
+  S extends keyof T['propertyParsers'],
+  Props extends ObjectDefinition = T['propertyParsers'],
+  RequiredKeys extends keyof Props = [S] extends [never] ? keyof Props : S,
+> extends MinimumObjectDefinition {
   propertyParsers: {
-    [K in keyof T['propertyParsers']]: ReturnType<T['propertyParsers'][K]['required']>
+    [K in keyof Props]: K extends RequiredKeys ? ReturnType<Props[K]['required']> : Props[K]
   }
   unmatchedPropertyParser: T['unmatchedPropertyParser']
   options: T['options'] | { type: string }
 }
 
-type MinimumObjectDefinitionToPartial<T extends MinimumObjectDefinition> = {
+interface MinimumObjectDefinitionToPartial<
+  T extends MinimumObjectDefinition,
+  S extends keyof T['propertyParsers'],
+  Props extends T['propertyParsers'] = T['propertyParsers'],
+  PartialKeys extends keyof Props = [S] extends [never] ? keyof Props : S,
+> extends MinimumObjectDefinition {
   propertyParsers: {
-    [K in keyof T['propertyParsers']]: ReturnType<T['propertyParsers'][K]['optional']>
+    [K in keyof Props]: K extends PartialKeys ? ReturnType<Props[K]['optional']> : Props[K]
   }
   unmatchedPropertyParser: T['unmatchedPropertyParser']
   options: T['options'] | { type: string }
 }
 
 type DeepOptional<T extends MinimumSafeParsableObject> = T extends {
-  deepPartial(): MinimumSafeParsableObject
+  [internalDeepPartial](): MinimumSafeParsableObject
 }
-  ? ReturnType<ReturnType<T['deepPartial']>['optional']>
+  ? ReturnType<T[InternalDeepPartial]>
   : ReturnType<T['optional']>
 
-type MinimumObjectDefinitionToDeepPartial<T extends MinimumObjectDefinition> = {
+interface MinimumObjectDefinitionToDeepPartial<
+  T extends MinimumObjectDefinition,
+  S extends keyof T['propertyParsers'],
+  Props extends ObjectDefinition = T['propertyParsers'],
+  DeepPartialKeys extends keyof Props = [S] extends [never] ? keyof Props : S,
+> extends MinimumObjectDefinition {
   propertyParsers: {
-    [K in keyof T['propertyParsers']]: DeepOptional<T['propertyParsers'][K]>
+    [K in keyof Props]: K extends DeepPartialKeys ? DeepOptional<Props[K]> : Props[K]
   }
   unmatchedPropertyParser: T['unmatchedPropertyParser']
   options: T['options'] | { type: string }
@@ -275,7 +292,8 @@ type DeepRequired<T extends MinimumSafeParsableObject> = T extends {
   ? ReturnType<T['deepRequired']>
   : ReturnType<T['required']>
 
-type MinimumObjectDefinitionToDeepRequired<T extends MinimumObjectDefinition> = {
+interface MinimumObjectDefinitionToDeepRequired<T extends MinimumObjectDefinition>
+  extends MinimumObjectDefinition {
   propertyParsers: {
     [K in keyof T['propertyParsers']]: DeepRequired<T['propertyParsers'][K]>
   }
@@ -283,10 +301,101 @@ type MinimumObjectDefinitionToDeepRequired<T extends MinimumObjectDefinition> = 
   options: T['options'] | { type: string }
 }
 
-interface VObject2<
+// interface VObject2<
+//   T extends MinimumObjectDefinition,
+//   Output extends object = ObjectDefToObjectType<T>,
+//   Input = unknown,
+// > extends MinimumObject {
+//   // SafeParsableObjectBase
+//   parse: ParseFn<Input, Output>
+//   safeParse: SafeParseFn<Input, Output>
+//   array(): VArrayInfinite<this>
+//   or<R extends MinimumSafeParsableObject>(type: R): VUnion<[this, R]>
+//   and<R extends MinimumSafeParsableObject>(type: R): VIntersectionT<[this, R]>
+//   // default(value: Output): SafeParsableObjectBase<Output, T['options']['type'], Input>
+//   // partial(): VObject<MinimumObjectDefinitionToPartial<T>>
+//   // deepPartial(): VObject<MinimumObjectDefinitionToDeepPartial<T>>
+//   // required<S extends string[]>(
+//   //   ...keysToRequire: S
+//   // ): VObject<MinimumObjectDefinitionToRequired<T, S[number]>>
+//   // deepRequired(): VObject<MinimumObjectDefinitionToDeepRequired<T>>
+//   // SafeParsableObject
+//   optional(): VOptional<this>
+//   nullable(): VNullable<this>
+//   nullish(): VNullish<this>
+//   isOptional(): false
+//   // isNullable(): false
+//   // isNullish(): false
+
+//   readonly type: T['options']['type']
+//   readonly shape: T
+//   pick<S extends (keyof T['propertyParsers'])[]>(
+//     ...keys: S
+//   ): VObject<{
+//     propertyParsers: Pick<T['propertyParsers'], S[number]>
+//     unmatchedPropertyParser: T['unmatchedPropertyParser']
+//     options: T['options'] | { type: string }
+//   }>
+//   omit<S extends (keyof T['propertyParsers'])[]>(
+//     ...keys: S
+//   ): VObject<{
+//     propertyParsers: Omit<T['propertyParsers'], S[number]>
+//     unmatchedPropertyParser: T['unmatchedPropertyParser']
+//     options: T['options'] | { type: string }
+//   }>
+//   catchAll<S extends MinimumSafeParsableObject>(
+//     propertyParser: S,
+//   ): VObject<{
+//     propertyParsers: T['propertyParsers']
+//     unmatchedPropertyParser: S
+//     options: T['options'] | { type: string }
+//   }>
+//   passThrough(): VObject<{
+//     propertyParsers: T['propertyParsers']
+//     unmatchedPropertyParser: typeof vUnknownInstance
+//     options: T['options'] | { type: string }
+//   }>
+//   strict(): VObject<{
+//     propertyParsers: T['propertyParsers']
+//     unmatchedPropertyParser: typeof vNeverInstance
+//     options: T['options'] | { type: string }
+//   }>
+//   extends<R extends ObjectDefinition>(
+//     extendedPropertyParsers: R,
+//   ): VObject<{
+//     propertyParsers: Union<T['propertyParsers'], R>
+//     unmatchedPropertyParser: T['unmatchedPropertyParser']
+//     options: T['options'] | { type: string }
+//   }>
+//   extends<
+//     R extends ObjectDefinition,
+//     S extends MinimumSafeParsableObject = T['unmatchedPropertyParser'],
+//     O extends { type: string } = T['options'] | { type: string },
+//   >(
+//     extendedPropertyParsers: R,
+//     unmatchedPropertyParser?: S,
+//     newOptions?: O,
+//   ): VObject<{
+//     propertyParsers: Union<T['propertyParsers'], R>
+//     unmatchedPropertyParser: S
+//     options: { type: string }
+//   }>
+//   merge<R extends VObject<any>>(
+//     vObject: R,
+//   ): R extends VObject<infer S extends MinimumObjectDefinition>
+//     ? VObject<{
+//         propertyParsers: Union<T['propertyParsers'], S['propertyParsers']>
+//         unmatchedPropertyParser: S['unmatchedPropertyParser']
+//         options: T['options'] | { type: string }
+//       }>
+//     : never
+// }
+
+export interface VObject<
   T extends MinimumObjectDefinition,
   Output extends object = ObjectDefToObjectType<T>,
   Input = unknown,
+  // Validations extends ValidationArray<object> = ObjectValidations,
 > extends MinimumObject {
   // SafeParsableObjectBase
   parse: ParseFn<Input, Output>
@@ -294,18 +403,28 @@ interface VObject2<
   array(): VArrayInfinite<this>
   or<R extends MinimumSafeParsableObject>(type: R): VUnion<[this, R]>
   and<R extends MinimumSafeParsableObject>(type: R): VIntersectionT<[this, R]>
-  default(value: Output): SafeParsableObjectBase<Output, T['options']['type'], Input>
-  partial(): VObject<MinimumObjectDefinitionToPartial<T>>
-  deepPartial(): VObject<MinimumObjectDefinitionToDeepPartial<T>>
-  required(): VObject<MinimumObjectDefinitionToRequired<T>>
+  // default(value: Output): SafeParsableObjectBase<Output, T['options']['type'], Input>
+  partial<S extends (keyof T['propertyParsers'])[]>(
+    ...keysToPartial: S
+  ): VObject<MinimumObjectDefinitionToPartial<T, S[number]>>
+  // [internalPartial]<S extends (keyof T['propertyParsers'])[]>(
+  //   ...keysToPartial: S
+  // ): VOptional<VObject<MinimumObjectDefinitionToPartial<T, S[number]>>>
+  deepPartial<S extends (keyof T['propertyParsers'])[]>(
+    ...keysToDeepPartial: S
+  ): VObject<MinimumObjectDefinitionToDeepPartial<T, S[number]>>
+  [internalDeepPartial]<S extends (keyof T['propertyParsers'])[]>(
+    ...keysToDeepPartial: S
+  ): VOptional<VObject<MinimumObjectDefinitionToDeepPartial<T, S[number]>>>
+  required<S extends (keyof T['propertyParsers'])[]>(
+    ...keysToRequire: S
+  ): VObject<MinimumObjectDefinitionToRequired<T, S[number]>>
   deepRequired(): VObject<MinimumObjectDefinitionToDeepRequired<T>>
   // SafeParsableObject
   optional(): VOptional<this>
   nullable(): VNullable<this>
   nullish(): VNullish<this>
   isOptional(): false
-  isNullable(): false
-  isNullish(): false
 
   readonly type: T['options']['type']
   readonly shape: T
@@ -369,20 +488,11 @@ interface VObject2<
         options: T['options'] | { type: string }
       }>
     : never
-}
 
-export type VObject<
-  T extends MinimumObjectDefinition,
-  Output extends object = ObjectDefToObjectType<T>,
-  Input = unknown,
-  Validations extends ValidationArray<object> = ObjectValidations,
-> = VObject2<T, Output, Input> & {
-  // default validations
-  [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
-      ? Validations[I][0]
-      : never
-    : never]: (...args: Parameters<Validations[I][1]>) => VObject<T, Output, Input, Validations>
+  customValidation<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
 }
 
 export function vObject<T extends ObjectDefinition>(
@@ -500,27 +610,13 @@ export function vObject<
       },
     },
     partial: {
-      value() {
-        const newPropertyParsers = Object.entries(propertyParsers).reduce(
-          (newPropertyParsersI, entry) => {
-            const [key, propertyParser] = entry
-            return Object.assign(newPropertyParsersI, { [key]: propertyParser.optional() })
-          },
-          {},
-        )
-        return vObject(newPropertyParsers, unmatchedPropertyParser, options).optional()
-      },
-    },
-    deepPartial: {
-      value() {
+      value(...keysToPartial) {
+        const keys = keysToPartial.length === 0 ? Object.keys(propertyParsers) : keysToPartial
         const newPropertyParsers = Object.entries(propertyParsers).reduce(
           (newPropertyParsersI, entry) => {
             const [key, propertyParser] = entry
             return Object.assign(newPropertyParsersI, {
-              [key]:
-                'deepPartial' in propertyParser
-                  ? (propertyParser as any).deepPartial().optional()
-                  : propertyParser.optional(),
+              [key]: keys.includes(key) ? propertyParser.optional() : propertyParser,
             })
           },
           {},
@@ -528,12 +624,43 @@ export function vObject<
         return vObject(newPropertyParsers, unmatchedPropertyParser, options)
       },
     },
-    required: {
-      value() {
+    deepPartial: {
+      value(...keysToDeepPartial) {
+        const keys =
+          keysToDeepPartial.length === 0 ? Object.keys(propertyParsers) : keysToDeepPartial
         const newPropertyParsers = Object.entries(propertyParsers).reduce(
           (newPropertyParsersI, entry) => {
             const [key, propertyParser] = entry
-            return Object.assign(newPropertyParsersI, { [key]: (propertyParser as any).required() })
+            return Object.assign(newPropertyParsersI, {
+              // eslint-disable-next-line no-nested-ternary
+              [key]: keys.includes(key)
+                ? internalDeepPartial in propertyParser
+                  ? (propertyParser as any)[internalDeepPartial](...keysToDeepPartial)
+                  : propertyParser.optional()
+                : propertyParser,
+            })
+          },
+          {},
+        )
+        return vObject(newPropertyParsers, unmatchedPropertyParser, options)
+      },
+    },
+    [internalDeepPartial]: {
+      value(...keysToDeepPartial) {
+        return builder.deepPartial(...keysToDeepPartial).optional()
+      },
+    },
+    required: {
+      value(...keysToRequire) {
+        const keys = keysToRequire.length === 0 ? Object.keys(propertyParsers) : keysToRequire
+        const newPropertyParsers = Object.entries(propertyParsers).reduce(
+          (newPropertyParsersI, entry) => {
+            const [key, propertyParser] = entry
+            return Object.assign(newPropertyParsersI, {
+              [key]: keys.includes(key)
+                ? (propertyParser as any).required(...keysToRequire)
+                : propertyParser,
+            })
           },
           {},
         )
@@ -557,4 +684,22 @@ export function vObject<
     },
   })
   return builder as unknown as RT
+}
+
+export function vLateObject<T extends ObjectDefinition>(propFn: () => T) {
+  return {
+    safeParse(value) {
+      const x = propFn()
+      return vObject(x).safeParse(value)
+    },
+    parse(value) {
+      const x = propFn()
+      return vObject(x).parse(value)
+    },
+  }
+}
+
+export function vLazy<T extends MinimumSafeParsableObject>(propFn: () => T) {
+  const parser = (value) => propFn().safeParse(value)
+  return createBaseValidationBuilder(parser, [], 'lazy')
 }

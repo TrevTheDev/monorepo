@@ -26,35 +26,36 @@ function stringify(value) {
 
 const defaultErrorFn = {
   parseString: (value: unknown) => `${stringify(value)} is not a string`,
-  parseNumber: (value: unknown) => `'${stringify(value)}' is not a number`,
-  parseBigInt: (value: unknown) => `'${stringify(value)}' is not a bigint`,
-  parseBoolean: (value: unknown) => `'${stringify(value)}' is not a boolean`,
-  parseNaN: (value: unknown) => `'${stringify(value)}' is not a NaN`,
-  parseDate: (value: unknown) => `'${stringify(value)}' is not a Date`,
+  parseNumber: (value: unknown) => `${stringify(value)} is not a number`,
+  parseBigInt: (value: unknown) => `${stringify(value)} is not a bigint`,
+  parseBoolean: (value: unknown) => `${stringify(value)} is not a boolean`,
+  parseNaN: (value: unknown) => `${stringify(value)} is not a NaN`,
+  parseDate: (value: unknown) => `${stringify(value)} is not a Date`,
   parseEnum: (value: unknown, enums: unknown[]) =>
-    `'${stringify(value)}' is not a in the Enum :'${stringify(enums)}'`,
+    `${stringify(value)} is not a in the Enum :${stringify(enums)}`,
   notNaN: () => 'NaN is not permitted',
   parseLiteral: (value: unknown, literal: any) =>
-    `'${stringify(value)}' is not identical to '${literal}'`,
-  parseUndefined: (value: unknown) => `'${stringify(value)}' is not undefined`,
-  parseNull: (value: unknown) => `'${stringify(value)}' is not null`,
-  parseNullish: (value: unknown) => `'${stringify(value)}' is not nullish (null or undefined)`,
-  parseNever: (value: unknown) => `'${stringify(value)}' doesn't match 'never'`,
+    `${stringify(value)} is not identical to ${literal}`,
+  parseUndefined: (value: unknown) => `${stringify(value)} is not undefined`,
+  parseNull: (value: unknown) => `${stringify(value)} is not null`,
+  parseNullish: (value: unknown) => `${stringify(value)} is not nullish (null or undefined)`,
+  parseNever: (value: unknown) => `${stringify(value)} doesn't match 'never'`,
   // eslint-disable-next-line @typescript-eslint/ban-types
   parseInstanceOf: (value: unknown, instanceOfItem: Function) =>
-    `'${stringify(value)}' is not an instance of '${instanceOfItem.name}'`,
+    `${stringify(value)} is not an instance of '${instanceOfItem.name}'`,
   minimumStringLength: (value: string, minLength: number) =>
-    `'${value}' is shorter than ${minLength}`,
+    `'${value}' is shorter than ${minLength} character(s)`,
   minimumArrayLength: (value: unknown[], minLength: number) =>
-    `'${value.length}' is more elements than the minimum of ${minLength}`,
+    `array contains ${value.length} element(s) but must contain ${minLength}`,
   maximumArrayLength: (value: unknown[], maxLength: number) =>
-    `'${value.length}' is less elements than the maximum of ${maxLength}`,
+    `array contains ${value.length} element(s) but may only contain ${maxLength}`,
   requiredArrayLength: (value: unknown[], requiredLength: number) =>
-    `'${value.length}' is not the required ${requiredLength} elements`,
+    `array contains ${value.length} element(s), but ${requiredLength} are required`,
   arrayNonEmpty: (value: unknown[]) => `'${value}' must contain at least one element`,
   maximumStringLength: (value: string, maxLength: number) =>
-    `'${value}' is longer than ${maxLength}`,
-  stringLength: (value: string, length: number) => `'${value}' doesn't have a length of ${length}`,
+    `'${value}' is longer than ${maxLength} character(s)`,
+  stringLength: (value: string, length: number) =>
+    `'${value}' must contain exactly exactly ${length} character(s)`,
   notEmptyString: () => `string cannot be empty`,
   beOneOf: (value: string, allItems: string[]) => `'${value}' not in '${allItems}'`,
   validEmail: (value: string) => `'${value}' is not a valid email`,
@@ -69,37 +70,36 @@ const defaultErrorFn = {
   beTrue: () => `value must be true`,
   beFalse: () => `value must be false`,
   greaterThan: (value: number, greaterThanValue: number) =>
-    `'${value}' is not greater than '${greaterThanValue}'`,
+    `${value} is not greater than ${greaterThanValue}`,
   greaterThanOrEqualTo: (value: number, greaterThanOrEqualToValue: number) =>
-    `'${value}' is not greater than or equal to '${greaterThanOrEqualToValue}'`,
+    `${value} is not greater than or equal to ${greaterThanOrEqualToValue}`,
   lesserThan: (value: number, lesserThanValue: number) =>
-    `'${value}' is not lesser than '${lesserThanValue}'`,
+    `${value} is not lesser than ${lesserThanValue}`,
   lesserThanOrEqualTo: (value: number, lesserThanOrEqualToValue: number) =>
-    `'${value}' is not lesser than or equal to '${lesserThanOrEqualToValue}'`,
-  integer: (value: number) => `'${value}' is not an integer`,
-  positive: (value: number) => `'${value}' is not positive`,
-  nonNegative: (value: number) => `'${value}' is not non-negative`,
-  negative: (value: number) => `'${value}' is not negative`,
-  nonPositive: (value: number) => `'${value}' is not non-positive`,
-  multipleOf: (value: number, multipleOf: number) =>
-    `'${value}' is not a multiple of '${multipleOf}'`,
-  finite: (value: number) => `'${value}' is not finite`,
+    `${value} is not lesser than or equal to ${lesserThanOrEqualToValue}`,
+  integer: (value: number) => `${value} is not an integer`,
+  positive: (value: number) => `${value} is not positive`,
+  nonNegative: (value: number) => `${value} is not positive`,
+  negative: (value: number) => `${value} is not negative`,
+  nonPositive: (value: number) => `${value} is not negative`,
+  multipleOf: (value: number, multipleOf: number) => `${value} is not a multiple of ${multipleOf}`,
+  finite: (value: number) => `${value} is not finite`,
 
   bigIntGreaterThan: (value: bigint, greaterThanValue: bigint) =>
-    `'${value}' is not greater than '${greaterThanValue}'`,
+    `${value} is not greater than ${greaterThanValue}`,
   bigIntGreaterThanOrEqualTo: (value: bigint, greaterThanOrEqualToValue: bigint) =>
-    `'${value}' is not greater than or equal to '${greaterThanOrEqualToValue}'`,
+    `${value} is not greater than or equal to ${greaterThanOrEqualToValue}`,
   bigIntLesserThan: (value: bigint, lesserThanValue: bigint) =>
-    `'${value}' is not lesser than '${lesserThanValue}'`,
+    `${value} is not lesser than ${lesserThanValue}`,
   bigIntLesserThanOrEqualTo: (value: bigint, lesserThanOrEqualToValue: bigint) =>
-    `'${value}' is not lesser than or equal to '${lesserThanOrEqualToValue}'`,
-  bigIntInteger: (value: bigint) => `'${value}' is not an integer`,
-  bigIntPositive: (value: bigint) => `'${value}' is not positive`,
-  bigIntNonNegative: (value: bigint) => `'${value}' is not non-negative`,
-  bigIntNegative: (value: bigint) => `'${value}' is not negative`,
-  bigIntNonPositive: (value: bigint) => `'${value}' is not non-positive`,
+    `${value} is not lesser than or equal to ${lesserThanOrEqualToValue}`,
+  bigIntInteger: (value: bigint) => `${value} is not an integer`,
+  bigIntPositive: (value: bigint) => `${value} is not positive`,
+  bigIntNonNegative: (value: bigint) => `${value} is not positive`,
+  bigIntNegative: (value: bigint) => `${value} is not negative`,
+  bigIntNonPositive: (value: bigint) => `${value} is not negative`,
   bigIntMultipleOf: (value: bigint, multipleOf: bigint) =>
-    `'${value}' is not a multiple of '${multipleOf}'`,
+    `${value} is not a multiple of ${multipleOf}`,
   after: (value: Date, afterDate: Date) => `'${value}' is not after '${afterDate}'`,
   before: (value: Date, beforeDate: Date) => `'${value}' is not after '${beforeDate}'`,
   invalidArrayElementsFn(
@@ -116,7 +116,7 @@ const defaultErrorFn = {
     return `The array ${stringify(invalidValue)} is not of type ${arrayTypeString}.${elementString}`
   },
   extraArrayItemsFn: (value: unknown[], extraElementFoundStartingAtIndex: number) =>
-    `'${value}' contains extra elements starting at '${extraElementFoundStartingAtIndex}'`,
+    `${stringify(value)} contains extra elements starting at ${extraElementFoundStartingAtIndex}`,
   arrayDefinitionElementMustBeOptional: (value: unknown[], index: number) =>
     `the required element at index: ${index} cannot follow an optional element`,
   elementRequiredAt: (value: unknown[], index: number) =>
@@ -126,9 +126,9 @@ const defaultErrorFn = {
   optionalElementCantFollowRest: (value: unknown[], index: number) =>
     `the optional element found at index: ${index} cannot follow a rest element`,
   parseArray: (value: unknown, arrayType: string) =>
-    `'${stringify(value)}' is not of type :${arrayType}`,
+    `${stringify(value)} is not of type :${arrayType}`,
   parseObject: (value: unknown, objectType: string) =>
-    `'${stringify(value)}' is not of type :${objectType}`,
+    `${stringify(value)} is not of type :${objectType}`,
   invalidObjectPropertiesFn(
     invalidValue: object,
     objectTypeString: string,
@@ -152,7 +152,7 @@ const defaultErrorFn = {
     value: object,
     extraKeys: (string | symbol)[],
     _objectDef: MinimumObjectDefinition,
-  ) => `'${stringify(value)}' contains the following extra properties:'${stringify(extraKeys)}'`,
+  ) => `${stringify(value)} contains the following extra properties:${stringify(extraKeys)}`,
   missingItemInItemParsers: (value: any[], key: keyof any) =>
     `item: ${stringify(key)} not found in ${stringify(value)}`,
   unableToSelectItemFromArray: (_value: MinimumSafeParsableObject, _keys: (keyof any)[]) =>
@@ -166,11 +166,11 @@ const defaultErrorFn = {
     property: string,
     _parsers: MinimumObject[],
   ) =>
-    `the discriminatedUnionKey '${property}' found no matches for the value: '${stringify(value)}'`,
+    `the discriminatedUnionKey '${property}' found no matches for the value: ${stringify(value)}`,
   parserIsNotOfTypeObject: (parser: MinimumSafeParsableObject) =>
     `the parser ${stringify(parser)} is not of type object`,
   discriminatedUnionValueIsNotAnObject: (value: unknown) =>
-    `value '${stringify(value)}' is not of type object`,
+    `value ${stringify(value)} is not of type object`,
   // invalidMapKey: (
   //   _value: Map<unknown, unknown>,
   //   mapKey: unknown,
@@ -185,22 +185,25 @@ const defaultErrorFn = {
   //   `value at key: '${String(mapKey)}' is '${mapValue}' and does not match expected value type: ${
   //     mapValueDef.type
   //   }`,
-  notAMap: (value: unknown) => `'${stringify(value)}' is not an instance of a Map`,
+  notAMap: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
   minimumMapLength: (value: Map<unknown, unknown>, minLength: number) =>
-    `'${value.size}' is more elements than the minimum of ${minLength}`,
+    `${value.size} is more elements than the minimum of ${minLength}`,
   maximumMapLength: (value: Map<unknown, unknown>, maxLength: number) =>
-    `'${value.size}' is less elements than the maximum of ${maxLength}`,
+    `${value.size} is less elements than the maximum of ${maxLength}`,
   requiredMapLength: (value: Map<unknown, unknown>, requiredLength: number) =>
-    `'${value.size}' is not the required ${requiredLength} elements`,
-  mapNonEmpty: (value: Map<unknown, unknown>) => `'${value}' must contain at least one element`,
-  notASet: (value: unknown) => `'${stringify(value)}' is not an instance of a Set`,
+    `${value.size} is not the required ${requiredLength} elements`,
+  mapNonEmpty: (value: Map<unknown, unknown>) =>
+    `${stringify(value)} must contain at least one element`,
+  notASet: (value: unknown) => `${stringify(value)} is not an instance of a Set`,
   minimumSetLength: (value: Set<unknown>, minLength: number) =>
-    `'${value.size}' is more elements than the minimum of ${minLength}`,
+    `${value.size} is more elements than the minimum of ${minLength}`,
   maximumSetLength: (value: Set<unknown>, maxLength: number) =>
-    `'${value.size}' is less elements than the maximum of ${maxLength}`,
+    `${value.size} is less elements than the maximum of ${maxLength}`,
   requiredSetLength: (value: Set<unknown>, requiredLength: number) =>
-    `'${value.size}' is not the required ${requiredLength} elements`,
-  setNonEmpty: (value: Set<unknown>) => `'${value}' must contain at least one element`,
+    `${value.size} is not the required ${requiredLength} elements`,
+  setNonEmpty: (value: Set<unknown>) => `${stringify(value)} must contain at least one element`,
+  notAPromise: (value: unknown) => `${stringify(value)} doesn't have a 'then' and 'catch' method`,
+  notARecord: (value: unknown) => `${stringify(value)} is not a valid object`,
 }
 
 export default defaultErrorFn

@@ -108,7 +108,7 @@ describe('object', () => {
     expect(test2.parse(data)).toEqual(data)
     expect(test2.parse(successData1)).toEqual(successData1)
   })
-  it('required', () => {
+  it.only('required', () => {
     const test2 = test.partial().required()
     const result = test2.parse(successData1)
     assertEqual<

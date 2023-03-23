@@ -8,13 +8,13 @@ const { createBaseValidationBuilder, setBaseChildren } = baseInitialiser()
 const { vUnion, vOptional, vNullable, vNullish, setInstances } = initUnionTypes(
   createBaseValidationBuilder,
 )
-const { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever } = initLiteralTypes(
+const { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever, vNullishL } = initLiteralTypes(
   createBaseValidationBuilder,
 )
 const vArray = initArray(createBaseValidationBuilder)
 const vIntersection = initIntersectionType(createBaseValidationBuilder)
 
-setBaseChildren(vOptional, vNullable, vArray, vUnion, vIntersection)
+setBaseChildren(vOptional, vNullable, vArray, vUnion, vIntersection, vNullish)
 
 const vNaNInstance = vNaN()
 const vUndefinedInstance = vUndefined()
@@ -38,6 +38,7 @@ export {
   vAny,
   vUnknown,
   vNever,
+  vNullishL,
   vArray,
   vNaNInstance,
   vUndefinedInstance,

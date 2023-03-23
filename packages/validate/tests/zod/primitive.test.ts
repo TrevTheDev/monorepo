@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 
-import { vString } from '../../src/types/string'
-import { vNumber } from '../../src/types/number'
-import { vBoolean } from '../../src/types/boolean'
-import { vLiteral, vNull, vUndefined } from '../../src/types/init'
+import { vStringInstance } from '../../src/types/string'
+import { vNumberInstance } from '../../src/types/number'
+import { vBooleanInstance } from '../../src/types/boolean'
+import { vBigIntInstance } from '../../src/types/bigint'
+import { vLiteral, vNullInstance, vUndefinedInstance } from '../../src/types/init'
 import { Mocker } from './mocker'
-import { vDate } from '../../src/types/date'
+import { vDateInstance } from '../../src/types/date'
+import { firstError } from '../../src/types/base'
 
 const literalStringSchema = vLiteral('asdf' as const)
 
@@ -14,25 +16,25 @@ const literalBooleanSchema = vLiteral(true as const)
 const literalBigIntSchema = vLiteral(BigInt(42) as 42n)
 const MySymbol = Symbol('stuff')
 const literalSymbolSchema = vLiteral(MySymbol)
-const stringSchema = vString()
-const numberSchema = vNumber()
-// const bigintSchema = z.bigint()
-const booleanSchema = vBoolean()
-const dateSchema = vDate()
+const stringSchema = vStringInstance
+const numberSchema = vNumberInstance
+const bigintSchema = vBigIntInstance
+const booleanSchema = vBooleanInstance
+const dateSchema = vDateInstance
 // const symbolSchema = z.symbol()
 
-const nullSchema = vNull()
-const undefinedSchema = vUndefined()
-const stringSchemaOptional = vString().optional()
-const stringSchemaNullable = vString().nullable()
-// const numberSchemaOptional = vNumber().optional()
-// const numberSchemaNullable = vNumber().nullable()
-// const bigintSchemaOptional = z.bigint().optional()
-// const bigintSchemaNullable = z.bigint().nullable()
-// const booleanSchemaOptional = z.boolean().optional()
-// const booleanSchemaNullable = z.boolean().nullable()
-// const dateSchemaOptional = z.date().optional()
-// const dateSchemaNullable = z.date().nullable()
+const nullSchema = vNullInstance
+const undefinedSchema = vUndefinedInstance
+const stringSchemaOptional = vStringInstance.optional()
+const stringSchemaNullable = vStringInstance.nullable()
+const numberSchemaOptional = vNumberInstance.optional()
+const numberSchemaNullable = vNumberInstance.nullable()
+const bigintSchemaOptional = vBigIntInstance.optional()
+const bigintSchemaNullable = vBigIntInstance.nullable()
+const booleanSchemaOptional = vBooleanInstance.optional()
+const booleanSchemaNullable = vBooleanInstance.nullable()
+const dateSchemaOptional = vDateInstance.optional()
+const dateSchemaNullable = vDateInstance.nullable()
 // const symbolSchemaOptional = z.symbol().optional()
 // const symbolSchemaNullable = z.symbol().nullable()
 
@@ -204,34 +206,34 @@ describe('adapted from zod strings', () => {
     expect(f).toThrow()
   })
 
-  // it('parse bigintSchema string', () => {
-  //   const f = () => bigintSchema.parse(val.string)
-  //   expect(f).toThrow()
-  // })
+  it('parse bigintSchema string', () => {
+    const f = () => bigintSchema.parse(val.string)
+    expect(f).toThrow()
+  })
 
-  // it('parse bigintSchema number', () => {
-  //   const f = () => bigintSchema.parse(val.number)
-  //   expect(f).toThrow()
-  // })
+  it('parse bigintSchema number', () => {
+    const f = () => bigintSchema.parse(val.number)
+    expect(f).toThrow()
+  })
 
-  // it('parse bigintSchema bigint', () => {
-  //   bigintSchema.parse(val.bigint)
-  // })
+  it('parse bigintSchema bigint', () => {
+    bigintSchema.parse(val.bigint)
+  })
 
-  // it('parse bigintSchema boolean', () => {
-  //   const f = () => bigintSchema.parse(val.boolean)
-  //   expect(f).toThrow()
-  // })
+  it('parse bigintSchema boolean', () => {
+    const f = () => bigintSchema.parse(val.boolean)
+    expect(f).toThrow()
+  })
 
-  // it('parse bigintSchema undefined', () => {
-  //   const f = () => bigintSchema.parse(val.undefined)
-  //   expect(f).toThrow()
-  // })
+  it('parse bigintSchema undefined', () => {
+    const f = () => bigintSchema.parse(val.undefined)
+    expect(f).toThrow()
+  })
 
-  // it('parse bigintSchema null', () => {
-  //   const f = () => bigintSchema.parse(val.null)
-  //   expect(f).toThrow()
-  // })
+  it('parse bigintSchema null', () => {
+    const f = () => bigintSchema.parse(val.null)
+    expect(f).toThrow()
+  })
 
   it('parse booleanSchema string', () => {
     const f = () => booleanSchema.parse(val.string)
@@ -288,48 +290,48 @@ describe('adapted from zod strings', () => {
     expect(f).toThrow()
   })
 
-  // it('parse dateSchema invalid date', async () => {
-  //   try {
-  //     await dateSchema.parseAsync(new Date('invalid'))
-  //   } catch (err) {
-  //     expect((err as z.ZodError).issues[0].code).toEqual(z.ZodIssueCode.invalid_date)
-  //   }
-  // })
+  it('parse dateSchema invalid date', () => {
+    try {
+      dateSchema.parse(new Date('invalid'))
+    } catch (err) {
+      expect(firstError(err)).toEqual('ss')
+    }
+  })
   // // ==============
 
-  // it('parse symbolSchema string', () => {
-  //   const f = () => symbolSchema.parse(val.string)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema string', () => {
+    const f = () => symbolSchema.parse(val.string)
+    expect(f).toThrow()
+  })
 
-  // it('parse symbolSchema number', () => {
-  //   const f = () => symbolSchema.parse(val.number)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema number', () => {
+    const f = () => symbolSchema.parse(val.number)
+    expect(f).toThrow()
+  })
 
-  // it('parse symbolSchema boolean', () => {
-  //   const f = () => symbolSchema.parse(val.boolean)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema boolean', () => {
+    const f = () => symbolSchema.parse(val.boolean)
+    expect(f).toThrow()
+  })
 
-  // it('parse symbolSchema date', () => {
-  //   const f = () => symbolSchema.parse(val.date)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema date', () => {
+    const f = () => symbolSchema.parse(val.date)
+    expect(f).toThrow()
+  })
 
-  // it('parse symbolSchema symbol', () => {
-  //   symbolSchema.parse(val.symbol)
-  // })
+  it('parse symbolSchema symbol', () => {
+    symbolSchema.parse(val.symbol)
+  })
 
-  // it('parse symbolSchema undefined', () => {
-  //   const f = () => symbolSchema.parse(val.undefined)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema undefined', () => {
+    const f = () => symbolSchema.parse(val.undefined)
+    expect(f).toThrow()
+  })
 
-  // it('parse symbolSchema null', () => {
-  //   const f = () => symbolSchema.parse(val.null)
-  //   expect(f).toThrow()
-  // })
+  it('parse symbolSchema null', () => {
+    const f = () => symbolSchema.parse(val.null)
+    expect(f).toThrow()
+  })
 
   // ==============
 
@@ -385,28 +387,28 @@ describe('adapted from zod strings', () => {
     assertEqual<ReturnType<typeof literalStringSchema.parse>, 'asdf'>(true)
     assertEqual<ReturnType<typeof literalNumberSchema.parse>, 12>(true)
     assertEqual<ReturnType<typeof literalBooleanSchema.parse>, true>(true)
-    // assertEqual<ReturnType<typeof literalBigIntSchema.parse>, bigint>(true)
+    assertEqual<ReturnType<typeof literalBigIntSchema.parse>, 42n>(true)
     assertEqual<ReturnType<typeof stringSchema.parse>, string>(true)
     assertEqual<ReturnType<typeof numberSchema.parse>, number>(true)
-    // assertEqual<ReturnType<typeof bigintSchema.parse>, bigint>(true)
+    assertEqual<ReturnType<typeof bigintSchema.parse>, bigint>(true)
     assertEqual<ReturnType<typeof booleanSchema.parse>, boolean>(true)
     assertEqual<ReturnType<typeof dateSchema.parse>, Date>(true)
-    // assertEqual<ReturnType<typeof symbolSchema.parse>, symbol>(true)
+    assertEqual<ReturnType<typeof symbolSchema.parse>, symbol>(true)
 
     assertEqual<ReturnType<typeof nullSchema.parse>, null>(true)
     assertEqual<ReturnType<typeof undefinedSchema.parse>, undefined>(true)
     assertEqual<ReturnType<typeof stringSchemaOptional.parse>, string | undefined>(true)
     assertEqual<ReturnType<typeof stringSchemaNullable.parse>, string | null>(true)
-    // assertEqual<ReturnType<typeof numberSchemaOptional.parse>, number | undefined>(true)
-    // assertEqual<ReturnType<typeof numberSchemaNullable.parse>, number | null>(true)
-    // assertEqual<ReturnType<typeof bigintSchemaOptional.parse>, bigint | undefined>(true)
-    // assertEqual<ReturnType<typeof bigintSchemaNullable.parse>, bigint | null>(true)
-    // assertEqual<ReturnType<typeof booleanSchemaOptional.parse>, boolean | undefined>(true)
-    // assertEqual<ReturnType<typeof booleanSchemaNullable.parse>, boolean | null>(true)
-    // assertEqual<ReturnType<typeof dateSchemaOptional.parse>, Date | undefined>(true)
-    // assertEqual<ReturnType<typeof dateSchemaNullable.parse>, Date | null>(true)
-    // assertEqual<ReturnType<typeof symbolSchemaOptional.parse>, symbol | undefined>(true)
-    // assertEqual<ReturnType<typeof symbolSchemaNullable.parse>, symbol | null>(true)
+    assertEqual<ReturnType<typeof numberSchemaOptional.parse>, number | undefined>(true)
+    assertEqual<ReturnType<typeof numberSchemaNullable.parse>, number | null>(true)
+    assertEqual<ReturnType<typeof bigintSchemaOptional.parse>, bigint | undefined>(true)
+    assertEqual<ReturnType<typeof bigintSchemaNullable.parse>, bigint | null>(true)
+    assertEqual<ReturnType<typeof booleanSchemaOptional.parse>, boolean | undefined>(true)
+    assertEqual<ReturnType<typeof booleanSchemaNullable.parse>, boolean | null>(true)
+    assertEqual<ReturnType<typeof dateSchemaOptional.parse>, Date | undefined>(true)
+    assertEqual<ReturnType<typeof dateSchemaNullable.parse>, Date | null>(true)
+    assertEqual<ReturnType<typeof symbolSchemaOptional.parse>, symbol | undefined>(true)
+    assertEqual<ReturnType<typeof symbolSchemaNullable.parse>, symbol | null>(true)
 
     // [
     //   literalStringSchemaTest,

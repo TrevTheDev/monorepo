@@ -187,7 +187,7 @@ export const bigIntValidations = bigIntValidations_ as BigIntValidations
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 export type VBigInt<
-  Output extends number = number,
+  Output extends bigint = bigint,
   Input = unknown,
   Validations extends ValidationArray<bigint> = BigIntValidations,
 > = SafeParsableObject<Output, 'bigint', Input> & {

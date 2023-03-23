@@ -79,7 +79,7 @@ describe('adapted from zod anyunknown', () => {
       ).parse(null)
       throw new Error()
     } catch (e: any) {
-      expect(e.errors[0]).toEqual(`value 'null' is not of type object`)
+      expect(e.errors[0]).toEqual(`value null is not of type object`)
     }
   })
 
@@ -95,7 +95,7 @@ describe('adapted from zod anyunknown', () => {
       throw new Error()
     } catch (e: any) {
       expect(e.errors[0]).toEqual(
-        `the discriminatedUnionKey 'type' found no matches for the value: '{"type":"x","a":"abc"}'`,
+        `the discriminatedUnionKey 'type' found no matches for the value: {"type":"x","a":"abc"}`,
       )
     }
   })
@@ -112,9 +112,9 @@ describe('adapted from zod anyunknown', () => {
       throw new Error()
     } catch (e: any) {
       expect(e.errors[0]).toEqual(
-        `The object {"type":"a","b":"abc"} is not of type {type:"a",a:string}&{[K in keyof Any]: never}|{type:"b",b:string}&{[K in keyof Any]: never}.
-a: property: a not found in {"type":"a","b":"abc"}, 
-b: 'abc' doesn't match 'never'`,
+        `The object {"type":"a","b":"abc"} is not of type {type:"a",a:string}|{type:"b",b:string}.
+"a": property: "a" not found in {"type":"a","b":"abc"}, 
+"b": "abc" doesn't match 'never'`,
       )
     }
   })
@@ -130,9 +130,7 @@ b: 'abc' doesn't match 'never'`,
       )
       throw new Error()
     } catch (e: any) {
-      expect(e.message).toEqual(
-        `property 'type' not found in object definition: {b:string}&{[K in keyof Any]: never}`,
-      )
+      expect(e.message).toEqual(`property 'type' not found in object definition: {b:string}`)
     }
   })
 

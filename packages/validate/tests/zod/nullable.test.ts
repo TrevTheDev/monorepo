@@ -42,6 +42,6 @@ it('Should have error messages appropriate for the underlying type', () => {
 it('unwrap', () => {
   const nulled = vStringInstance.nullable()
   expect(nulled.type).toEqual('string|null')
-  const unwrapped = nulled.required()
+  const unwrapped = nulled.nonNullableType
   expect(unwrapped.type).toEqual('string')
 })

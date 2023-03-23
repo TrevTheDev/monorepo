@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable, Identity } from 'toolbelt'
+import type { ResultError, DeepWriteable } from 'toolbelt'
 
 import {
   SafeParseFn,
@@ -8,7 +8,7 @@ import {
   ValidationErrors,
   SafeParsableObject,
   VInfer,
-  ValidationItem,
+  // ValidationItem,
   CreateBaseValidationBuilderGn,
   MinimumSafeParsableObject,
   SafeParsableObjectBase,
@@ -134,7 +134,7 @@ export type UnionValidations<T> = [
     (
       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
       ...otherArgs: unknown[]
-    ) => (value: T) => string | undefined,
+    ) => (value: T) => SingleValidationError | undefined,
   ],
 ]
 const unionValidations_ = [
@@ -164,120 +164,146 @@ type ObjectUnionType = MinimumObject[]
 
 type VUnionOutput<
   T extends UnionType,
-  O = {
+  O extends any[] = {
     [I in keyof T]: VInfer<T[I]>
   },
-> = O[number & string]
+> = O[number]
 
-interface VUnion2<Output, Type extends string, Input, T extends UnionType>
-  extends SafeParsableObject<Output, Type, Input> {
-  unionTypes: T
-}
+// interface VUnion2<Output, Type extends string, Input, T extends UnionType>
+//   extends SafeParsableObject<Output, Type, Input> {
+//   unionTypes: T
+//   customValidation(
+//     customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
+//     ...otherArgs: unknown[]
+//   ): (value: Output) => SingleValidationError | undefined
+// }
 
-export type VUnion<
+export interface VUnion<
   T extends UnionType,
   Output = VUnionOutput<T>,
-  Validations extends ValidationArray<Output> = UnionValidations<Output>,
+  // Validations extends ValidationArray<Output> = UnionValidations<Output>,
   Type extends string = string,
   Input = unknown,
-> = VUnion2<Output, Type, Input, T> & {
-  // default validations
-  [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
-      ? Validations[I][0]
-      : never
-    : never]: (
-    ...args: Parameters<Validations[I][1]>
-  ) => VUnion<T, Output, Validations, Type, Input>
+> extends SafeParsableObject<Output, Type, Input> {
+  unionTypes: T
+  customValidation<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
 }
 
-interface VOptional2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
-  extends SafeParsableObjectBase<Output, Type, Input> {
+// interface VOptional2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
+//   extends SafeParsableObjectBase<Output, Type, Input> {
+//   nonOptionalType: T
+//   optional(): this
+//   nullable(): VNullable<this>
+//   required(): T
+//   isOptional(): true
+//   isNullable(): false
+// }
+
+export interface VOptional<
+  T extends MinimumSafeParsableObject,
+  // Validations extends ValidationArray<VInfer<T> | undefined> = UnionValidations<
+  //   VInfer<T> | undefined
+  // >,
+  Type extends string = string,
+  Input = unknown,
+  Output = VInfer<T> | undefined,
+> extends SafeParsableObjectBase<Output, Type, Input> {
   nonOptionalType: T
   optional(): this
   nullable(): VNullable<this>
   required(): T
   isOptional(): true
-  isNullable(): false
+  // isNullable(): false
+  customValidation<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
 }
 
-export type VOptional<
+// interface VNullable2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
+//   extends SafeParsableObjectBase<Output, Type, Input> {
+//   nonNullableType: T
+//   optional(): VOptional<this>
+//   nullable(): this
+//   required(): this
+//   isOptional(): false
+//   isNullable(): true
+// }
+
+export interface VNullable<
   T extends MinimumSafeParsableObject,
-  Validations extends ValidationArray<VInfer<T> | undefined> = UnionValidations<
-    VInfer<T> | undefined
-  >,
+  Output = VInfer<T> | null,
+  // Validations extends ValidationArray<Output> = UnionValidations<Output>,
   Type extends string = string,
   Input = unknown,
-> = Identity<
-  VOptional2<VInfer<T> | undefined, Type, Input, T> & {
-    // default validations
-    [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-      ? Validations[I] extends ValidationItem<any>
-        ? Validations[I][0]
-        : never
-      : never]: (...args: Parameters<Validations[I][1]>) => VOptional<T, Validations, Type, Input>
-  }
->
-
-interface VNullable2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
-  extends SafeParsableObjectBase<Output, Type, Input> {
+  // RT extends MinimumSafeParsableObject = VNullable2<Output, Type, Input, T> & {
+  //   // default validations
+  //   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
+  //     ? Validations[I] extends ValidationItem<any>
+  //       ? Validations[I][0]
+  //       : never
+  //     : never]: (
+  //     ...args: Parameters<Validations[I][1]>
+  //   ) => VNullable<T, Output, Validations, Type, Input>
+  // },
+> extends SafeParsableObjectBase<Output, Type, Input> {
   nonNullableType: T
   optional(): VOptional<this>
   nullable(): this
-  required(): T
+  required(): this
   isOptional(): false
-  isNullable(): true
+  // isNullable(): true
+  customValidation<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
 }
 
-export type VNullable<
-  T extends MinimumSafeParsableObject,
-  Output = VInfer<T> | null,
-  Validations extends ValidationArray<Output> = UnionValidations<Output>,
-  Type extends string = string,
-  Input = unknown,
-> = Identity<
-  VNullable2<Output, Type, Input, T> & {
-    // default validations
-    [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-      ? Validations[I] extends ValidationItem<any>
-        ? Validations[I][0]
-        : never
-      : never]: (
-      ...args: Parameters<Validations[I][1]>
-    ) => VNullable<T, Output, Validations, Type, Input>
-  }
->
+// interface VNullishable2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
+//   extends SafeParsableObjectBase<Output, Type, Input> {
+//   nonNullableType: T
+//   optional(): this
+//   nullable(): this
+//   mullish(): this
+//   required(): this
+//   isOptional(): false
+//   isNullable(): false
+//   isNullish(): true
+// }
 
-interface VNullishable2<Output, Type extends string, Input, T extends MinimumSafeParsableObject>
-  extends SafeParsableObjectBase<Output, Type, Input> {
-  nonNullableType: T
-  optional(): this
-  nullable(): this
-  mullish(): this
-  required(): T
-  isOptional(): true
-  isNullable(): true
-  isNullish(): true
-}
-
-export type VNullish<
+export interface VNullish<
   T extends MinimumSafeParsableObject,
   Output = VInfer<T> | null | undefined,
-  Validations extends ValidationArray<Output> = UnionValidations<Output>,
+  // Validations extends ValidationArray<Output> = UnionValidations<Output>,
   Type extends string = string,
   Input = unknown,
-> = Identity<
-  VNullishable2<Output, Type, Input, T> & {
-    // default validations
-    [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-      ? Validations[I] extends ValidationItem<any>
-        ? Validations[I][0]
-        : never
-      : never]: (
-      ...args: Parameters<Validations[I][1]>
-    ) => VNullable<T, Output, Validations, Type, Input>
-  }
->
+  // RT extends MinimumSafeParsableObject = VNullishable2<Output, Type, Input, T> & {
+  //   // default validations
+  //   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
+  //     ? Validations[I] extends ValidationItem<any>
+  //       ? Validations[I][0]
+  //       : never
+  //     : never]: (
+  //     ...args: Parameters<Validations[I][1]>
+  //   ) => VNullable<T, Output, Validations, Type, Input>
+  // },
+> extends SafeParsableObjectBase<Output, Type, Input> {
+  nonNullableType: T
+  optional(): VOptional<this>
+  nullable(): this
+  mullish(): this
+  required(): this
+  isOptional(): false
+  // isNullable(): false
+  // isNullish(): true
+  customValidation<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
+}
 
 type UnionOptions<Output = any> = {
   parser?: (
@@ -312,10 +338,10 @@ interface PartialDiscriminatedUnionOptions {
 //   },
 // > = O[number & string]
 
-interface VUnion2<Output, Type extends string, Input, T extends UnionType>
-  extends SafeParsableObject<Output, Type, Input> {
-  unionTypes: T
-}
+// interface VUnion2<Output, Type extends string, Input, T extends UnionType>
+//   extends SafeParsableObject<Output, Type, Input> {
+//   unionTypes: T
+// }
 
 export type VUnionFn = {
   <T extends Readonly<ObjectUnionType>, TW extends ObjectUnionType = DeepWriteable<T>>(
@@ -398,11 +424,12 @@ export function initUnionTypes(createBaseValidationBuilder: CreateBaseValidation
         ? options.parser(types as any, fOptions as any)
         : unionParse(types)
     }
-    return createBaseValidationBuilder(
+    const uUnion = createBaseValidationBuilder(
       finalParser,
       unionValidations_ as unknown as ValidationArray<any>,
       typeString,
     )
+    return Object.defineProperty(uUnion, 'unionTypes', { value: types })
   } as VUnionFn
 
   const vOptional = function vOptionalFn<T extends MinimumSafeParsableObject>(
@@ -417,7 +444,7 @@ export function initUnionTypes(createBaseValidationBuilder: CreateBaseValidation
       nonOptionalType: { value: type },
       required: {
         value() {
-          return type
+          return type.required()
         },
       },
     })
@@ -434,11 +461,6 @@ export function initUnionTypes(createBaseValidationBuilder: CreateBaseValidation
     const result = (vUnion as unknown as any)([type, vNullInstance], parser)
     Object.defineProperties(result, {
       nonNullableType: { value: type },
-      required: {
-        value() {
-          return type
-        },
-      },
     })
     return result as unknown as VNullable<T>
   } as VNullableFn
@@ -453,11 +475,6 @@ export function initUnionTypes(createBaseValidationBuilder: CreateBaseValidation
     const result = (vUnion as unknown as any)([type, vNullInstance, vUndefinedInstance], parser)
     Object.defineProperties(result, {
       nonNullishType: { value: type },
-      required: {
-        value() {
-          return type
-        },
-      },
     })
     return result as unknown as VNullish<T>
   } as VNullishFn

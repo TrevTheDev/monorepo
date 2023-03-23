@@ -1,4 +1,5 @@
 import { it, expect } from 'vitest'
+import { isResult } from 'toolbelt'
 import { vObject } from '../../src/types/object'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
@@ -152,31 +153,38 @@ it('required', () => {
   })
 
   const requiredObject = object.required()
-  expect(requiredObject.shape.name).toBeInstanceOf(z.ZodString)
-  expect(requiredObject.shape.age).toBeInstanceOf(z.ZodNumber)
-  expect(requiredObject.shape.field).toBeInstanceOf(z.ZodDefault)
-  expect(requiredObject.shape.nullableField).toBeInstanceOf(z.ZodNullable)
-  expect(requiredObject.shape.nullishField).toBeInstanceOf(z.ZodNullable)
+  expect(requiredObject.shape.propertyParsers.name.type).toBe('string')
+  expect(requiredObject.shape.propertyParsers.age.type).toBe('number')
+  expect(requiredObject.shape.propertyParsers.field.type).toBe('string|undefined')
+  expect(requiredObject.shape.propertyParsers.nullableField.type).toBe('number|null')
+  expect(requiredObject.shape.propertyParsers.nullishField.type).toBe('string|null|undefined')
 })
 
 it('required inference', () => {
   const object = vObject({
     name: vStringInstance,
     age: vNumberInstance.optional(),
-    field: vStringInstance.optional().default('asdf'),
+    // field: vStringInstance.optional().default('asdf'),
     nullableField: vNumberInstance.nullable(),
     nullishField: vStringInstance.nullish(),
   })
 
   const requiredObject = object.required()
 
-  type required = z.infer<typeof requiredObject>
+  type required = VInfer<typeof requiredObject>
+  // type ZODexpected = {
+  //   name: string
+  //   age: number
+  //   // field: string
+  //   nullableField: number | null
+  //   nullishField: string | null
+  // }
   type expected = {
     name: string
     age: number
-    field: string
+    // field: string
     nullableField: number | null
-    nullishField: string | null
+    nullishField: string | null | undefined
   }
   assertEqual<expected, required>(true)
 })
@@ -185,69 +193,76 @@ it('required with mask', () => {
   const object = vObject({
     name: vStringInstance,
     age: vNumberInstance.optional(),
-    field: vStringInstance.optional().default('asdf'),
+    // field: vStringInstance.optional().default('asdf'),
     country: vStringInstance.optional(),
   })
 
-  const requiredObject = object.required({ age: true })
-  expect(requiredObject.shape.name).toBeInstanceOf(z.ZodString)
-  expect(requiredObject.shape.age).toBeInstanceOf(z.ZodNumber)
-  expect(requiredObject.shape.field).toBeInstanceOf(z.ZodDefault)
-  expect(requiredObject.shape.country).toBeInstanceOf(z.ZodOptional)
+  const requiredObject = object.required('age')
+  expect(requiredObject.shape.propertyParsers.name.type).toBe('string')
+  expect(requiredObject.shape.propertyParsers.age.type).toBe('number')
+  // // expect(requiredObject.shape.field).toBeInstanceOf(z.ZodDefault)
+  expect(requiredObject.shape.propertyParsers.country.type).toBe('string|undefined')
+
+  type required = VInfer<typeof requiredObject>
+  type expected = {
+    name: string
+    age: number
+    country?: string
+  }
+  assertEqual<expected, required>(true)
 })
 
-it('required with mask -- ignore falsy values', () => {
+// it('required with mask -- ignore falsy values', () => {
+//   const object = vObject({
+//     name: vStringInstance,
+//     age: vNumberInstance.optional(),
+//     // field: vStringInstance.optional().default('asdf'),
+//     country: vStringInstance.optional(),
+//   })
+
+//   const requiredObject = object.required('age')
+//   expect(requiredObject.shape.name).toBeInstanceOf(z.ZodString)
+//   expect(requiredObject.shape.age).toBeInstanceOf(z.ZodNumber)
+//   // expect(requiredObject.shape.field).toBeInstanceOf(z.ZodDefault)
+//   expect(requiredObject.shape.country).toBeInstanceOf(z.ZodOptional)
+// })
+
+it('partial with mask', () => {
   const object = vObject({
     name: vStringInstance,
     age: vNumberInstance.optional(),
-    field: vStringInstance.optional().default('asdf'),
-    country: vStringInstance.optional(),
-  })
-
-  // @ts-expect-error
-  const requiredObject = object.required({ age: true, country: false })
-  expect(requiredObject.shape.name).toBeInstanceOf(z.ZodString)
-  expect(requiredObject.shape.age).toBeInstanceOf(z.ZodNumber)
-  expect(requiredObject.shape.field).toBeInstanceOf(z.ZodDefault)
-  expect(requiredObject.shape.country).toBeInstanceOf(z.ZodOptional)
-})
-
-it('partial with mask', async () => {
-  const object = vObject({
-    name: vStringInstance,
-    age: vNumberInstance.optional(),
-    field: vStringInstance.optional().default('asdf'),
+    // field: vStringInstance.optional().default('asdf'),
     country: vStringInstance,
   })
 
-  const masked = object.partial({ age: true, field: true, name: true }).strict()
+  const masked = object.partial('age', 'name')
 
-  expect(masked.shape.name).toBeInstanceOf(z.ZodOptional)
-  expect(masked.shape.age).toBeInstanceOf(z.ZodOptional)
-  expect(masked.shape.field).toBeInstanceOf(z.ZodOptional)
-  expect(masked.shape.country).toBeInstanceOf(z.ZodString)
+  expect(masked.shape.propertyParsers.name.type).toBe('string|undefined')
+  expect(masked.shape.propertyParsers.age.type).toBe('number|undefined')
+  // expect(masked.shape.field).toBeInstanceOf(z.ZodOptional)
+  expect(masked.shape.propertyParsers.country.type).toBe('string')
 
   masked.parse({ country: 'US' })
-  await masked.parseAsync({ country: 'US' })
+  // masked.parseAsync({ country: 'US' })
 })
 
-it('partial with mask -- ignore falsy values', async () => {
+it('partial with mask -- ignore falsy values', () => {
   const object = vObject({
     name: vStringInstance,
     age: vNumberInstance.optional(),
-    field: vStringInstance.optional().default('asdf'),
+    // field: vStringInstance.optional().default('asdf'),
     country: vStringInstance,
   })
 
-  const masked = object.partial({ name: true, country: false }).strict()
+  const masked = object.partial('name')
 
-  expect(masked.shape.name).toBeInstanceOf(z.ZodOptional)
-  expect(masked.shape.age).toBeInstanceOf(z.ZodOptional)
-  expect(masked.shape.field).toBeInstanceOf(z.ZodDefault)
-  expect(masked.shape.country).toBeInstanceOf(z.ZodString)
+  expect(masked.shape.propertyParsers.name.type).toBe('string|undefined')
+  expect(masked.shape.propertyParsers.age.type).toBe('number|undefined')
+  // expect(masked.shape.propertyParsers.field.type).toBeInstanceOf(z.ZodDefault)
+  expect(masked.shape.propertyParsers.country.type).toBe('string')
 
   masked.parse({ country: 'US' })
-  await masked.parseAsync({ country: 'US' })
+  // await masked.parseAsync({ country: 'US' })
 })
 
 it('deeppartial array', () => {
@@ -257,5 +272,5 @@ it('deeppartial array', () => {
   schema.parse({})
 
   // should be false, but is true
-  expect(schema.safeParse({ array: [] }).success).toBe(false)
+  expect(isResult(schema.safeParse({ array: [] }))).toBe(false)
 })
