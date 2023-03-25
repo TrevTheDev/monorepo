@@ -1,20 +1,17 @@
-import { describe, it, expect } from 'vitest'
-import { vNaN } from '../../src/types/init'
+import { it, expect } from 'vitest'
+import { vNaNInstance } from '../../src/types/init'
 
-const schema = vNaN()
-describe('adapted from zod nan', () => {
-  it('passing validations', () => {
-    schema.parse(NaN)
-    schema.parse(Number('Not a number'))
-  })
+it('passing validations', () => {
+  vNaNInstance.parse(NaN)
+  vNaNInstance.parse(Number('Not a number'))
+})
 
-  it('failing validations', () => {
-    expect(() => schema.parse(5)).toThrow()
-    expect(() => schema.parse('John')).toThrow()
-    expect(() => schema.parse(true)).toThrow()
-    expect(() => schema.parse(null)).toThrow()
-    expect(() => schema.parse(undefined)).toThrow()
-    expect(() => schema.parse({})).toThrow()
-    expect(() => schema.parse([])).toThrow()
-  })
+it('failing validations', () => {
+  expect(() => vNaNInstance.parse(5)).toThrow()
+  expect(() => vNaNInstance.parse('John')).toThrow()
+  expect(() => vNaNInstance.parse(true)).toThrow()
+  expect(() => vNaNInstance.parse(null)).toThrow()
+  expect(() => vNaNInstance.parse(undefined)).toThrow()
+  expect(() => vNaNInstance.parse({})).toThrow()
+  expect(() => vNaNInstance.parse([])).toThrow()
 })

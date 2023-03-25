@@ -423,11 +423,8 @@ export function minimumArrayLength(
     minLength: number,
   ) => SingleValidationError = defaultErrorFn.minimumArrayLength,
 ) {
-  debugger
-  return (value: unknown[]) => {
-    debugger
-    return value.length < length ? errorReturnValueFn(value, length) : undefined
-  }
+  return (value: unknown[]) =>
+    value.length < length ? errorReturnValueFn(value, length) : undefined
 }
 
 export function maximumArrayLength(
