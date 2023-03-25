@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isError } from 'toolbelt'
+import { isError } from 'toolbelt'
+import type { ResultError } from 'toolbelt'
 
 import type {
   SafeParseFn,
@@ -158,10 +159,10 @@ type SetOptions<T extends SetDef> = {
   notASet: typeof defaultErrorFn.notASet
 }
 
-export const vSet = <T extends SetDef>(
+export function vSet<T extends SetDef>(
   setDefinitionParser: T,
   options: Partial<SetOptions<T>> = {},
-) => {
+) {
   const fOptions: SetOptions<T> = {
     breakOnFirstError: true,
     notASet: defaultErrorFn.notASet,

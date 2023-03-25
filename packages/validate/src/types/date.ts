@@ -56,7 +56,7 @@ export function before(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type DateValidations = DeepWriteable<typeof dateValidations_>
+type DateValidations = DeepWriteable<typeof dateValidations_>
 const dateValidations_ = [
   ['min', after],
   ['max', before],
@@ -70,7 +70,7 @@ const dateValidations_ = [
         customValidator(value, ...otherArgs),
   ],
 ] as const
-export const dateValidations = dateValidations_ as DateValidations
+const dateValidations = dateValidations_ as DateValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************

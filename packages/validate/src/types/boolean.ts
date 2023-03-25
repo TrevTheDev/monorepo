@@ -12,56 +12,56 @@ import type {
 import defaultErrorFn from './defaultErrors'
 import { createBaseValidationBuilder } from './init'
 
-function saneBooleanParser(
-  unmatchedValue: true | false | undefined,
-  truthyValues?: string[],
-  falsyValues?: string[],
-) {
-  const createFn = () => {
-    if (truthyValues) {
-      if (falsyValues) {
-        return (value: string) => {
-          if (truthyValues.includes(value)) return true
-          if (falsyValues.includes(value)) return false
-          return unmatchedValue
-        }
-      }
-      return (value: string) => {
-        if (truthyValues.includes(value)) return true
-        return unmatchedValue
-      }
-    }
-    if (falsyValues) {
-      return (value: string) => {
-        if (falsyValues.includes(value)) return false
-        return unmatchedValue
-      }
-    }
-    return (_value: string) => unmatchedValue
-  }
-  const fn = createFn()
-  return (value: unknown) => {
-    if (typeof value === 'boolean') return value
-    const valueToString = String(value).toLowerCase().trim()
-    return fn(valueToString)
-  }
-}
+// function saneBooleanParser(
+//   unmatchedValue: true | false | undefined,
+//   truthyValues?: string[],
+//   falsyValues?: string[],
+// ) {
+//   const createFn = () => {
+//     if (truthyValues) {
+//       if (falsyValues) {
+//         return (value: string) => {
+//           if (truthyValues.includes(value)) return true
+//           if (falsyValues.includes(value)) return false
+//           return unmatchedValue
+//         }
+//       }
+//       return (value: string) => {
+//         if (truthyValues.includes(value)) return true
+//         return unmatchedValue
+//       }
+//     }
+//     if (falsyValues) {
+//       return (value: string) => {
+//         if (falsyValues.includes(value)) return false
+//         return unmatchedValue
+//       }
+//     }
+//     return (_value: string) => unmatchedValue
+//   }
+//   const fn = createFn()
+//   return (value: unknown) => {
+//     if (typeof value === 'boolean') return value
+//     const valueToString = String(value).toLowerCase().trim()
+//     return fn(valueToString)
+//   }
+// }
 
-function defaultSaneBooleanParser(throwOnUndefined = true) {
-  const parser = saneBooleanParser(
-    undefined,
-    ['true', 'yes', 'on', 't', 'y', '1', '-1'],
-    ['', 'false', 'no', 'off', 'f', 'n', '0'],
-  )
-  return (value: unknown) => {
-    const result = parser(value)
-    if (throwOnUndefined && result !== undefined)
-      throw new Error(`could not parse ${String(value)} to boolean`)
-    return result
-  }
-}
+// function defaultSaneBooleanParser(throwOnUndefined = true) {
+//   const parser = saneBooleanParser(
+//     undefined,
+//     ['true', 'yes', 'on', 't', 'y', '1', '-1'],
+//     ['', 'false', 'no', 'off', 'f', 'n', '0'],
+//   )
+//   return (value: unknown) => {
+//     const result = parser(value)
+//     if (throwOnUndefined && result !== undefined)
+//       throw new Error(`could not parse ${String(value)} to boolean`)
+//     return result
+//   }
+// }
 
-const safeSaneBooleanParser = defaultSaneBooleanParser(false)
+// const safeSaneBooleanParser = defaultSaneBooleanParser(false)
 
 export function parseBoolean(
   invalidBooleanFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseBoolean,
@@ -72,16 +72,16 @@ export function parseBoolean(
       : [undefined, value]
 }
 
-export function coerceBoolean(
-  invalidBooleanFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseBoolean,
-): (value: unknown) => ResultError<ValidationErrors, boolean> {
-  return (value: unknown): ResultError<ValidationErrors, boolean> => {
-    const result = safeSaneBooleanParser(value)
-    return result === undefined
-      ? [{ input: value, errors: [invalidBooleanFn(String(value))] }, undefined]
-      : [undefined, result]
-  }
-}
+// export function coerceBoolean(
+//   invalidBooleanFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseBoolean,
+// ): (value: unknown) => ResultError<ValidationErrors, boolean> {
+//   return (value: unknown): ResultError<ValidationErrors, boolean> => {
+//     const result = safeSaneBooleanParser(value)
+//     return result === undefined
+//       ? [{ input: value, errors: [invalidBooleanFn(String(value))] }, undefined]
+//       : [undefined, result]
+//   }
+// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -105,7 +105,7 @@ export function beFalse(errorReturnValueFn: () => string = defaultErrorFn.beFals
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type BooleanValidations = DeepWriteable<typeof booleanValidations_>
+type BooleanValidations = DeepWriteable<typeof booleanValidations_>
 const booleanValidations_ = [
   ['beTrue', beTrue],
   ['beFalse', beFalse],
@@ -120,7 +120,7 @@ const booleanValidations_ = [
         customValidator(value, ...otherArgs),
   ],
 ] as const
-export const booleanValidations = booleanValidations_ as BooleanValidations
+const booleanValidations = booleanValidations_ as BooleanValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************

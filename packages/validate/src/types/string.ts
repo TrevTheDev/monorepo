@@ -153,7 +153,7 @@ export function endsWith(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type StringValidations = DeepWriteable<typeof stringValidations_>
+type StringValidations = DeepWriteable<typeof stringValidations_>
 const stringValidations_ = [
   ['max', maximumStringLength],
   ['min', minimumStringLength],
@@ -186,7 +186,7 @@ const stringValidations_ = [
   ],
 ] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
-export const stringValidations = stringValidations_ as StringValidations
+const stringValidations = stringValidations_ as StringValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -195,7 +195,7 @@ export const stringValidations = stringValidations_ as StringValidations
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-type VString<
+export type VString<
   Output extends string = string,
   Input = unknown,
   Validations extends ValidationArray<string> = StringValidations,

@@ -58,11 +58,11 @@ module.exports = {
   settings: {
     node: {
       tryExtensions: ['.js', '.json', '.ts', '.d.ts'],
-      allowModules: ['vitest'],
+      allowModules: ['vitest', 'tsup'],
     },
     'import/resolver': {
       typescript: {},
     },
-    'import/core-modules': ['vitest'],
+    'import/core-modules': ['vitest', 'tsup'],
   },
 }

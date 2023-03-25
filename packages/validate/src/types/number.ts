@@ -153,7 +153,7 @@ export function finite(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type NumberValidations = DeepWriteable<typeof numberValidations_>
+type NumberValidations = DeepWriteable<typeof numberValidations_>
 
 const numberValidations_ = [
   ['gt', greaterThan],
@@ -184,7 +184,7 @@ const numberValidations_ = [
   ],
 ] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
-export const numberValidations = numberValidations_ as NumberValidations
+const numberValidations = numberValidations_ as NumberValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************

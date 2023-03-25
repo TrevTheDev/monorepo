@@ -30,6 +30,7 @@ const defaultErrorFn = {
   parseBigInt: (value: unknown) => `${stringify(value)} is not a bigint`,
   parseBoolean: (value: unknown) => `${stringify(value)} is not a boolean`,
   parseNaN: (value: unknown) => `${stringify(value)} is not a NaN`,
+  parseSymbol: (value: unknown) => `${stringify(value)} is not a symbol`,
   parseDate: (value: unknown) => `${stringify(value)} is not a Date`,
   parseEnum: (value: unknown, enums: unknown[]) =>
     `${stringify(value)} is not a in the Enum :${stringify(enums)}`,
@@ -204,6 +205,7 @@ const defaultErrorFn = {
   setNonEmpty: (value: Set<unknown>) => `${stringify(value)} must contain at least one element`,
   notAPromise: (value: unknown) => `${stringify(value)} doesn't have a 'then' and 'catch' method`,
   notARecord: (value: unknown) => `${stringify(value)} is not a valid object`,
+  notAFunction: (value: unknown) => `${stringify(value)} is not a valid function`,
 }
 
 export default defaultErrorFn

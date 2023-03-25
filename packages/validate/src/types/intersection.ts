@@ -12,7 +12,7 @@ import type {
   VInfer,
 } from './base'
 
-function intersectionParse(types: SafeParseFn<any, any>[], breakOnFirstError) {
+export function parseIntersection(types: SafeParseFn<any, any>[], breakOnFirstError) {
   return (value: unknown): ResultError<ValidationErrors, any> => {
     const errors: string[] = []
     // eslint-disable-next-line no-restricted-syntax
@@ -34,7 +34,7 @@ function intersectionParse(types: SafeParseFn<any, any>[], breakOnFirstError) {
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type IntersectionValidations<T> = [
+type IntersectionValidations<T> = [
   [
     'customValidation',
     (
@@ -54,7 +54,7 @@ const intersectionValidations_ = [
         customValidator(value, ...otherArgs),
   ],
 ] as const
-export const intersectionValidations = intersectionValidations_ as IntersectionValidations<any>
+const intersectionValidations = intersectionValidations_ as IntersectionValidations<any>
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -147,7 +147,7 @@ export function initIntersectionType(
     const typeParsers = types.map((type) => (value) => type.safeParse(value))
     const finalParser = options.parser
       ? (value) => (options as any).parser(types, value)
-      : intersectionParse(
+      : parseIntersection(
           typeParsers,
           options.breakOnFirstError === undefined ? true : options.breakOnFirstError,
         )

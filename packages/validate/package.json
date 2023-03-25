@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "tsc",
+    "build": "tsup",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",
@@ -27,6 +27,7 @@
     "eslint-config-prettier": "^8.8.0",
     "prettier": "2.8.5",
     "tsconfig": "*",
+    "tsup": "^6.7.0",
     "typescript": "^5.0.2",
     "vitest": "^0.29.7"
   },
@@ -35,8 +36,8 @@
     "node": ">=19.0.0"
   },
   "dependencies": {
-    "zod": "^3.21.4",
     "toolbelt": "*",
-    "ui": "*"
+    "ui": "*",
+    "zod": "^3.21.4"
   }
 }

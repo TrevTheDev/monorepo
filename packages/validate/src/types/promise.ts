@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isResult } from 'toolbelt'
-
+import { isResult } from 'toolbelt'
+import type { ResultError } from 'toolbelt'
 import type {
   SafeParseFn,
   SafeParsableObject,

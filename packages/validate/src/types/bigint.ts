@@ -159,9 +159,9 @@ const bigIntValidations_ = [
   ['max', lesserThanOrEqualTo],
   ['int', integer],
   ['positive', positive],
-  ['nonnegative', nonNegative],
+  ['nonNegative', nonNegative],
   ['negative', negative],
-  ['nonpositive', nonPositive],
+  ['nonPositive', nonPositive],
   // ['multipleOf', multipleOf],
   [
     'customValidation',

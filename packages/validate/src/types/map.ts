@@ -165,10 +165,10 @@ type MapOptions<T extends MapDef> = {
   notAMap: typeof defaultErrorFn.notAMap
 }
 
-export const vMap = <T extends MapDef>(
+export function vMap<T extends MapDef>(
   mapDefinitionParsers: T,
   options: Partial<MapOptions<T>> = {},
-) => {
+) {
   const fOptions: MapOptions<T> = {
     breakOnFirstError: true,
     notAMap: defaultErrorFn.notAMap,

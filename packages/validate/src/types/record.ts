@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isError } from 'toolbelt'
-
+import { isError } from 'toolbelt'
+import type { ResultError } from 'toolbelt'
 import type {
   SafeParseFn,
   SafeParsableObject,
   SingleValidationError,
   ValidationErrors,
-  // ValidationItem,
   MinimumSafeParsableObject,
   VInfer,
   ParseFn,
@@ -87,41 +86,6 @@ export function parseRecord<T extends RecordDef>(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-// export function minimumMapLength<T extends Map<unknown, unknown>>(
-//   length: number,
-//   errorReturnValueFn: (
-//     invalidValue: T,
-//     minLength: number,
-//   ) => SingleValidationError = defaultErrorFn.minimumMapLength,
-// ) {
-//   return (value: T) => (value.size < length ? errorReturnValueFn(value, length) : undefined)
-// }
-
-// export function maximumMapLength<T extends Map<unknown, unknown>>(
-//   length: number,
-//   errorReturnValueFn: (
-//     invalidValue: T,
-//     maxLength: number,
-//   ) => SingleValidationError = defaultErrorFn.maximumMapLength,
-// ) {
-//   return (value: T) => (value.size > length ? errorReturnValueFn(value, length) : undefined)
-// }
-
-// export function requiredMapLength<T extends Map<unknown, unknown>>(
-//   length: number,
-//   errorReturnValueFn: (
-//     invalidValue: T,
-//     requiredLength: number,
-//   ) => SingleValidationError = defaultErrorFn.requiredMapLength,
-// ) {
-//   return (value: T) => (value.size !== length ? errorReturnValueFn(value, length) : undefined)
-// }
-
-// export function nonEmpty<T extends Map<unknown, unknown>>(
-//   errorReturnValueFn: (invalidValue: T) => SingleValidationError = defaultErrorFn.mapNonEmpty,
-// ) {
-//   return (value: T) => (value.size === 0 ? errorReturnValueFn(value) : undefined)
-// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -130,25 +94,8 @@ export function parseRecord<T extends RecordDef>(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-// type RecordValidations<T extends Map<unknown, unknown>> = [
-//   // ['min', typeof minimumMapLength<T>],
-//   // ['max', typeof maximumMapLength<T>],
-//   // ['length', typeof requiredMapLength<T>],
-//   // ['nonempty', typeof nonEmpty<T>],
-//   [
-//     'customValidation',
-//     (
-//       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-//       ...otherArgs: unknown[]
-//     ) => (value: T) => SingleValidationError | undefined,
-//   ],
-// ]
 
 const recordValidations = [
-  // ['min', minimumMapLength],
-  // ['max', maximumMapLength],
-  // ['length', requiredMapLength],
-  // ['nonempty', nonEmpty],
   [
     'customValidation',
     (customValidator, ...otherArgs) =>

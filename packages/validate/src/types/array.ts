@@ -467,7 +467,7 @@ export function nonEmpty(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type ArrayValidations = DeepWriteable<typeof arrayValidations_>
+type ArrayValidations = DeepWriteable<typeof arrayValidations_>
 
 const arrayValidations_ = [
   ['min', minimumArrayLength],
@@ -488,7 +488,7 @@ const arrayValidations_ = [
   ],
 ] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
-export const arrayValidations = arrayValidations_ as ArrayValidations
+const arrayValidations = arrayValidations_ as ArrayValidations
 
 // type X1<Validations extends ValidationArray<any[]>> = {
 //   // default validations
