@@ -1,15 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isResult } from 'toolbelt'
 import type { ResultError } from 'toolbelt'
-import type {
+import {
   SafeParseFn,
   SafeParsableObject,
-  ValidationErrors,
   MinimumSafeParsableObject,
   VInfer,
+  defaultErrorFnSym,
+  createFinalBaseObject,
+  parserObject,
+  ParserObject,
 } from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+
+import { baseObject } from './init'
+import { ValidationErrors, createValidationBuilder } from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -37,15 +44,20 @@ export interface ValidatedPromise<T> {
   readonly [Symbol.toStringTag]: string
 }
 
-type PromiseOptions<T> = {
-  parser?: SafeParseFn<unknown, ValidatedPromise<T>>
-  notAPromise: typeof defaultErrorFn.notAPromise
-}
+type PromiseOptions<T> =
+  | {
+      parser: SafeParseFn<unknown, ValidatedPromise<T>>
+    }
+  | {
+      parsePromise: DefaultErrorFn['parsePromise']
+    }
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
 
 export function parsePromise<T extends MinimumSafeParsableObject>(
   resultParser: T,
-  options: PromiseOptions<VInfer<T>>,
-): (value: unknown) => ResultError<ValidationErrors, ValidatedPromise<VInfer<T>>> {
+  options: PromiseOptions<VInfer<T>> = {},
+): SafeParseFn<unknown, ValidatedPromise<VInfer<T>>> {
   return (value: unknown): ResultError<ValidationErrors, ValidatedPromise<VInfer<T>>> => {
     if (
       value instanceof Object &&
@@ -98,7 +110,10 @@ export function parsePromise<T extends MinimumSafeParsableObject>(
       }
       return [undefined, newP]
     }
-    return [{ input: value, errors: [options.notAPromise(value)] }, undefined]
+    return [
+      { input: value, errors: [((options as any).parsePromise || errorFns.parsePromise)(value)] },
+      undefined,
+    ]
   }
 }
 
@@ -114,24 +129,22 @@ export interface VPromise<
   T extends MinimumSafeParsableObject,
   Output = ValidatedPromise<VInfer<T>>,
   Input = unknown,
-> extends SafeParsableObject<Output, `ValidatedPromise<${T['type']}>`, Input> {
-  resultParser: T
+> extends SafeParsableObject<Output, string, 'promise', Input> {
+  [parserObject]: ParserObject<Output, string, 'promise', Input, { readonly resultParser: T }>
+  readonly definition: { readonly resultParser: T }
 }
 
-export const vPromise = <T extends MinimumSafeParsableObject>(
+const basePromiseObject = createValidationBuilder(baseObject, [])
+
+export function vPromise<T extends MinimumSafeParsableObject>(
   resultParser: T,
-  options: Partial<PromiseOptions<VInfer<T>>> = {},
-) => {
-  const fOptions: PromiseOptions<VInfer<T>> = {
-    notAPromise: defaultErrorFn.notAPromise,
-    ...options,
-  }
-  const p = createBaseValidationBuilder(
-    fOptions.parser ? fOptions.parser : parsePromise(resultParser, fOptions),
-    [],
+  options: PromiseOptions<VInfer<T>> = {},
+): VPromise<T> {
+  return createFinalBaseObject(
+    basePromiseObject,
+    (options as any).parser || parsePromise(resultParser, options),
     `ValidatedPromise<${resultParser.type}>`,
-  ) as unknown as VPromise<T>
-  return Object.defineProperty(p, 'resultParser', {
-    value: resultParser,
-  })
+    'promise',
+    { resultParser },
+  ) as VPromise<T>
 }

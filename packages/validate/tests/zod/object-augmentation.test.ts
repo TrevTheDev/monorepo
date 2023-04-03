@@ -1,8 +1,7 @@
 import { it, expect } from 'vitest'
-import { vObject } from '../../src/types/object'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
-import { vArray } from '../../src/types/init'
+import { vArray, vObject } from '../../src/types/init'
 
 it('object augmentation', () => {
   const Animal = vObject({

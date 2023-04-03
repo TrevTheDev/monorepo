@@ -1,8 +1,7 @@
 import { it, expect } from 'vitest'
-import { vObject } from '../src/types/object'
 import { vNumberInstance } from '../src/types/number'
 import { vStringInstance } from '../src/types/string'
-import { vAnyInstance, vArray, vUnion } from '../src/types/init'
+import { vObject, vAnyInstance, vArray, vUnion } from '../src/types/init'
 import { vBooleanInstance } from '../src/types/boolean'
 import { VInfer } from '../src/types/base'
 

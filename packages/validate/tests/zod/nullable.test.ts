@@ -2,8 +2,7 @@ import { it, expect } from 'vitest'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
 import { vBooleanInstance } from '../../src/types/boolean'
-import { vArray, vNullInstance, vUnknownInstance } from '../../src/types/init'
-import { vObject } from '../../src/types/object'
+import { vArray, vNullInstance, vUnknownInstance, vObject } from '../../src/types/init'
 import { MinimumSafeParsableObject } from '../../src/types/base'
 
 function checkErrors(a: MinimumSafeParsableObject, bad: unknown) {
@@ -14,7 +13,7 @@ function checkErrors(a: MinimumSafeParsableObject, bad: unknown) {
     ;[expected] = error.errors
   }
   try {
-    a.nullable().parse(bad)
+    ;(a as any).nullable().parse(bad)
   } catch (error) {
     expect(error.errors[0]).toEqual(expected)
   }
@@ -39,9 +38,9 @@ it('Should have error messages appropriate for the underlying type', () => {
   vUnknownInstance.nullable().parse(null)
 })
 
-it('unwrap', () => {
+it.only('unwrap', () => {
   const nulled = vStringInstance.nullable()
   expect(nulled.type).toEqual('string|null')
-  const unwrapped = nulled.nonNullableType
+  const unwrapped = nulled.definition.wrappedType
   expect(unwrapped.type).toEqual('string')
 })

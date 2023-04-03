@@ -1,16 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from 'toolbelt'
 
-import type {
-  SafeParseFn,
-  SafeParsableObject,
+import type { SafeParseFn, SafeParsableObject } from './base'
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { createFinalBaseObject, defaultErrorFnSym } from './base'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -21,7 +23,7 @@ import { createBaseValidationBuilder } from './init'
  ***************************************************************************************************************************** */
 
 export function parseBigInt(
-  invalidBigIntFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseBigInt,
+  invalidBigIntFn: (invalidValue: string) => SingleValidationError = errorFns.parseBigInt,
 ): (value: unknown) => ResultError<ValidationErrors, bigint> {
   return (value: unknown): ResultError<ValidationErrors, bigint> => {
     if (typeof value !== 'bigint')
@@ -43,7 +45,7 @@ export function greaterThan(
   errorReturnValueFn: (
     invalidValue: bigint,
     greaterThanValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntGreaterThan,
+  ) => SingleValidationError = errorFns.bigIntGreaterThan,
 ) {
   return (value: bigint) => (value <= bigint ? errorReturnValueFn(value, bigint) : undefined)
 }
@@ -53,7 +55,7 @@ export function greaterThanOrEqualTo(
   errorReturnValueFn: (
     invalidValue: bigint,
     greaterThanOrEqualToValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntGreaterThanOrEqualTo,
+  ) => SingleValidationError = errorFns.bigIntGreaterThanOrEqualTo,
 ) {
   return (value: bigint) => (value < bigint ? errorReturnValueFn(value, bigint) : undefined)
 }
@@ -63,7 +65,7 @@ export function lesserThan(
   errorReturnValueFn: (
     invalidValue: bigint,
     lesserThanValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntLesserThan,
+  ) => SingleValidationError = errorFns.bigIntLesserThan,
 ) {
   return (value: bigint) => (value >= bigint ? errorReturnValueFn(value, bigint) : undefined)
 }
@@ -73,47 +75,37 @@ export function lesserThanOrEqualTo(
   errorReturnValueFn: (
     invalidValue: bigint,
     lesserThanOrEqualToValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntLesserThanOrEqualTo,
+  ) => SingleValidationError = errorFns.bigIntLesserThanOrEqualTo,
 ) {
   return (value: bigint) => (value > bigint ? errorReturnValueFn(value, bigint) : undefined)
 }
 
 export function integer(
-  errorReturnValueFn: (
-    invalidValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntInteger,
+  errorReturnValueFn: (invalidValue: bigint) => SingleValidationError = errorFns.bigIntInteger,
 ) {
   return (value: bigint) => (!Number.isInteger(value) ? errorReturnValueFn(value) : undefined)
 }
 
 export function positive(
-  errorReturnValueFn: (
-    invalidValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntPositive,
+  errorReturnValueFn: (invalidValue: bigint) => SingleValidationError = errorFns.bigIntPositive,
 ) {
   return (value: bigint) => (value <= 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function nonNegative(
-  errorReturnValueFn: (
-    invalidValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntNonNegative,
+  errorReturnValueFn: (invalidValue: bigint) => SingleValidationError = errorFns.bigIntNonNegative,
 ) {
   return (value: bigint) => (value < 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function negative(
-  errorReturnValueFn: (
-    invalidValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntNegative,
+  errorReturnValueFn: (invalidValue: bigint) => SingleValidationError = errorFns.bigIntNegative,
 ) {
   return (value: bigint) => (value >= 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function nonPositive(
-  errorReturnValueFn: (
-    invalidValue: bigint,
-  ) => SingleValidationError = defaultErrorFn.bigIntNonPositive,
+  errorReturnValueFn: (invalidValue: bigint) => SingleValidationError = errorFns.bigIntNonPositive,
 ) {
   return (value: bigint) => (value > 0 ? errorReturnValueFn(value) : undefined)
 }
@@ -190,7 +182,7 @@ export type VBigInt<
   Output extends bigint = bigint,
   Input = unknown,
   Validations extends ValidationArray<bigint> = BigIntValidations,
-> = SafeParsableObject<Output, 'bigint', Input> & {
+> = SafeParsableObject<Output, 'bigint', 'bigint', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -204,15 +196,15 @@ type BigIntOptions = {
   parseBigIntError: (invalidValue: unknown) => SingleValidationError
 }
 
-export const vBigInt = (options: Partial<BigIntOptions> = {}) =>
-  createBaseValidationBuilder(
-    options.parser
-      ? options.parser
-      : parseBigInt(
-          options.parseBigIntError ? options.parseBigIntError : defaultErrorFn.parseBigInt,
-        ),
-    bigIntValidations,
+const baseBigIntObject = createValidationBuilder(baseObject, bigIntValidations)
+
+export function vBigInt(options: Partial<BigIntOptions> = {}): VBigInt {
+  return createFinalBaseObject(
+    baseBigIntObject,
+    options.parser || parseBigInt(options.parseBigIntError || errorFns.parseBigInt),
     'bigint',
-  ) as unknown as VBigInt
+    'bigint',
+  ) as VBigInt
+}
 
 export const vBigIntInstance = vBigInt()

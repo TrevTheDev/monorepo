@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from 'toolbelt'
-
-import {
+import type {
+  SafeParseFn,
+  SafeParsableObject,
   SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
-  createValidationBuilder,
-} from './base validations'
-import { SafeParseFn, SafeParsableObject, createFinalBaseObject, defaultErrorFnSym } from './base'
-import { baseObject } from './init'
-import { DefaultErrorFn } from './errorFns'
+} from './base'
 
-const errorFns = baseObject[defaultErrorFnSym]
+import defaultErrorFn from './shared'
+import { createBaseValidationBuilder } from './init'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -23,22 +21,17 @@ const errorFns = baseObject[defaultErrorFnSym]
  ***************************************************************************************************************************** */
 
 export function parseString(
-  invalidStringFn?: DefaultErrorFn['parseString'],
-): SafeParseFn<unknown, string> {
+  invalidStringFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseString,
+): (value: unknown) => ResultError<ValidationErrors, string> {
   return (value: unknown): ResultError<ValidationErrors, string> =>
     typeof value !== 'string'
-      ? [
-          {
-            input: value,
-            errors: [invalidStringFn ? invalidStringFn(value) : errorFns.parseString(value)],
-          },
-          undefined,
-        ]
+      ? [{ input: value, errors: [invalidStringFn(value)] }, undefined]
       : [undefined, value]
 }
 
-export function coerceString(value: unknown): ResultError<never, string> {
-  return [undefined, String(value)]
+// transformer
+export function coerceString(value: unknown): string {
+  return String(value)
 }
 
 /** ****************************************************************************************************************************
@@ -51,35 +44,47 @@ export function coerceString(value: unknown): ResultError<never, string> {
 
 export function minimumStringLength(
   length: number,
-  errorReturnValueFn: DefaultErrorFn['minimumStringLength'] = errorFns.minimumStringLength,
+  errorReturnValueFn: (
+    invalidValue: string,
+    minLength: number,
+  ) => SingleValidationError = defaultErrorFn.minimumStringLength,
 ) {
   return (value: string) => (value.length < length ? errorReturnValueFn(value, length) : undefined)
 }
 
 export function maximumStringLength(
   length: number,
-  errorReturnValueFn: DefaultErrorFn['maximumStringLength'] = errorFns.maximumStringLength,
+  errorReturnValueFn: (
+    invalidValue: string,
+    maxLength: number,
+  ) => SingleValidationError = defaultErrorFn.maximumStringLength,
 ) {
   return (value: string) => (value.length > length ? errorReturnValueFn(value, length) : undefined)
 }
 
 export function exactStringLength(
   length: number,
-  errorReturnValueFn: DefaultErrorFn['stringLength'] = errorFns.stringLength,
+  errorReturnValueFn: (
+    invalidValue: string,
+    requiredLength: number,
+  ) => SingleValidationError = defaultErrorFn.stringLength,
 ) {
   return (value: string) =>
     value.length !== length ? errorReturnValueFn(value, length) : undefined
 }
 
 export function notEmptyString(
-  errorReturnValueFn: DefaultErrorFn['notEmptyString'] = errorFns.notEmptyString,
+  errorReturnValueFn: () => SingleValidationError = defaultErrorFn.notEmptyString,
 ) {
   return (value: string) => (value.length === 0 ? errorReturnValueFn() : undefined)
 }
 
 export function beOneOf(
   items: string[],
-  errorReturnValueFn: DefaultErrorFn['beOneOf'] = errorFns.beOneOf,
+  errorReturnValueFn: (
+    invalidValue: string,
+    allItems: string[],
+  ) => SingleValidationError = defaultErrorFn.beOneOf,
 ) {
   return (value: string) => (items.includes(value) ? undefined : errorReturnValueFn(value, items))
 }
@@ -93,19 +98,21 @@ const emailRegex =
 
 export function validateAgainstRegex(
   regex: RegExp,
-  invalidFn: DefaultErrorFn['validateAgainstRegex'] = errorFns.validateAgainstRegex,
+  invalidFn: (value: string) => SingleValidationError = defaultErrorFn.validateAgainstRegex,
 ) {
   return (errorReturnValueFn: (invalidValue: string) => SingleValidationError = invalidFn) =>
     (value: string) =>
       value.match(regex) ? undefined : errorReturnValueFn(value)
 }
 
-export const validEmail = validateAgainstRegex(emailRegex, errorFns.validEmail)
-export const validCuid = validateAgainstRegex(cuidRegex, errorFns.validCuid)
-export const validCuid2 = validateAgainstRegex(cuid2Regex, errorFns.validCuid2)
-export const validUuid = validateAgainstRegex(uuidRegex, errorFns.validUuid)
+export const validEmail = validateAgainstRegex(emailRegex, defaultErrorFn.validEmail)
+export const validCuid = validateAgainstRegex(cuidRegex, defaultErrorFn.validCuid)
+export const validCuid2 = validateAgainstRegex(cuid2Regex, defaultErrorFn.validCuid2)
+export const validUuid = validateAgainstRegex(uuidRegex, defaultErrorFn.validUuid)
 
-export function validURL(errorReturnValueFn: DefaultErrorFn['validURL'] = errorFns.validURL) {
+export function validURL(
+  errorReturnValueFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.validURL,
+) {
   return (value: string) => {
     try {
       // eslint-disable-next-line no-new
@@ -119,7 +126,10 @@ export function validURL(errorReturnValueFn: DefaultErrorFn['validURL'] = errorF
 
 export function startsWith(
   startString: string,
-  errorReturnValueFn: DefaultErrorFn['startsWith'] = errorFns.startsWith,
+  errorReturnValueFn: (
+    invalidValue: string,
+    start: string,
+  ) => SingleValidationError = defaultErrorFn.startsWith,
 ) {
   return (value: string) =>
     value.startsWith(startString) ? undefined : errorReturnValueFn(value, startString)
@@ -127,7 +137,10 @@ export function startsWith(
 
 export function endsWith(
   endString: string,
-  errorReturnValueFn: DefaultErrorFn['endsWith'] = errorFns.endsWith,
+  errorReturnValueFn: (
+    invalidValue: string,
+    start: string,
+  ) => SingleValidationError = defaultErrorFn.endsWith,
 ) {
   return (value: string) =>
     value.endsWith(endString) ? undefined : errorReturnValueFn(value, endString)
@@ -186,7 +199,7 @@ export type VString<
   Output extends string = string,
   Input = unknown,
   Validations extends ValidationArray<string> = StringValidations,
-> = SafeParsableObject<Output, 'string', 'string', Input> & {
+> = SafeParsableObject<Output, 'string', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -195,24 +208,20 @@ export type VString<
     : never]: (...args: Parameters<Validations[I][1]>) => VString<Output, Input, Validations>
 }
 
-type StringOptions =
-  | {
-      parseStringError: DefaultErrorFn['parseString']
-    }
-  | {
-      parser: SafeParseFn<unknown, string>
-    }
-  | Record<string, never>
-
-const baseStringObject = createValidationBuilder(baseObject, stringValidations)
-
-export function vString(options: StringOptions = {}): VString {
-  return createFinalBaseObject(
-    baseStringObject,
-    (options as any).parser || parseString((options as any).parseStringError),
-    'string',
-    'string',
-  ) as VString
+type StringOptions = {
+  parser: SafeParseFn<unknown, string>
+  parseStringError: (invalidValue: unknown) => SingleValidationError
 }
+
+export const vString = (options: Partial<StringOptions> = {}) =>
+  createBaseValidationBuilder(
+    options.parser
+      ? options.parser
+      : parseString(
+          options.parseStringError ? options.parseStringError : defaultErrorFn.parseString,
+        ),
+    stringValidations,
+    'string',
+  ) as unknown as VString
 
 export const vStringInstance = vString()

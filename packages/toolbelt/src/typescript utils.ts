@@ -10,11 +10,6 @@ export type Fn<
 > = Res
 
 /**
- * Used to ensure type matches `T1 extends T2 ? T1 : Else`
- */
-export type Extends<T1, T2, Else = never> = T1 extends T2 ? T1 : Else
-
-/**
  * extracts the call signatures from a type
  * Gotcha: doesn't yet work for no parameter call signatures and only 4 overloads
  * @example
@@ -55,7 +50,6 @@ export type Identity<T> = T extends object ? {} & { [P in keyof T]: T[P] } : T
 export type Union<
   T1 extends UnknownObject,
   T2 extends UnknownObject,
-  // R extends UnknownObject = Identity<T1 & T2>,
   R extends UnknownObject = {
     [K in keyof T2 | keyof T1]: K extends keyof T2 ? T2[K] : K extends keyof T1 ? T1[K] : never
   },
@@ -74,13 +68,8 @@ export type Union2<T1 extends UnknownObject, T2 extends UnknownObject> = {
  * merges an array of UnknownObject into a single object.  Recursively uses `Union` - so may
  * have performance impacts
  * @example
- * type U = RecursiveUnion<[{ a: 'a' }, { b?: 'b' }, { c: 'c' }, { d?: 'd' }]>      
- * // {
-    a: 'a';
-    b?: 'b';
-    c: 'c';
-    d?: 'd';
-}
+ * type U = RecursiveUnion<[{ a: 'a' }, { b?: 'b' }, { c: 'c' }, { d?: 'd' }]>
+ * { a: 'a'; b?: 'b'; c: 'c'; d?: 'd'; }
  */
 export type RecursiveUnion<
   T extends [UnknownObject, UnknownObject, ...UnknownObject[]],
@@ -387,28 +376,26 @@ export type ObjectValuesToTuple<
  * @example
  * type U1 = TupleToIntersection<['a'|'b'|'c', 'a'|'b', 'b'|'c']> // 'b'
  * type U2 = TupleToIntersection<['a']> // 'a'
- * type U3 = TupleToIntersection<[]> // never
+ * type U4 = TupleToIntersection<[string, any, number]>  // never
  */
-export type TupleToIntersection<
-  Rest extends any[],
-  T = Rest extends [any, ...any[]] ? Rest['0'] : never,
-> = Rest extends [infer H, ...infer S] ? TupleToIntersection<S, H & T> : T
+export type TupleToIntersection<T extends [any, ...any[]]> = {
+  [I in keyof T]: (x: T[I]) => void
+}[number] extends (x: infer I) => void
+  ? I
+  : never
 
 /**
- * removes the `readonly` attribute from an array type, and returns Type
+ * Converts a tuple to an intersection
  * @example
- * type R = RemoveReadOnlyFromArray<readonly [string, string, string], string[]> // [string, string, string]
- * type R = RemoveReadOnlyFromArray<readonly string[], any[]>    // string[]
- * type R = RemoveReadOnlyFromArray<readonly any[], string[]>    // any[]
- * type R = RemoveReadOnlyFromArray<readonly number[], string[]> // never
+ * type U1 = TupleToIntersectionAlt<['a'|'b'|'c', 'a'|'b', 'b'|'c']> // 'b'
+ * type U2 = TupleToIntersectionAlt<['a']> // 'a'
+ * type U3 = TupleToIntersectionAlt<[]> // never
+ * type U4 = TupleToIntersectionAlt<[string, any, number]>  // any
  */
-// export type RemoveReadOnlyFromArray<
-//   T extends readonly any[],
-//   Type extends any[] = any[],
-//   Unwrapped = {
-//     -readonly [K in keyof T]: T[K] extends readonly any[] ? RemoveReadOnlyFromArray<T[K]> : T[K]
-//   },
-// > = Unwrapped extends Type ? Unwrapped : never
+export type TupleToIntersectionAlt<
+  Rest extends any[],
+  T = Rest extends [any, ...any[]] ? Rest['0'] : never,
+> = Rest extends [infer H, ...infer S] ? TupleToIntersectionAlt<S, H & T> : T
 
 /**
  * removes the `readonly` attribute from a type
@@ -551,35 +538,6 @@ export function narrowingAssert<T>(toBeAsserted: any): asserts toBeAsserted is T
   return undefined
 }
 
-// type a = IsStrictAnyArray<[]>
-// type b = IsStrictUnknownArray<unknown[]>
-// type c = IsStrictUnknownArray<any>
-// type c2 = IsStrictUnknownArray<any[]>
-// type d = IsStrictUnknownArray<never>
-// type e = IsStrictUnknownArray<void>
-// type f = IsStrictUnknownArray<void[]>
-// type g = IsStrictUnknownArray<(() => unknown)[]>
-// type h = IsStrictUnknownArray<[unknown]>
-
-// type IsAnyArray1 = unknown extends any[] ? true : false // false
-// type IsAnyArray2 = any extends any[] ? true : false // boolean
-
-// type za = IsStrictAnyArray<unknown>
-// type zb = IsStrictAnyArray<unknown[]>
-// type zc = IsStrictAnyArray<any>
-// type zc2 = IsStrictAnyArray<any[]>
-// type zc21 = IsStrictAnyArray<[any]>
-// type zd = IsStrictAnyArray<never>
-// type ze = IsStrictAnyArray<void>
-// type zf = IsStrictAnyArray<void[]>
-// type zg = IsStrictAnyArray<(() => unknown)[]>
-// type zh = IsStrictAnyArray<[unknown]>
-
-// type zzzz = unknown extends string ? true : false // true
-// type zzzz1 = unknown extends unknown ? true : false // true
-// type zzzz2 = any extends unknown ? true : false // true
-// type zzzz3 = any extends string ? true : false // true
-
 /**
  * Tests whether a type is finite
  * @example
@@ -602,11 +560,6 @@ export type IsFinite<Tuple extends any[], Finite, Infinite> = {
     : 'nonEmpty'
   : never]
 
-/** ***********************************************************************************************************************************************************************
- * To delete?
- * ************************************************************************************************************************************************************************
- */
-
 /**
  * Prepends item(s) to the front of a tuple
  * @example
@@ -616,17 +569,6 @@ export type Prepend<Tuple extends any[], NewHead extends any[]> = [
   ...newHead: NewHead,
   ...tail: Tuple,
 ]
-
-/**
- * type Foo1 = Reverse<['c','d'], ['a','b']>  // ["d", "c", "a", "b"]
- */
-export type Reverse<Tuple extends any[], Prefix extends any[] = []> = {
-  empty: Prefix
-  nonEmpty: Tuple extends [infer First, ...infer Next]
-    ? Reverse<Next, Prepend<Prefix, [First]>>
-    : never
-  infinite: { ERROR: 'Cannot reverse an infinite tuple' }
-}[Tuple extends [any, ...any[]] ? IsFinite<Tuple, 'nonEmpty', 'infinite'> : 'empty']
 
 /**
  * Reverses the order of the supplied tuple
@@ -640,6 +582,48 @@ export type ReverseTuple<T, Result extends any[] = []> = T extends []
   : T extends [infer First, ...infer Rest]
   ? ReverseTuple<Rest, [First, ...Result]>
   : Result
+
+/**
+ * Returns the length of a string
+ * @example
+ * type U = LengthOfString<'123456'> // 6
+ */
+export type LengthOfString<
+  S extends string,
+  T extends string[] = [],
+> = S extends `${string}${infer R}` ? LengthOfString<R, [...T, string]> : T['length']
+
+/**
+ * Joins an array of strings into a single string, with a separator in between
+ * @example
+ * type U1 = Join<['A', 'B', 'C']> // "A,B,C"
+ * type U2 = Join<['A', 'B', 'C'], '|'> // "A|B|C"
+ * type U3 = Join<[]> // ""
+ * type U4 = Join<['', '', '']> // ""
+ */
+export type Join<
+  Strings extends string[],
+  Separator extends string = ',',
+  Result extends string = '',
+> = Strings extends [infer H extends string, ...infer Rest extends string[]]
+  ? Join<Rest, Separator, '' extends Result ? H : `${Result}${Separator}${H}`>
+  : Result
+
+/** ***********************************************************************************************************************************************************************
+ * To delete?
+ * ************************************************************************************************************************************************************************
+ */
+
+/**
+ * type Foo1 = Reverse<['c','d'], ['a','b']>  // ["d", "c", "a", "b"]
+ */
+export type Reverse<Tuple extends any[], Prefix extends any[] = []> = {
+  empty: Prefix
+  nonEmpty: Tuple extends [infer First, ...infer Next]
+    ? Reverse<Next, Prepend<Prefix, [First]>>
+    : never
+  infinite: { ERROR: 'Cannot reverse an infinite tuple' }
+}[Tuple extends [any, ...any[]] ? IsFinite<Tuple, 'nonEmpty', 'infinite'> : 'empty']
 
 /**
  * @example
@@ -667,32 +651,6 @@ export type Concat<Left extends any[], Right extends any[]> = {
  * type Foo1 = ConcatTuple<[a: 'a', c: 'c1'], [c: `c2`, d:'d' ]> // [a: "a", c: "c1", c: "c2", d: "d"]
  */
 export type ConcatTuple<Tuple1 extends unknown[], Tuple2 extends unknown[]> = [...Tuple1, ...Tuple2]
-
-/**
- * Returns the length of a string
- * @example
- * type U = LengthOfString<'123456'> // 6
- */
-export type LengthOfString<
-  S extends string,
-  T extends string[] = [],
-> = S extends `${string}${infer R}` ? LengthOfString<R, [...T, string]> : T['length']
-
-/**
- * Joins an array of strings into a single string, with a separator in between
- * @example
- * type U1 = Join<['A', 'B', 'C']> // "A,B,C"
- * type U2 = Join<['A', 'B', 'C'], '|'> // "A|B|C"
- * type U3 = Join<[]> // ""
- * type U4 = Join<['', '', '']> // ""
- */
-export type Join<
-  Strings extends string[],
-  Separator extends string = ',',
-  Result extends string = '',
-> = Strings extends [infer H extends string, ...infer Rest extends string[]]
-  ? Join<Rest, Separator, '' extends Result ? H : `${Result}${Separator}${H}`>
-  : Result
 
 // export type ConvertAnyTypeToAString<T> = T extends
 //   | string

@@ -2,8 +2,13 @@ import { it, expect } from 'vitest'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
 import { vBooleanInstance } from '../../src/types/boolean'
-import { vArray, vNullInstance, vUndefinedInstance, vUnknownInstance } from '../../src/types/init'
-import { vObject } from '../../src/types/object'
+import {
+  vArray,
+  vNullInstance,
+  vUndefinedInstance,
+  vUnknownInstance,
+  vObject,
+} from '../../src/types/init'
 import { MinimumSafeParsableObject } from '../../src/types/base'
 
 function checkErrors(a: MinimumSafeParsableObject, bad: unknown) {

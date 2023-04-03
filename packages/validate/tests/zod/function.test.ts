@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { it, expect } from 'vitest'
 // import { VInfer } from '../../src/types/base'
-import { vAnyInstance, vArray, vUnion, vUnknownInstance } from '../../src/types/init'
+import { vAnyInstance, vArray, vUnion, vObject } from '../../src/types/init'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
-import { vFunction, vFunctionWrapper } from '../../src/types/function'
-import { VInfer, firstError } from '../../src/types/base'
+import { vFunction } from '../../src/types/function'
+import { VInfer } from '../../src/types/base'
 import { vBooleanInstance } from '../../src/types/boolean'
-import { vObject } from '../../src/types/object'
 import { vPromise } from '../../src/types/promise'
+import { firstError } from '../../src/types/shared'
 
 type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
   ? true
@@ -19,7 +19,7 @@ const args1 = vArray([vStringInstance] as const)
 const returns1 = vNumberInstance
 // const func1 = vFunctionWrapper(args1, returns1)
 const func1 = vFunction({
-  parametersType: args1,
+  parameterTypes: args1,
   returnType: returns1,
 })
 it('function parsing', () => {
@@ -65,7 +65,7 @@ const args2 = vArray([
 ] as const)
 const returns2 = vUnion([vStringInstance, vNumberInstance] as const)
 
-const func2 = vFunction({ parametersType: args2, returnType: returns2 })
+const func2 = vFunction({ parameterTypes: args2, returnType: returns2 })
 
 it('function inference 2', () => {
   type Func2 = VInfer<typeof func2>
@@ -124,7 +124,7 @@ it('output validation error', () => {
 
 it('special function error codes', () => {
   const checker = vFunction({
-    parametersType: vArray([vStringInstance] as const),
+    parameterTypes: vArray([vStringInstance] as const),
     returnType: vBooleanInstance,
   }).parse((arg) => arg.length as any)
   try {
@@ -183,7 +183,7 @@ it('non async function with async refinements should fail', async () => {
 
 it('allow extra parameters', () => {
   const maxLength5 = vFunction({
-    parametersType: vArray([vStringInstance, vArray(vAnyInstance).spread]),
+    parameterTypes: vArray([vStringInstance, vArray(vAnyInstance).spread]),
     returnType: vBooleanInstance,
   }).parse(((str, _arg, _qewr) => str.length <= 5) as any)
 
@@ -194,8 +194,8 @@ it('allow extra parameters', () => {
 it('params and returnType getters', () => {
   const func = vFunction().args(vStringInstance).returns(vStringInstance)
 
-  func.functionDefinition.args[0].parse('asdf')
-  func.functionDefinition.returnType.parse('asdf')
+  func.definition.parameterTypes.definition.itemParsers[0].parse('asdf')
+  func.definition.returnType.parse('asdf')
 })
 
 // it('inference with transforms', () => {
@@ -215,7 +215,7 @@ it('params and returnType getters', () => {
 
 // it('fallback to OuterTypeOfFunction', () => {
 //   const funcSchema = vFunctionWrapper({
-//     parametersType: vArray([vStringInstance, vArray(vAnyInstance).spread]),
+//     parameterTypes: vArray([vStringInstance, vArray(vAnyInstance).spread]),
 //     returnType: vBooleanInstance,
 //     implementation: ((str, _arg, _qewr) => str.length <= 5) as any,
 //   })

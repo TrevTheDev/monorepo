@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from 'toolbelt'
-import type {
-  SafeParseFn,
-  SafeParsableObject,
+import { SafeParseFn, SafeParsableObject, defaultErrorFnSym, createFinalBaseObject } from './base'
+
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -20,13 +23,21 @@ import { createBaseValidationBuilder } from './init'
  ***************************************************************************************************************************** */
 
 export function parseNumber(
-  invalidNumberFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseNumber,
-): (value: unknown) => ResultError<ValidationErrors, number> {
+  invalidNumberFn?: DefaultErrorFn['parseNumber'],
+): SafeParseFn<unknown, number> {
   return (value: unknown): ResultError<ValidationErrors, number> => {
-    if (typeof value !== 'number')
-      return [{ input: value, errors: [invalidNumberFn(String(value))] }, undefined]
-    if (Number.isNaN(value))
-      return [{ input: value, errors: [invalidNumberFn(String(value))] }, undefined]
+    if (typeof value !== 'number') {
+      return [
+        { input: value, errors: [(invalidNumberFn || errorFns.parseNumber)(value)] },
+        undefined,
+      ]
+    }
+    if (Number.isNaN(value)) {
+      return [
+        { input: value, errors: [(invalidNumberFn || errorFns.parseNumber)(value)] },
+        undefined,
+      ]
+    }
     return [undefined, value]
   }
 }
@@ -48,7 +59,7 @@ export function greaterThan(
   errorReturnValueFn: (
     invalidValue: number,
     greaterThanValue: number,
-  ) => SingleValidationError = defaultErrorFn.greaterThan,
+  ) => SingleValidationError = errorFns.greaterThan,
 ) {
   return (value: number) => (value <= number ? errorReturnValueFn(value, number) : undefined)
 }
@@ -58,7 +69,7 @@ export function greaterThanOrEqualTo(
   errorReturnValueFn: (
     invalidValue: number,
     greaterThanOrEqualToValue: number,
-  ) => SingleValidationError = defaultErrorFn.greaterThanOrEqualTo,
+  ) => SingleValidationError = errorFns.greaterThanOrEqualTo,
 ) {
   return (value: number) => (value < number ? errorReturnValueFn(value, number) : undefined)
 }
@@ -68,7 +79,7 @@ export function lesserThan(
   errorReturnValueFn: (
     invalidValue: number,
     lesserThanValue: number,
-  ) => SingleValidationError = defaultErrorFn.lesserThan,
+  ) => SingleValidationError = errorFns.lesserThan,
 ) {
   return (value: number) => (value >= number ? errorReturnValueFn(value, number) : undefined)
 }
@@ -78,42 +89,42 @@ export function lesserThanOrEqualTo(
   errorReturnValueFn: (
     invalidValue: number,
     lesserThanOrEqualToValue: number,
-  ) => SingleValidationError = defaultErrorFn.lesserThanOrEqualTo,
+  ) => SingleValidationError = errorFns.lesserThanOrEqualTo,
 ) {
   return (value: number) => (value > number ? errorReturnValueFn(value, number) : undefined)
 }
 
 export function integer(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.integer,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.integer,
 ) {
   return (value: number) => (!Number.isInteger(value) ? errorReturnValueFn(value) : undefined)
 }
 
 export function positive(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.positive,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.positive,
 ) {
   return (value: number) => (value <= 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function nonNegative(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.nonNegative,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.nonNegative,
 ) {
   return (value: number) => (value < 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function negative(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.negative,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.negative,
 ) {
   return (value: number) => (value >= 0 ? errorReturnValueFn(value) : undefined)
 }
 
 export function nonPositive(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.nonPositive,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.nonPositive,
 ) {
   return (value: number) => (value > 0 ? errorReturnValueFn(value) : undefined)
 }
 
-export function notNaN(errorReturnValueFn: () => SingleValidationError = defaultErrorFn.notNaN) {
+export function notNaN(errorReturnValueFn: () => SingleValidationError = errorFns.notNaN) {
   return (value: number) => (!Number.isNaN(value) ? errorReturnValueFn() : undefined)
 }
 
@@ -132,7 +143,7 @@ export function multipleOf(
   errorReturnValueFn: (
     invalidValue: number,
     multipleOfValue: number,
-  ) => SingleValidationError = defaultErrorFn.multipleOf,
+  ) => SingleValidationError = errorFns.multipleOf,
 ) {
   return (value: number) => {
     const remainder = floatSafeRemainder(value, number)
@@ -141,7 +152,7 @@ export function multipleOf(
 }
 
 export function finite(
-  errorReturnValueFn: (invalidValue: number) => SingleValidationError = defaultErrorFn.finite,
+  errorReturnValueFn: (invalidValue: number) => SingleValidationError = errorFns.finite,
 ) {
   return (value: number) => (!Number.isFinite(value) ? errorReturnValueFn(value) : undefined)
 }
@@ -198,7 +209,7 @@ export type VNumber<
   Output extends number = number,
   Input = unknown,
   Validations extends ValidationArray<number> = NumberValidations,
-> = SafeParsableObject<Output, 'number', Input> & {
+> = SafeParsableObject<Output, 'number', 'number', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -207,20 +218,24 @@ export type VNumber<
     : never]: (...args: Parameters<Validations[I][1]>) => VNumber<Output, Input, Validations>
 }
 
-type NumberOptions = {
-  parser: SafeParseFn<unknown, number>
-  parseNumberError: (invalidValue: unknown) => SingleValidationError
-}
+type NumberOptions =
+  | {
+      parseNumberError: DefaultErrorFn['parseNumber']
+    }
+  | {
+      parser: SafeParseFn<unknown, number>
+    }
+  | Record<string, never>
 
-export const vNumber = (options: Partial<NumberOptions> = {}) =>
-  createBaseValidationBuilder(
-    options.parser
-      ? options.parser
-      : parseNumber(
-          options.parseNumberError ? options.parseNumberError : defaultErrorFn.parseNumber,
-        ),
-    numberValidations,
+const baseNumberObject = createValidationBuilder(baseObject, numberValidations)
+
+export function vNumber(options: Partial<NumberOptions> = {}): VNumber {
+  return createFinalBaseObject(
+    baseNumberObject,
+    (options as any).parser || parseNumber((options as any).parseNumberError),
     'number',
-  ) as unknown as VNumber
+    'number',
+  ) as VNumber
+}
 
 export const vNumberInstance = vNumber()

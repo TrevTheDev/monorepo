@@ -1,7 +1,6 @@
 import { it, expect } from 'vitest'
 import { vStringInstance } from '../../src/types/string'
-import { vLateObject, vLazy, vObject } from '../../src/types/object'
-import { vArray, vNullInstance, vUnion } from '../../src/types/init'
+import { vArray, vNullInstance, vUnion, vLazy, vObject } from '../../src/types/init'
 import { vNumberInstance } from '../../src/types/number'
 
 interface Category {

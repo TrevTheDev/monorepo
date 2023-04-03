@@ -2,17 +2,23 @@
 import { isError } from 'toolbelt'
 import type { ResultError } from 'toolbelt'
 
-import type {
+import {
   SafeParseFn,
   SafeParsableObject,
+  MinimumSafeParsableObject,
+  VInfer,
+  defaultErrorFnSym,
+  createFinalBaseObject,
+} from './base'
+
+import { baseObject } from './init'
+import { DefaultErrorFn } from './errorFns'
+import {
   SingleValidationError,
   ValidationErrors,
   ValidationItem,
-  MinimumSafeParsableObject,
-  VInfer,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -21,6 +27,7 @@ import { createBaseValidationBuilder } from './init'
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
+const errorFns = baseObject[defaultErrorFnSym]
 
 type SetDef = MinimumSafeParsableObject
 type SetDefToSetType<T extends SetDef> = Set<VInfer<T>>
@@ -28,7 +35,7 @@ type SetDefToSetType<T extends SetDef> = Set<VInfer<T>>
 export function parseSet<T extends SetDef>(
   valueParser: T,
   options: SetOptions<any>,
-): (value: unknown) => ResultError<ValidationErrors, SetDefToSetType<T>> {
+): SafeParseFn<unknown, SetDefToSetType<T>> {
   return (value: unknown): ResultError<ValidationErrors, SetDefToSetType<T>> => {
     const errors = [] as SingleValidationError[]
     if (value instanceof Set) {
@@ -48,7 +55,10 @@ export function parseSet<T extends SetDef>(
         },
       ]
     }
-    return [{ input: value, errors: [options.notASet(value)] }, undefined]
+    return [
+      { input: value, errors: [((options as any).parseSet || errorFns.parseSet)(value)] },
+      undefined,
+    ]
   }
 }
 
@@ -64,7 +74,7 @@ export function minimumSetLength<T extends Set<unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     minLength: number,
-  ) => SingleValidationError = defaultErrorFn.minimumSetLength,
+  ) => SingleValidationError = errorFns.minimumSetLength,
 ) {
   return (value: T) => (value.size < length ? errorReturnValueFn(value, length) : undefined)
 }
@@ -74,7 +84,7 @@ export function maximumSetLength<T extends Set<unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     maxLength: number,
-  ) => SingleValidationError = defaultErrorFn.maximumSetLength,
+  ) => SingleValidationError = errorFns.maximumSetLength,
 ) {
   return (value: T) => (value.size > length ? errorReturnValueFn(value, length) : undefined)
 }
@@ -84,13 +94,13 @@ export function requiredSetLength<T extends Set<unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     requiredLength: number,
-  ) => SingleValidationError = defaultErrorFn.requiredSetLength,
+  ) => SingleValidationError = errorFns.requiredSetLength,
 ) {
   return (value: T) => (value.size !== length ? errorReturnValueFn(value, length) : undefined)
 }
 
 export function nonEmpty<T extends Set<unknown>>(
-  errorReturnValueFn: (invalidValue: T) => SingleValidationError = defaultErrorFn.setNonEmpty,
+  errorReturnValueFn: (invalidValue: T) => SingleValidationError = errorFns.setNonEmpty,
 ) {
   return (value: T) => (value.size === 0 ? errorReturnValueFn(value) : undefined)
 }
@@ -144,7 +154,7 @@ export type VSet<
   Output extends Set<any> = SetDefToSetType<T>,
   Input = unknown,
   Validations extends SetValidations<Output> = SetValidations<Output>,
-> = SafeParsableObject<Output, 'Set', Input> & {
+> = SafeParsableObject<Output, string, 'set', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -153,24 +163,35 @@ export type VSet<
     : never]: (...args: Parameters<Validations[I][1]>) => VSet<T, Output, Input, Validations>
 }
 
-type SetOptions<T extends SetDef> = {
-  parser?: SafeParseFn<unknown, SetDefToSetType<T>>
-  breakOnFirstError: boolean
-  notASet: typeof defaultErrorFn.notASet
+type SetOptions<T extends SetDef> = (
+  | {
+      parser: SafeParseFn<unknown, SetDefToSetType<T>>
+    }
+  | {
+      parseSet: DefaultErrorFn['parseSet']
+    }
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
+) & {
+  breakOnFirstError?: boolean
 }
+
+const baseSetObject = createValidationBuilder(baseObject, setValidations as any)
 
 export function vSet<T extends SetDef>(
   setDefinitionParser: T,
-  options: Partial<SetOptions<T>> = {},
-) {
+  options: SetOptions<T> = {},
+): VSet<T> {
   const fOptions: SetOptions<T> = {
     breakOnFirstError: true,
-    notASet: defaultErrorFn.notASet,
     ...options,
   }
-  return createBaseValidationBuilder(
-    fOptions.parser ? fOptions.parser : parseSet(setDefinitionParser, fOptions),
-    setValidations as SetValidations<SetDefToSetType<T>>,
+
+  return createFinalBaseObject(
+    baseSetObject,
+    (options as any).parser || parseSet(setDefinitionParser, fOptions),
     `Set<${setDefinitionParser.type}>`,
-  ) as unknown as VSet<T>
+    'set',
+    { setDefinitionParser },
+  ) as VSet<T>
 }

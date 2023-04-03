@@ -1,18 +1,17 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isError } from 'toolbelt'
 import type { ResultError } from 'toolbelt'
-
-import { SafeParseFn, SafeParsableObject, defaultErrorFnSym, createFinalBaseObject } from './base'
-
-import { baseObject } from './init'
 import {
-  SingleValidationError,
-  ValidationErrors,
-  createValidationBuilder,
-} from './base validations'
-import { DefaultErrorFn } from './errorFns'
+  SafeParseFn,
+  SafeParsableObject,
+  createFinalBaseObject,
+  ParserObject,
+  parserObject,
+  MinimumSafeParsableObject,
+} from './base'
 
-const errorFns = baseObject[defaultErrorFnSym]
+import { SingleValidationError, createValidationBuilder } from './base validations'
+
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -21,20 +20,14 @@ const errorFns = baseObject[defaultErrorFnSym]
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export function parseInstanceOf<T extends InstanceOfType>(
-  instanceOfItem: T,
-  invalidInstanceOf?: DefaultErrorFn['parseInstanceOf'],
-): SafeParseFn<unknown, InstanceType<T>> {
-  return (value: unknown): ResultError<ValidationErrors, InstanceType<T>> => {
-    if (value instanceof instanceOfItem) return [undefined, value]
-    return [
-      {
-        input: value,
-        errors: [(invalidInstanceOf || errorFns.parseInstanceOf)(value, instanceOfItem)],
-      },
-      undefined,
-    ]
+export function parseDefault<T>(
+  defaultValue: T,
+  parser: MinimumSafeParsableObject,
+): SafeParseFn<unknown, T> {
+  return (value: unknown): ResultError<never, T> => {
+    const result = parser.safeParse(value)
+    if (isError(result)) return [undefined, defaultValue]
+    return result as ResultError<never, T>
   }
 }
 
@@ -53,17 +46,8 @@ export function parseInstanceOf<T extends InstanceOfType>(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-// type InstanceOfValidations<T> = [
-//   [
-//     'customValidation',
-//     (
-//       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-//       ...otherArgs: unknown[]
-//     ) => (value: T) => SingleValidationError | undefined,
-//   ],
-// ]
 
-const instanceOfValidations = [
+const defaultValidations = [
   [
     'customValidation',
     (customValidator, ...otherArgs) =>
@@ -72,51 +56,49 @@ const instanceOfValidations = [
   ],
 ] as const
 
-// export const instanceOfValidations = instanceOfValidations_ as InstanceOfValidations
+// export const mapValidations = instanceOfValidations_ as InstanceOfValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * vBigInt
+ * vMap
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-type InstanceOfType = { new (...args: any): any; name: string }
-
-export interface VInstanceOf<T extends InstanceOfType, Output = InstanceType<T>, Input = unknown>
-  extends SafeParsableObject<Output, T['name'], 'instanceof', Input> {
-  customValidations<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
+export interface VDefault<Output, T extends MinimumSafeParsableObject>
+  extends SafeParsableObject<Output, string, 'default', any> {
+  [parserObject]: ParserObject<
+    Output,
+    string,
+    'default',
+    unknown,
+    { readonly baseParser: T; readonly defaultValue: Output }
+  >
+  readonly definition: { readonly baseParser: T; readonly defaultValue: Output }
+  customValidator(
+    customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
+    ...otherArgs: unknown[]
   ): this
 }
 
-type InstanceOfOptions<T extends InstanceOfType> =
-  | {
-      parseInstanceOf: DefaultErrorFn['parseInstanceOf']
-    }
-  | {
-      parser: SafeParseFn<unknown, T>
-    }
-  | Record<string, never>
+export type VDefaultFn = <T, S extends MinimumSafeParsableObject>(
+  defaultValue: T,
+  safeParsableObject: S,
+) => VDefault<T, S>
 
-// type InstanceOfOptions<T extends InstanceOfType> = {
-//   parser: SafeParseFn<unknown, InstanceType<T>>
-//   parseInstanceOf: (invalidValue: unknown, instanceOfItem: T) => SingleValidationError
-// }
-
-const baseInstanceOfObject = createValidationBuilder(baseObject, instanceOfValidations as any)
-
-export function vInstanceOf<T extends InstanceOfType>(
-  instanceOfItem: T,
-  options: Partial<InstanceOfOptions<T>> = {},
-) {
-  return createFinalBaseObject(
-    baseInstanceOfObject,
-    (options as any).parser || parseInstanceOf(instanceOfItem, (options as any).parseInstanceOf),
-    instanceOfItem.name,
-    'instanceof',
-    { instanceOfItem },
-  )
+export function initDefault(baseObject: MinimumSafeParsableObject): VDefaultFn {
+  const baseDefaultObject = createValidationBuilder(baseObject, defaultValidations as any)
+  return function vDefault<T, S extends MinimumSafeParsableObject>(
+    defaultValue: T,
+    safeParsableObject: S,
+  ): VDefault<T, S> {
+    return createFinalBaseObject(
+      baseDefaultObject,
+      parseDefault(defaultValue, safeParsableObject),
+      `${safeParsableObject.type}`,
+      'default',
+      { baseParser: safeParsableObject, defaultValue },
+    ) as VDefault<T, S>
+  }
 }

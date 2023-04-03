@@ -1,21 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from 'toolbelt'
 
-import type {
-  SafeParseFn,
-  SafeParsableObject,
+import { SafeParseFn, SafeParsableObject, defaultErrorFnSym, createFinalBaseObject } from './base'
+
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationErrors,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * parsers
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
 
 export function parseSymbol(
-  invalidSymbolFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseSymbol,
+  invalidSymbolFn?: DefaultErrorFn['parseSymbol'],
 ): (value: unknown) => ResultError<ValidationErrors, symbol> {
   return (value: unknown): ResultError<ValidationErrors, symbol> =>
     typeof value !== 'symbol'
-      ? [{ input: value, errors: [invalidSymbolFn(value)] }, undefined]
+      ? [{ input: value, errors: [(invalidSymbolFn || errorFns.parseSymbol)(value)] }, undefined]
       : [undefined, value]
 }
 
@@ -48,7 +59,7 @@ const symbolValidations = symbolValidations_ as SymbolValidations
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 export interface VSymbol<Output extends symbol = symbol, Input = unknown>
-  extends SafeParsableObject<Output, 'boolean', Input> {
+  extends SafeParsableObject<Output, string, 'symbol', Input> {
   // default validations
   customValidations<S extends unknown[]>(
     customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
@@ -56,20 +67,24 @@ export interface VSymbol<Output extends symbol = symbol, Input = unknown>
   ): this
 }
 
-type BooleanOptions = {
-  parser: SafeParseFn<unknown, symbol>
-  parseSymbolError: (invalidValue: unknown) => SingleValidationError
-}
+type SymbolOptions =
+  | {
+      parseSymbolError: DefaultErrorFn['parseSymbol']
+    }
+  | {
+      parser: SafeParseFn<unknown, symbol>
+    }
+  | Record<string, never>
 
-export const vSymbol = (options: Partial<BooleanOptions> = {}) =>
-  createBaseValidationBuilder(
-    options.parser
-      ? options.parser
-      : parseSymbol(
-          options.parseSymbolError ? options.parseSymbolError : defaultErrorFn.parseSymbol,
-        ),
-    symbolValidations,
+const baseSymbolObject = createValidationBuilder(baseObject, symbolValidations)
+
+export function vSymbol(options: SymbolOptions = {}): VSymbol {
+  return createFinalBaseObject(
+    baseSymbolObject,
+    (options as any).parser || parseSymbol((options as any).parseSymbolError),
+    `symbol`,
     'symbol',
-  ) as unknown as VSymbol
+  ) as VSymbol
+}
 
 export const vSymbolInstance = vSymbol()

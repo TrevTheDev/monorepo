@@ -1,44 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError } from 'toolbelt'
-import { DeepWriteable, OmitTuple, PickTuple, Identity } from 'toolbelt'
+import { DeepWriteable, OmitTuple, PickTuple } from 'toolbelt'
+// import { MinimumSafeParsableRestArray, SafeParsableRestArray } from './array rest'
 import {
   SafeParseFn,
-  VInfer,
-  MinimumSafeParsableObject,
-  ParseFn,
-  defaultErrorFnSym,
-  createFinalBaseObject,
-  parserObject,
-  ParserObject,
-} from './base'
-import {
-  DeepPartial,
-  DeepPartialFiniteArray,
-  IsOptional,
-  OptionalMSPO,
-  OptionalVAI,
-  RequiredMSPO,
-  RequiredVAI,
-  UnwrappedDeepPartial,
-  optional,
-  required,
-  unWrappedDeepPartial,
-} from './shared'
-
-import {
   SingleValidationError,
   ValidationErrors,
-  createValidationBuilder,
-} from './base validations'
-import { VNullable, VNullish, VOptional, VUnion } from './union'
-import defaultErrorFn, { DefaultErrorFn } from './errorFns'
-import { VIntersectionT } from './intersection'
-import { VDefault } from './default'
-
-let errorFns: DefaultErrorFn = defaultErrorFn
-
-export const stratifiedParserProp = Symbol('stratifiedParserProp')
-export type StratifiedParserProp = typeof stratifiedParserProp
+  VInfer,
+  CreateBaseValidationBuilderGn,
+  MinimumSafeParsableObject,
+  ParseFn,
+  // internalPartial,
+  internalDeepPartial,
+  validators,
+} from './base'
+import defaultErrorFn from './shared'
+import { VNullable, VOptional, VNullish } from './union'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -50,17 +27,19 @@ export type StratifiedParserProp = typeof stratifiedParserProp
 
 export type SingleArrayValidationError = [index: number, errors: SingleValidationError[]]
 
-type ArrayErrorOptions = {
-  parseArray: typeof errorFns.parseArray
-  invalidArrayElementsFn: typeof errorFns.invalidArrayElementsFn
-  arrayDefinitionElementMustBeOptional: typeof errorFns.arrayDefinitionElementMustBeOptional
-  elementRequiredAt: typeof errorFns.elementRequiredAt
-  extraArrayItemsFn: typeof errorFns.extraArrayItemsFn
-  restCantFollowRest: typeof errorFns.restCantFollowRest
-  optionalElementCantFollowRest: typeof errorFns.optionalElementCantFollowRest
-  missingItemInItemParsers: typeof errorFns.missingItemInItemParsers
-  unableToSelectItemFromArray: typeof errorFns.unableToSelectItemFromArray
+const defaultArrayErrors = {
+  invalidArrayFn: defaultErrorFn.parseArray,
+  invalidArrayElementsFn: defaultErrorFn.invalidArrayElementsFn,
+  arrayDefinitionElementMustBeOptional: defaultErrorFn.arrayDefinitionElementMustBeOptional,
+  elementRequiredAt: defaultErrorFn.elementRequiredAt,
+  extraArrayItemsFn: defaultErrorFn.extraArrayItemsFn,
+  restCantFollowRest: defaultErrorFn.restCantFollowRest,
+  optionalElementCantFollowRest: defaultErrorFn.optionalElementCantFollowRest,
+  missingItemInItemParsers: defaultErrorFn.missingItemInItemParsers,
+  unableToSelectItemFromArray: defaultErrorFn.unableToSelectItemFromArray,
 }
+
+type ArrayErrorOptions = typeof defaultArrayErrors
 
 export type StratifiedParsers = [
   MinimumSafeParsableObject[],
@@ -69,30 +48,22 @@ export type StratifiedParsers = [
 ]
 
 export interface MinimumSafeParsableArray extends MinimumSafeParsableObject {
-  [parserObject]: ParserObject<
-    unknown[],
-    string,
-    'infinite array' | 'finite array',
-    any,
-    {
-      readonly [stratifiedParserProp]: StratifiedParsers
-      readonly itemParsers?: ValidArrayItems
-      readonly itemParser?: MinimumSafeParsableObject
-    }
-  >
-  readonly definition: {
-    readonly [stratifiedParserProp]: StratifiedParsers
-    readonly itemParsers?: ValidArrayItems
-    readonly itemParser?: MinimumSafeParsableObject
-  }
-  readonly spread: MinimumSafeParsableRestArray
   parse: ParseFn<any, unknown[]>
   safeParse: SafeParseFn<any, unknown[]>
+  // readonly type: string
+  // optional(): MinimumSafeParsableObject
   partial(): MinimumSafeParsableArray
-  deepPartial(...keysToDeepPartial: (keyof any)[]): MinimumSafeParsableArray
-  // [internalDeepPartial](...keysToDeepPartial: (keyof any)[]): MinimumSafeParsableObject
-  required(...keysToRequire: (keyof any)[]): MinimumSafeParsableArray
-  deepRequired(...keysToRequire: (keyof any)[]): MinimumSafeParsableArray
+  // [internalPartial](): MinimumSafeParsableObject
+  deepPartial(): MinimumSafeParsableArray
+  [internalDeepPartial](): MinimumSafeParsableObject
+  required(): MinimumSafeParsableArray
+  deepRequired(): MinimumSafeParsableArray
+  // nullable(): MinimumSafeParsableObject
+  isOptional(): false
+  // isNullable(): false
+  // isNullish(): false
+  readonly spread: MinimumSafeParsableRestArray
+  readonly stratifiedParsers: StratifiedParsers
 }
 
 interface SafeParsableArray<Output extends unknown[], Type extends string, Input>
@@ -101,24 +72,11 @@ interface SafeParsableArray<Output extends unknown[], Type extends string, Input
   readonly type: Type
   parse: ParseFn<Input, Output>
   safeParse: SafeParseFn<Input, Output>
-  // BaseObject
   optional(): VOptional<this>
   nullable(): VNullable<this>
   nullish(): VNullish<this>
-  or<
-    S extends MinimumSafeParsableObject,
-    RT extends MinimumSafeParsableObject = Identity<VUnion<[this, S]>>,
-  >(
-    type: S,
-  ): RT
-  and<
-    S extends MinimumSafeParsableObject,
-    RT extends MinimumSafeParsableObject = Identity<VIntersectionT<[this, S]>>,
-  >(
-    type: S,
-  ): RT
-  array(): VArrayInfinite<this>
-  default(defaultValue: Output): VDefault<Output, this>
+  // [internalPartial](): ReturnType<ReturnType<this['partial']>['optional']>
+  [internalDeepPartial](): ReturnType<ReturnType<this['deepPartial']>['optional']>
   min(
     length: number,
     errorReturnValueFn?:
@@ -145,7 +103,12 @@ interface SafeParsableArray<Output extends unknown[], Type extends string, Input
 }
 
 export type ValidArrayItem = MinimumSafeParsableObject | MinimumSafeParsableRestArray
-export type ValidArrayItems = ValidArrayItem[]
+type ValidArrayItems = ValidArrayItem[]
+
+type ParseInfiniteArray = <T extends MinimumSafeParsableObject>(
+  itemParser: T,
+  errorMessageFns?: Pick<ArrayErrorOptions, 'invalidArrayFn' | 'invalidArrayElementsFn'>,
+) => (value: unknown) => ResultError<ValidationErrors, T[]>
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -159,7 +122,7 @@ export interface MinimumSafeParsableRestArray {
   isSpread: true
   optional(): MinimumSafeParsableRestArray
   required(): MinimumSafeParsableRestArray
-  deepPartial(...keysToDeepPartial: (keyof any)[]): MinimumSafeParsableRestArray
+  deepPartial(): MinimumSafeParsableRestArray
   deepRequired(): MinimumSafeParsableRestArray
   stratifiedParsers: StratifiedParsers
   type: string
@@ -169,18 +132,9 @@ export interface SafeParsableRestArray<T extends MinimumSafeParsableArray>
   extends MinimumSafeParsableRestArray {
   vArray: T
   optional(): ReturnType<T['partial']>['spread']
-  deepPartial<S extends (keyof any)[]>(
-    ...keysToDeepPartial: S
-  ): T extends VArrayFinite<infer R, any, any, any>
-    ? VArrayFinite<DeepPartialFiniteArray<R, S[number]>>['spread']
-    : VArrayInfinite<DeepPartial<T, S[number]>>['spread']
-  // deepRequired<S extends (keyof any)[]>(
-  //   ...keysToDeepRequired: S
-  // ): T extends VArrayFinite<infer R, any, any, any>
-  //   ? VArrayFinite<DeepRequiredFiniteArray<R, S[number]>>['spread']
-  //   : VArrayInfinite<DeepRequired<T, S[number]>>['spread']
-  // required(): ReturnType<T['required']>['spread']
-  // deepRequired(): ReturnType<T['deepRequired']>['spread']
+  deepPartial(): ReturnType<T['deepPartial']>['spread']
+  required(): ReturnType<T['required']>['spread']
+  deepRequired(): ReturnType<T['deepRequired']>['spread']
 }
 
 /** ****************************************************************************************************************************
@@ -196,31 +150,15 @@ export interface VArrayInfinite<
   Type extends string = string,
   Input = unknown,
 > extends SafeParsableArray<Output, Type, Input> {
-  // readonly infiniteArrayItemParser: T
-  [parserObject]: ParserObject<
-    Output,
-    Type,
-    'infinite array',
-    any,
-    {
-      readonly [stratifiedParserProp]: StratifiedParsers
-      readonly itemParser: T
-    }
+  readonly infiniteArrayItemParser: T
+  partial(): VArrayInfinite<ReturnType<T['optional']>>
+  required(): VArrayInfinite<ReturnType<T['required']>>
+  deepPartial(): VArrayInfinite<
+    T extends { deepPartial(): MinimumSafeParsableObject } ? ReturnType<T['deepPartial']> : T
   >
-  readonly definition: {
-    readonly [stratifiedParserProp]: StratifiedParsers
-    readonly itemParser: T
-  }
-  partial(): VArrayInfinite<OptionalMSPO<T>>
-  required(): VArrayInfinite<RequiredMSPO<T>>
-  deepPartial(): VArrayInfinite<UnwrappedDeepPartial<T, never>>
-  deepPartial<S extends (keyof any)[]>(
-    ...keysToDeepPartial: S
-  ): VArrayInfinite<UnwrappedDeepPartial<T, S[number]>>
-  // deepRequired(): VArrayInfinite<DeepRequired<T, never>>
-  // deepRequired<S extends (keyof any)[]>(
-  //   ...keysToRequired: S
-  // ): VArrayInfinite<DeepRequired<T, S[number]>>
+  deepRequired(): T extends { deepRequired(): MinimumSafeParsableObject }
+    ? VArrayInfinite<ReturnType<T['deepRequired']>>
+    : VArrayInfinite<ReturnType<T['required']>>
 }
 
 /** ****************************************************************************************************************************
@@ -231,19 +169,39 @@ export interface VArrayInfinite<
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-type PartialFiniteArray<T extends ValidArrayItems> = T extends [
-  infer H extends ValidArrayItem,
-  ...infer R extends ValidArrayItems,
-]
-  ? [OptionalVAI<H>, ...PartialFiniteArray<R>]
-  : []
+type ArrayToOptional<
+  T extends ValidArrayItems,
+  Type extends 'optional' | 'nullable' | 'required',
+  Result extends [...itemParsers: ValidArrayItems] = [],
+> = T extends [infer H extends ValidArrayItem, ...infer R extends ValidArrayItems]
+  ? H extends MinimumSafeParsableObject
+    ? ArrayToOptional<R, Type, [...Result, ReturnType<H[Type]>]>
+    : ArrayToOptional<R, Type, [...Result, H]>
+  : Result
 
-type RequiredFiniteArray<T extends ValidArrayItems> = T extends [
-  infer H extends ValidArrayItem,
-  ...infer R extends ValidArrayItems,
-]
-  ? [RequiredVAI<H>, ...RequiredFiniteArray<R>]
-  : []
+type DeepPartialArray<
+  T extends ValidArrayItems,
+  Type extends 'deepPartial' | 'deepRequired',
+  Result extends [...itemParsers: ValidArrayItems] = [],
+> = T extends [infer H extends ValidArrayItem, ...infer R extends ValidArrayItems]
+  ? DeepPartialArray<
+      R,
+      Type,
+      Type extends 'deepPartial'
+        ? [
+            ...Result,
+            H extends { deepPartial(): MinimumSafeParsableObject }
+              ? ReturnType<H['deepPartial']>
+              : ReturnType<H['optional']>,
+          ]
+        : [
+            ...Result,
+            H extends { deepRequired(): MinimumSafeParsableObject }
+              ? ReturnType<ReturnType<H['deepRequired']>['required']>
+              : ReturnType<H['required']>,
+          ]
+    >
+  : Result
 
 export interface VArrayFinite<
   T extends ValidArrayItems,
@@ -252,30 +210,11 @@ export interface VArrayFinite<
   Input = unknown,
   // Validations extends ValidationArray<any[]> = ArrayValidations,
 > extends SafeParsableArray<Output, Type, Input> {
-  [parserObject]: ParserObject<
-    Output,
-    Type,
-    'finite array',
-    any,
-    {
-      readonly [stratifiedParserProp]: StratifiedParsers
-      readonly itemParsers: T
-    }
-  >
-  readonly definition: {
-    readonly [stratifiedParserProp]: StratifiedParsers
-    readonly itemParsers: T
-  }
-  partial(): VArrayFinite<PartialFiniteArray<T>>
-  required(): VArrayFinite<RequiredFiniteArray<T>>
-  deepPartial(): VArrayFinite<DeepPartialFiniteArray<T, never>>
-  deepPartial<K extends (keyof any)[]>(
-    ...keysToPartial: K
-  ): VArrayFinite<DeepPartialFiniteArray<T, K[number]>>
-  // deepRequired(): VArrayFinite<DeepRequiredFiniteArray<T, never>>
-  // deepRequired<K extends (keyof any)[]>(
-  //   ...keysToRequired: K
-  // ): VArrayFinite<DeepRequiredFiniteArray<T, K[number]>>
+  readonly finiteArrayParsers: T
+  required(): VArrayFinite<ArrayToOptional<T, 'required'>>
+  partial(): VArrayFinite<ArrayToOptional<T, 'optional'>>
+  deepPartial(): VArrayFinite<DeepPartialArray<T, 'deepPartial'>>
+  deepRequired(): VArrayFinite<DeepPartialArray<T, 'deepRequired'>>
   pick<S extends (keyof T & number)[]>(
     ...keys: S
   ): PickTuple<T, S[number]> extends ValidArrayItems ? VArrayFinite<PickTuple<T, S[number]>> : never
@@ -312,7 +251,7 @@ type vInferArrayItem<T extends ValidArrayItem> = T extends MinimumSafeParsableRe
 
 type IfA<State extends 'A' | 'B', Then, Else> = State extends 'A' ? Then : Else
 type IfOptional<T extends ValidArrayItem, Then, Else> = T extends MinimumSafeParsableObject
-  ? IsOptional<T> extends true
+  ? ReturnType<T['isOptional']> extends true
     ? Then
     : Else
   : Else
@@ -358,17 +297,23 @@ type FiniteArrayBuilder<
     >]
   : [...A, ...B, ...C]
 
-interface ArrayOptions extends Partial<ArrayErrorOptions> {
-  parser?: ParseArray
-}
-
 export type VArrayFn = {
-  <T extends MinimumSafeParsableObject>(itemParser: T, options?: ArrayOptions): VArrayInfinite<T>
+  <T extends MinimumSafeParsableObject>(
+    itemParser: T,
+    options?: Partial<ArrayOptions>,
+  ): VArrayInfinite<T>
   <T extends readonly (MinimumSafeParsableObject | MinimumSafeParsableRestArray)[]>(
     itemParsers: T & Readonly<T>,
-    options?: ArrayOptions,
+    options?: Partial<ArrayOptions>,
   ): VArrayFinite<DeepWriteable<T>>
-  (itemParsers: ValidArrayItem, options: ArrayOptions): VArrayInfinite<any> | VArrayFinite<any>
+  (itemParsers: ValidArrayItem, options: Partial<ArrayOptions>):
+    | VArrayInfinite<any>
+    | VArrayFinite<any>
+}
+
+type ArrayOptions = ArrayErrorOptions & {
+  finiteArrayParser?: ParseArray
+  infiniteArrayParser?: ParseInfiniteArray
 }
 
 /** ****************************************************************************************************************************
@@ -382,7 +327,7 @@ export type VArrayFn = {
 function parseArrayElements(
   value: unknown[],
   stratifiedParsers: StratifiedParsers,
-  errorMessageFns: Partial<Pick<ArrayErrorOptions, 'elementRequiredAt' | 'extraArrayItemsFn'>>,
+  errorMessageFns: Pick<ArrayErrorOptions, 'elementRequiredAt' | 'extraArrayItemsFn'>,
 ): ResultError<SingleArrayValidationError[], unknown[]> {
   const valueErrors = [] as SingleArrayValidationError[]
 
@@ -401,12 +346,7 @@ function parseArrayElements(
       while (missing > 0) {
         valueErrors.push([
           requiredLength - missing,
-          [
-            (errorMessageFns.elementRequiredAt || errorFns.elementRequiredAt)(
-              value,
-              requiredLength - missing,
-            ),
-          ],
+          [errorMessageFns.elementRequiredAt(value, requiredLength - missing)],
         ])
         missing -= 1
       }
@@ -420,10 +360,7 @@ function parseArrayElements(
   } else if (infiniteParser === undefined) {
     let sLength = startLength
     while (sLength < valueLength) {
-      valueErrors.push([
-        sLength,
-        [(errorMessageFns.extraArrayItemsFn || errorFns.extraArrayItemsFn)(value, sLength)],
-      ])
+      valueErrors.push([sLength, [errorMessageFns.extraArrayItemsFn(value, sLength)]])
       sLength += 1
     }
   }
@@ -443,11 +380,9 @@ type ParseArray = typeof parseArray
 export function parseArray<T extends unknown[]>(
   typeString: string,
   stratifiedParsers: StratifiedParsers,
-  errorMessageFns: Partial<
-    Pick<
-      ArrayErrorOptions,
-      'parseArray' | 'elementRequiredAt' | 'extraArrayItemsFn' | 'invalidArrayElementsFn'
-    >
+  errorMessageFns: Pick<
+    ArrayErrorOptions,
+    'invalidArrayFn' | 'elementRequiredAt' | 'extraArrayItemsFn' | 'invalidArrayElementsFn'
   >,
 ) {
   return function ParseArrayFn(value: unknown): ResultError<ValidationErrors, T> {
@@ -458,13 +393,7 @@ export function parseArray<T extends unknown[]>(
         : [
             {
               input: value,
-              errors: [
-                (errorMessageFns.invalidArrayElementsFn || errorFns.invalidArrayElementsFn)(
-                  value,
-                  typeString,
-                  result[0],
-                ),
-              ],
+              errors: [errorMessageFns.invalidArrayElementsFn(value, typeString, result[0])],
             },
             undefined,
           ]
@@ -472,7 +401,7 @@ export function parseArray<T extends unknown[]>(
     return [
       {
         input: value,
-        errors: [(errorMessageFns.parseArray || errorFns.parseArray)(value, typeString)],
+        errors: [errorMessageFns.invalidArrayFn(value, typeString)],
       },
       undefined,
     ]
@@ -492,7 +421,7 @@ export function minimumArrayLength(
   errorReturnValueFn: (
     invalidValue: unknown[],
     minLength: number,
-  ) => SingleValidationError = errorFns.minimumArrayLength,
+  ) => SingleValidationError = defaultErrorFn.minimumArrayLength,
 ) {
   return (value: unknown[]) =>
     value.length < length ? errorReturnValueFn(value, length) : undefined
@@ -503,7 +432,7 @@ export function maximumArrayLength(
   errorReturnValueFn: (
     invalidValue: unknown[],
     maxLength: number,
-  ) => SingleValidationError = errorFns.maximumArrayLength,
+  ) => SingleValidationError = defaultErrorFn.maximumArrayLength,
 ) {
   return (value: unknown[]) =>
     value.length > length ? errorReturnValueFn(value, length) : undefined
@@ -514,14 +443,16 @@ export function requiredArrayLength(
   errorReturnValueFn: (
     invalidValue: unknown[],
     requiredLength: number,
-  ) => SingleValidationError = errorFns.requiredArrayLength,
+  ) => SingleValidationError = defaultErrorFn.requiredArrayLength,
 ) {
   return (value: unknown[]) =>
     value.length !== length ? errorReturnValueFn(value, length) : undefined
 }
 
 export function nonEmpty(
-  errorReturnValueFn: (invalidValue: unknown[]) => SingleValidationError = errorFns.arrayNonEmpty,
+  errorReturnValueFn: (
+    invalidValue: unknown[],
+  ) => SingleValidationError = defaultErrorFn.arrayNonEmpty,
 ) {
   return (value: unknown[]) => (value.length < 1 ? errorReturnValueFn(value) : undefined)
 }
@@ -556,6 +487,17 @@ const arrayValidations_ = [
 
 const arrayValidations = arrayValidations_ as ArrayValidations
 
+// type X1<Validations extends ValidationArray<any[]>> = {
+//   // default validations
+//   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
+//     ? Validations[I] extends ValidationItem<any>
+//       ? Validations[I][0]
+//       : never
+//     : never]: (...args: Parameters<Validations[I][1]>) => VArrayInfinite<this>
+// }
+
+// type Y = X1<ArrayValidations>
+
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -563,31 +505,8 @@ const arrayValidations = arrayValidations_ as ArrayValidations
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-function restArrayObject(
-  parent: MinimumSafeParsableArray,
-  typeString: string,
-): MinimumSafeParsableRestArray {
-  return {
-    vArray: parent,
-    isSpread: true,
-    optional() {
-      return parent.partial().spread
-    },
-    required() {
-      return parent.required().spread
-    },
-    deepPartial(...keys) {
-      return parent.deepPartial(...keys).spread
-    },
-    deepRequired(...keys) {
-      return parent.deepRequired(...keys).spread
-    },
-    stratifiedParsers: parent[parserObject].definition[stratifiedParserProp],
-    type: `...${typeString}`,
-  } as MinimumSafeParsableRestArray
-}
 
-export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
+export function initArray(createBaseValidationBuilder: CreateBaseValidationBuilderGn): VArrayFn {
   /** ****************************************************************************************************************************
    * *****************************************************************************************************************************
    * *****************************************************************************************************************************
@@ -595,9 +514,6 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
    * *****************************************************************************************************************************
    * *****************************************************************************************************************************
    ***************************************************************************************************************************** */
-  errorFns = baseObject[defaultErrorFnSym]
-
-  const baseArrayObject = createValidationBuilder(baseObject, arrayValidations)
 
   function finiteArray(itemParsers: ValidArrayItems, options: ArrayOptions): VArrayFinite<any> {
     const startParsers = [] as MinimumSafeParsableObject[]
@@ -614,11 +530,8 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
 
     const addRestParser = (parser: MinimumSafeParsableObject, index: number) => {
       numberOfStratifications += 1
-      if (numberOfStratifications > 1) {
-        throw new Error(
-          (options.restCantFollowRest || errorFns.restCantFollowRest)(itemParsers, index),
-        )
-      }
+      if (numberOfStratifications > 1)
+        throw new Error(options.restCantFollowRest(itemParsers, index))
       restParser = parser
     }
 
@@ -640,26 +553,17 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
 
     let hasOptional = false
     startParsers.forEach((parser, index) => {
-      const isOptional = parser.baseType === 'optional'
-      if (hasOptional && !isOptional) {
-        throw new Error(
-          (
-            options.arrayDefinitionElementMustBeOptional ||
-            errorFns.arrayDefinitionElementMustBeOptional
-          )(itemParsers, index),
-        )
-      }
-      hasOptional = isOptional
+      const optional = parser.isOptional()
+      if (hasOptional && !optional)
+        throw new Error(options.arrayDefinitionElementMustBeOptional(itemParsers, index))
+      hasOptional = optional
     })
 
     // const midStr = restParser ? `...${restParser.type}[]` : undefined
     endParsers.forEach((parser, index) => {
-      if (parser.baseType === 'optional') {
+      if (parser.isOptional()) {
         throw new Error(
-          (options.optionalElementCantFollowRest || errorFns.optionalElementCantFollowRest)(
-            itemParsers,
-            startParsers.length + 1 + index,
-          ),
+          options.optionalElementCantFollowRest(itemParsers, startParsers.length + 1 + index),
         )
       }
       // return parser.type
@@ -669,29 +573,19 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
 
     const stratifiedParsers: StratifiedParsers = [startParsers, restParser, endParsers]
 
-    const parser = options.parser
-      ? options.parser(typeString, stratifiedParsers, options)
+    const parser = options.finiteArrayParser
+      ? options.finiteArrayParser(typeString, stratifiedParsers, options)
       : parseArray(typeString, stratifiedParsers, options)
-
-    const builder = createFinalBaseObject(baseArrayObject, parser, typeString, 'finite array', {
-      [stratifiedParserProp]: stratifiedParsers,
-      itemParsers,
-    })
-
-    // const builder = createBaseValidationBuilder(parser, arrayValidations, typeString)
+    const builder = createBaseValidationBuilder(parser, arrayValidations, typeString)
     Object.defineProperties(builder, {
+      finiteArrayParsers: { value: itemParsers },
+      stratifiedParsers: { value: stratifiedParsers },
+      // eType: { value: `[${inType}]` },
       pick: {
         value(...keys: number[]) {
           const newItemParsers = keys.reduce((newItemParsersI, index) => {
             const item = itemParsers[index]
-            if (!item) {
-              throw new Error(
-                (options.missingItemInItemParsers || errorFns.missingItemInItemParsers)(
-                  itemParsers,
-                  index,
-                ),
-              )
-            }
+            if (!item) throw new Error(options.missingItemInItemParsers(itemParsers, index))
             newItemParsersI.push(item)
             return newItemParsersI
           }, [] as ValidArrayItems)
@@ -717,33 +611,47 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
       },
       merge: {
         value(vArr: VArrayFinite<any>) {
-          return (this as VArrayFinite<any>).extends(...vArr.definition.itemParsers)
+          return (this as VArrayFinite<any>).extends(...vArr.finiteArrayParsers)
         },
       },
+      // partial: {
+      //   value() {
+      //     return this[internalPartial]().optional()
+      //   },
+      // },
       partial: {
         value() {
           const newItemParsers = itemParsers.reduce((newPropertyParsersI, itemParser) => {
-            newPropertyParsersI.push(optional(itemParser))
+            newPropertyParsersI.push(itemParser.optional())
             return newPropertyParsersI
           }, [] as ValidArrayItems)
           return vArray(newItemParsers, options)
         },
       },
       deepPartial: {
-        value(...keys) {
-          const newItemParsers = itemParsers.reduce((newPropertyParsersI, itemParser: any) => {
-            newPropertyParsersI.push(unWrappedDeepPartial(itemParser, ...keys))
+        value() {
+          const newItemParsers = itemParsers.reduce((newPropertyParsersI, itemParser) => {
+            newPropertyParsersI.push(
+              internalDeepPartial in itemParser
+                ? (itemParser as any).deepPartial()
+                : itemParser.optional(),
+            )
             return newPropertyParsersI
           }, [] as ValidArrayItems)
           const newArray = vArray(newItemParsers, options)
-          newArray[parserObject].validators.push(...this[parserObject].validators)
+          ;(newArray as any)[validators].push(...this[validators])
           return newArray
+        },
+      },
+      [internalDeepPartial]: {
+        value() {
+          return this.deepPartial().optional()
         },
       },
       required: {
         value() {
           const newItemParsers = itemParsers.reduce((newPropertyParsersI, itemParser) => {
-            newPropertyParsersI.push(required(itemParser))
+            newPropertyParsersI.push(itemParser.required())
             return newPropertyParsersI
           }, [] as ValidArrayItems)
           return vArray(newItemParsers, options)
@@ -755,7 +663,7 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
             newPropertyParsersI.push(
               'deepRequired' in itemParser
                 ? (itemParser as any).deepRequired()
-                : required(itemParser),
+                : itemParser.required(),
             )
             return newPropertyParsersI
           }, [] as ValidArrayItems)
@@ -764,11 +672,30 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
       },
       spread: {
         get(): MinimumSafeParsableRestArray {
-          return restArrayObject(this, typeString)
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          const parent: MinimumSafeParsableArray = this
+          return {
+            vArray: parent,
+            isSpread: true,
+            optional() {
+              return parent.partial().spread
+            },
+            required() {
+              return parent.required().spread
+            },
+            deepPartial() {
+              return parent.deepPartial().spread
+            },
+            deepRequired() {
+              return parent.deepRequired().spread
+            },
+            stratifiedParsers: parent.stratifiedParsers,
+            type: `...${typeString}`,
+          }
         },
       },
     })
-    return builder as unknown as VArrayFinite<any>
+    return builder as VArrayFinite<any>
   }
 
   /** ****************************************************************************************************************************
@@ -785,31 +712,45 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
   ) {
     const stratifiedParsers: StratifiedParsers = [[], itemParser, []]
     const typeString = `${itemParser.type}[]`
-    const parser = options.parser
-      ? options.parser(typeString, stratifiedParsers, options)
+    const parser = options.finiteArrayParser
+      ? options.finiteArrayParser(typeString, stratifiedParsers, options)
       : parseArray(typeString, stratifiedParsers, options)
 
-    const builder = createFinalBaseObject(baseArrayObject, parser, typeString, 'infinite array', {
-      [stratifiedParserProp]: stratifiedParsers,
-      itemParser,
-    }) as unknown as VArrayInfinite<any>
+    const builder = createBaseValidationBuilder(parser, arrayValidations, typeString) as
+      | VArrayFinite<any>
+      | VArrayInfinite<any>
 
     Object.defineProperties(builder, {
+      infiniteArrayItemParser: { value: itemParser },
+      stratifiedParsers: { value: stratifiedParsers },
       partial: {
         value() {
-          return vArray(optional(itemParser), options)
+          return vArray(itemParser.optional(), options)
+        },
+      },
+      // [internalPartial]: {
+      //   value() {
+      //     return vArray(itemParser.optional(), options)
+      //   },
+      // },
+      [internalDeepPartial]: {
+        value() {
+          return this.deepPartial().optional()
         },
       },
       deepPartial: {
         value() {
-          const newArray = vArray(unWrappedDeepPartial(itemParser), options)
-          newArray[parserObject].validators.push(...this[parserObject].validators)
+          const newArray = vArray(
+            'deepPartial' in itemParser ? (itemParser as any).deepPartial() : itemParser.optional(),
+            options,
+          )
+          ;(newArray as any)[validators].push(...this[validators])
           return newArray
         },
       },
       required: {
         value() {
-          return vArray(required(itemParser), options)
+          return vArray(itemParser.required(), options)
         },
       },
       deepRequired: {
@@ -817,14 +758,33 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
           return vArray(
             'deepRequired' in itemParser
               ? (itemParser as any).deepRequired()
-              : required(itemParser),
+              : itemParser.required(),
             options,
           )
         },
       },
       spread: {
         get(): MinimumSafeParsableRestArray {
-          return restArrayObject(this, typeString)
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          const parent: MinimumSafeParsableArray = this
+          return {
+            vArray: parent,
+            isSpread: true,
+            optional() {
+              return parent.partial().spread
+            },
+            required() {
+              return parent.required().spread
+            },
+            deepPartial() {
+              return parent.deepPartial().spread
+            },
+            deepRequired() {
+              return parent.deepRequired().spread
+            },
+            stratifiedParsers: parent.stratifiedParsers,
+            type: `...${typeString}`,
+          }
         },
       },
     })
@@ -833,11 +793,14 @@ export function initArray(baseObject: MinimumSafeParsableObject): VArrayFn {
 
   function vArray(
     itemParsers: ValidArrayItems | MinimumSafeParsableObject,
-    options: ArrayOptions = {},
+    options: Partial<ArrayOptions> = {},
   ): VArrayInfinite<any> | VArrayFinite<any> {
+    const finalOptions: ArrayOptions = { ...defaultArrayErrors, ...options }
     return (Array.isArray(itemParsers)
-      ? finiteArray(itemParsers, options)
-      : infiniteArray(itemParsers, options)) as unknown as VArrayInfinite<any> | VArrayFinite<any>
+      ? finiteArray(itemParsers, finalOptions)
+      : infiniteArray(itemParsers, finalOptions)) as unknown as
+      | VArrayInfinite<any>
+      | VArrayFinite<any>
   }
   return vArray as VArrayFn
 }

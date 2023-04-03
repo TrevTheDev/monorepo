@@ -25,7 +25,7 @@ it('infer enum', () => {
 })
 
 it('get options', () => {
-  expect(vEnum(['tuna', 'trout']).options).toEqual(['tuna', 'trout'])
+  expect(vEnum(['tuna', 'trout']).definition.enumValues).toEqual(['tuna', 'trout'])
 })
 
 it('readonly enum', () => {

@@ -2,8 +2,7 @@ import { it, expect } from 'vitest'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
 import { vBooleanInstance } from '../../src/types/boolean'
-import { vArray, vLiteral } from '../../src/types/init'
-import { vObject } from '../../src/types/object'
+import { vArray, vLiteral, vObject } from '../../src/types/init'
 import { VInfer } from '../../src/types/base'
 
 type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2

@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest'
-import { vObject } from '../../src/types/object'
+
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
 import { VInfer } from '../../src/types/base'
-import { vAnyInstance } from '../../src/types/init'
+import { vAnyInstance, vObject } from '../../src/types/init'
 
 type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
   ? true

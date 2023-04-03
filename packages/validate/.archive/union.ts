@@ -1,30 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable, Identity } from 'toolbelt'
+import type { ResultError, DeepWriteable } from 'toolbelt'
 
-import type { VNever, VNull, VUndefined } from './literal'
+import {
+  SafeParseFn,
+  SingleValidationError,
+  ValidationArray,
+  ValidationErrors,
+  SafeParsableObject,
+  VInfer,
+  CreateBaseValidationBuilderGn,
+  MinimumSafeParsableObject,
+  SafeParsableObjectBase,
+} from './base'
+import type { VNull, VUndefined } from './literal'
+import defaultErrorFn from './shared'
 import { parseObject } from './object'
 import type { MinimumObject } from './object'
-
-import {
-  MinimumSafeParsableObject,
-  ParseFn,
-  ParserObject,
-  SafeParsableObject,
-  SafeParseFn,
-  VInfer,
-  createFinalBaseObject,
-  defaultErrorFnSym,
-  parserObject,
-} from './base'
-import {
-  SingleValidationError,
-  ValidationErrors,
-  createValidationBuilder,
-} from './base validations'
-import defaultErrorFn, { DefaultErrorFn } from './errorFns'
-import { VIntersectionT } from './intersection'
-import { VArrayInfinite } from './array'
-import { VDefault } from './default'
+import { vNeverInstance } from './init'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -33,34 +25,22 @@ import { VDefault } from './default'
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-let errorFns = defaultErrorFn
+const defaultUnionErrors = {
+  // ...defaultObjectErrors,
+  invalidObjectFn: defaultErrorFn.parseObject,
+  invalidObjectPropertiesFn: defaultErrorFn.invalidObjectPropertiesFn,
+  missingProperty: defaultErrorFn.missingProperty,
+  missingPropertyInDef: defaultErrorFn.missingPropertyInDef,
+  keyNotFoundInDiscriminatedUnionDef: defaultErrorFn.keyNotFoundInDiscriminatedUnionDef,
+  keyNotFoundInDiscriminatedUnion: defaultErrorFn.keyNotFoundInDiscriminatedUnion,
+  noKeyMatchFoundInDiscriminatedUnion: defaultErrorFn.noKeyMatchFoundInDiscriminatedUnion,
+  parserIsNotOfTypeObject: defaultErrorFn.parserIsNotOfTypeObject,
+  discriminatedUnionValueIsNotAnObject: defaultErrorFn.discriminatedUnionValueIsNotAnObject,
+}
 
-// type UnionParseErrorMessageFns = {
-//   invalidObjectFn: DefaultErrorFn['parseObject']
-//   invalidObjectPropertiesFn: DefaultErrorFn['invalidObjectPropertiesFn']
-//   missingProperty: DefaultErrorFn['missingProperty']
-//   missingPropertyInDef: DefaultErrorFn['missingPropertyInDef']
-//   keyNotFoundInDiscriminatedUnionDef: DefaultErrorFn['keyNotFoundInDiscriminatedUnionDef']
-//   keyNotFoundInDiscriminatedUnion: DefaultErrorFn['keyNotFoundInDiscriminatedUnion']
-//   noKeyMatchFoundInDiscriminatedUnion: DefaultErrorFn['noKeyMatchFoundInDiscriminatedUnion']
-//   parserIsNotOfTypeObject: DefaultErrorFn['parserIsNotOfTypeObject']
-//   discriminatedUnionValueIsNotAnObject: DefaultErrorFn['discriminatedUnionValueIsNotAnObject']
-// }
+type UnionParseErrorMessageFns = typeof defaultUnionErrors
 
-type DiscriminatedUnionParseErrorMessageFns = Pick<
-  DefaultErrorFn,
-  | 'parseObject'
-  | 'invalidObjectPropertiesFn'
-  | 'missingProperty'
-  | 'missingPropertyInDef'
-  | 'keyNotFoundInDiscriminatedUnionDef'
-  | 'keyNotFoundInDiscriminatedUnion'
-  | 'noKeyMatchFoundInDiscriminatedUnion'
-  | 'parserIsNotOfTypeObject'
-  | 'discriminatedUnionValueIsNotAnObject'
->
-
-export type UnionType = MinimumSafeParsableObject[]
+type UnionType = MinimumSafeParsableObject[]
 
 type ObjectUnionType = MinimumObject[]
 
@@ -71,157 +51,85 @@ type VUnionOutput<
   },
 > = O[number]
 
-interface VUnion3<Output extends string, Type extends string = string, Input = unknown>
-  extends SafeParsableObject<Output, Type, 'union', Input> {
-  [parserObject]: ParserObject<Output, Type, 'union', Input, { readonly unionTypes: Output[] }>
-  readonly definition: { readonly unionTypes: Output[] }
+export interface VUnion<
+  T extends UnionType,
+  Output = VUnionOutput<T>,
+  Type extends string = string,
+  Input = unknown,
+> extends SafeParsableObject<Output, Type, Input> {
+  unionTypes: T
   customValidation<S extends unknown[]>(
     customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
     ...otherArgs: S
   ): this
 }
 
-interface VUnion2<
-  T extends UnionType,
-  Output = VUnionOutput<T>,
-  Type extends string = string,
-  Input = unknown,
-> extends SafeParsableObject<Output, Type, 'union', Input> {
-  [parserObject]: ParserObject<Output, Type, 'union', Input, { readonly unionTypes: T }>
-  readonly definition: { readonly unionTypes: T }
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
-}
-
-export type VUnion<
-  T extends UnionType,
-  Output = VUnionOutput<T>,
-  Type extends string = string,
-  Input = unknown,
-> = Identity<VUnion2<T, Output, Type, Input>>
-
-interface VOptional2<
+export interface VOptional<
   T extends MinimumSafeParsableObject,
   Type extends string = string,
   Input = unknown,
   Output = VInfer<T> | undefined,
-> extends MinimumSafeParsableObject {
-  // SafeParsableObject
-  [parserObject]: ParserObject<Output, Type, 'optional', Input, { readonly wrappedType: T }>
-  readonly definition: { readonly wrappedType: T }
-  readonly type: Type
-  readonly baseType: 'optional'
-  parse: ParseFn<Input, Output>
-  safeParse: SafeParseFn<Input, Output>
+> extends SafeParsableObjectBase<Output, Type, Input> {
+  nonOptionalType: T
   optional(): this
   nullable(): VNullable<this>
-  nullish(): VNullish<this>
-  or<S extends MinimumSafeParsableObject>(type: S): VUnion<[this, S]>
-  and<S extends MinimumSafeParsableObject>(type: S): VIntersectionT<[this, S]>
-  array(): VArrayInfinite<this>
-  default(defaultValue: Output): VDefault<Output, this>
   required(): T
-
+  isOptional(): true
   customValidation<S extends unknown[]>(
     customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
     ...otherArgs: S
   ): this
 }
 
-export type VOptional<
-  T extends MinimumSafeParsableObject,
-  Type extends string = string,
-  Input = unknown,
-  Output = VInfer<T> | undefined,
-> = Identity<VOptional2<T, Type, Input, Output>>
-
-interface VNullable2<
+export interface VNullable<
   T extends MinimumSafeParsableObject,
   Output = VInfer<T> | null,
   Type extends string = string,
   Input = unknown,
-> extends MinimumSafeParsableObject {
-  // SafeParsableObject
-  [parserObject]: ParserObject<Output, Type, 'nullable', Input, { readonly wrappedType: T }>
-  readonly definition: { readonly wrappedType: T }
-  readonly type: Type
-  readonly baseType: 'nullable'
-  parse: ParseFn<Input, Output>
-  safeParse: SafeParseFn<Input, Output>
+> extends SafeParsableObjectBase<Output, Type, Input> {
+  nonNullableType: T
   optional(): VOptional<this>
   nullable(): this
-  nullish(): VNullish<this>
-  or<S extends MinimumSafeParsableObject>(type: S): VUnion<[this, S]>
-  and<S extends MinimumSafeParsableObject>(type: S): VIntersectionT<[this, S]>
-  array(): VArrayInfinite<this>
-  default(defaultValue: Output): VDefault<Output, this>
-
+  required(): this
+  isOptional(): false
   customValidation<S extends unknown[]>(
     customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
     ...otherArgs: S
   ): this
 }
 
-export type VNullable<
-  T extends MinimumSafeParsableObject,
-  Output = VInfer<T> | null,
-  Type extends string = string,
-  Input = unknown,
-> = Identity<VNullable2<T, Output, Type, Input>>
-
-interface VNullish2<
+export interface VNullish<
   T extends MinimumSafeParsableObject,
   Output = VInfer<T> | null | undefined,
   Type extends string = string,
   Input = unknown,
-> extends MinimumSafeParsableObject {
-  // SafeParsableObject
-  [parserObject]: ParserObject<Output, Type, 'nullish', Input, { readonly wrappedType: T }>
-  readonly definition: { readonly wrappedType: T }
-  readonly type: Type
-  readonly baseType: 'nullish'
-  parse: ParseFn<Input, Output>
-  safeParse: SafeParseFn<Input, Output>
+> extends SafeParsableObjectBase<Output, Type, Input> {
+  nonNullableType: T
   optional(): VOptional<this>
-  nullable(): VNullish<this>
-  nullish(): this
-  or<S extends MinimumSafeParsableObject>(type: S): VUnion<[this, S]>
-  and<S extends MinimumSafeParsableObject>(type: S): VIntersectionT<[this, S]>
-  array(): VArrayInfinite<this>
-  default(defaultValue: Output): VDefault<Output, this>
-
+  nullable(): this
+  mullish(): this
+  required(): this
+  isOptional(): false
   customValidation<S extends unknown[]>(
     customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
     ...otherArgs: S
   ): this
 }
-
-export type VNullish<
-  T extends MinimumSafeParsableObject,
-  Output = VInfer<T> | null | undefined,
-  Type extends string = string,
-  Input = unknown,
-> = Identity<VNullish2<T, Output, Type, Input>>
 
 type UnionOptions<Output = any> = {
-  parser?: SafeParseFn<unknown, Output>
-  type?: string
+  parser?: (
+    typeParsers: UnionType,
+    options: object,
+  ) => (value: unknown) => ResultError<ValidationErrors, Output>
+  errorMessageFns: UnionParseErrorMessageFns
+  type: string
 }
 
 type DiscriminatedUnionOptions = {
   discriminatedUnionKey: string
   unmatchedPropertyParser: MinimumSafeParsableObject
-  errorMessageFns?: Partial<DiscriminatedUnionParseErrorMessageFns>
+  errorMessageFns: UnionParseErrorMessageFns
   type: string
-}
-
-type StringLiteralUnionOptions<T extends string> = {
-  stringLiteralUnion: true
-  parser?: SafeParseFn<unknown, T>
-  type?: string
-  parseStringUnion?: Pick<DefaultErrorFn, 'parseStringUnion'>
 }
 
 interface PartialDiscriminatedUnionOptions {
@@ -231,7 +139,7 @@ interface PartialDiscriminatedUnionOptions {
   ) => (value: unknown) => ResultError<ValidationErrors, object>
   discriminatedUnionKey: string
   unmatchedPropertyParser?: MinimumSafeParsableObject
-  errorMessageFns?: Partial<DiscriminatedUnionParseErrorMessageFns>
+  errorMessageFns?: Partial<UnionParseErrorMessageFns>
 }
 
 export type VUnionFn = {
@@ -239,10 +147,6 @@ export type VUnionFn = {
     types: T,
     options: PartialDiscriminatedUnionOptions,
   ): VUnion<TW>
-  <T extends readonly string[], TW extends string[] = DeepWriteable<T>>(
-    types: T,
-    options: StringLiteralUnionOptions<TW[number]>,
-  ): VUnion3<TW[number]>
   <T extends Readonly<UnionType>, TW extends UnionType = DeepWriteable<T>>(
     types: T,
     options?: UnionOptions<VUnionOutput<TW>>,
@@ -282,11 +186,9 @@ export type VNullishFn = <T extends MinimumSafeParsableObject>(
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export function parseUnion<T extends UnionType, Output = { [K in keyof T]: VInfer<T[K]> }[number]>(
-  types: T,
-) {
+export function parseUnion(types: UnionType) {
   const typeParsers = types.map((type) => (value: unknown) => type.safeParse(value))
-  return (value: unknown): ResultError<ValidationErrors, Output> => {
+  return (value: unknown): ResultError<ValidationErrors, any> => {
     const errors: string[] = []
     // eslint-disable-next-line no-restricted-syntax
     for (const vType of typeParsers) {
@@ -298,55 +200,14 @@ export function parseUnion<T extends UnionType, Output = { [K in keyof T]: VInfe
   }
 }
 
-function isObject(mspo: MinimumSafeParsableObject | MinimumObject): mspo is MinimumObject {
-  return mspo.baseType === 'object'
-}
-
-export function parseStringUnion<T extends readonly string[], Output extends string = T[number]>(
-  stringUnionDef: T,
-  options: StringLiteralUnionOptions<Output>,
-): (value: unknown) => ResultError<ValidationErrors, Output> {
-  return (value: unknown): ResultError<ValidationErrors, Output> => {
-    if (typeof value === 'string' && stringUnionDef.includes(value))
-      return [undefined, value as Output]
-    return [
-      {
-        input: value,
-        errors: [
-          (options.parseStringUnion as any) || errorFns.parseStringUnion(value, stringUnionDef),
-        ],
-      },
-      undefined,
-    ]
-  }
-}
-
-export function parseDiscriminatedUnion<
-  T extends ObjectUnionType,
-  Output extends object = {
-    [K in keyof T]: VInfer<T[K]> extends object ? VInfer<T[K]> : never
-  }[number],
->(
-  parsers: T,
+export function parseDiscriminatedUnion(
+  parsers: UnionType | ObjectUnionType,
   options: DiscriminatedUnionOptions,
-): (value: unknown) => ResultError<ValidationErrors, Output> {
-  const errorMessageFns = {
-    // invalidObjectFn: errorFns.parseObject,
-    // invalidObjectPropertiesFn: errorFns.invalidObjectPropertiesFn,
-    // missingProperty: errorFns.missingProperty,
-    // missingPropertyInDef: errorFns.missingPropertyInDef,
-    keyNotFoundInDiscriminatedUnionDef: errorFns.keyNotFoundInDiscriminatedUnionDef,
-    keyNotFoundInDiscriminatedUnion: errorFns.keyNotFoundInDiscriminatedUnion,
-    noKeyMatchFoundInDiscriminatedUnion: errorFns.noKeyMatchFoundInDiscriminatedUnion,
-    parserIsNotOfTypeObject: errorFns.parserIsNotOfTypeObject,
-    discriminatedUnionValueIsNotAnObject: errorFns.discriminatedUnionValueIsNotAnObject,
-    ...options.errorMessageFns,
-  }
-  const { discriminatedUnionKey, unmatchedPropertyParser } = options
+) {
+  const { discriminatedUnionKey, unmatchedPropertyParser, errorMessageFns } = options
   const typeParsers = parsers.map((parser: MinimumSafeParsableObject | MinimumObject) => {
-    if (!isObject(parser)) throw new Error(errorMessageFns.parserIsNotOfTypeObject(parser))
-    // console.log(parser.definition.shape.propertyParsers)
-    const propertyParser = parser.definition.propertyParsers /// [key]
+    if (!('shape' in parser)) throw new Error(errorMessageFns.parserIsNotOfTypeObject(parser))
+    const propertyParser = parser.shape.propertyParsers /// [key]
     const keyParser = propertyParser[discriminatedUnionKey]
     if (keyParser === undefined) {
       throw new Error(
@@ -364,7 +225,7 @@ export function parseDiscriminatedUnion<
       (value: unknown) => ResultError<ValidationErrors, object>,
     ]
   })
-  return (value: unknown): ResultError<ValidationErrors, Output> => {
+  return (value: unknown): ResultError<ValidationErrors, object> => {
     const errors: string[] = []
     if (typeof value !== 'object' || Array.isArray(value) || value === null) {
       return [
@@ -383,7 +244,7 @@ export function parseDiscriminatedUnion<
         const result = keyParser(keyValueToMatch)
         if (result[0] === undefined) {
           const oResult = propertyParser(value)
-          if (oResult[0] === undefined) return oResult as ResultError<ValidationErrors, Output>
+          if (oResult[0] === undefined) return oResult
           errors.push(...oResult[0].errors)
         }
       }
@@ -420,15 +281,15 @@ export function parseDiscriminatedUnion<
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-type UnionValidations<T> = [
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
-]
+// type UnionValidations<T> = [
+//   [
+//     'customValidation',
+//     (
+//       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
+//       ...otherArgs: unknown[]
+//     ) => (value: T) => SingleValidationError | undefined,
+//   ],
+// ]
 const unionValidations_ = [
   [
     'customValidation',
@@ -440,7 +301,7 @@ const unionValidations_ = [
         customValidator(value, ...otherArgs),
   ],
 ] as const
-const unionValidations = unionValidations_ as UnionValidations<any>
+// const unionValidations = unionValidations_ as UnionValidations<any>
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -464,9 +325,6 @@ export const stringArrayToUnionTypeString = (typeStrings: string[]) => typeStrin
 export const wrapStringArrayInSingleQuotes = (typeStrings: string[]) =>
   typeStrings.map((string) => `'${string}'`)
 
-// export function deepRequired(mspObj: MinimumSafeParsableObject): MinimumSafeParsableObject {
-//   return 'deepRequired' in mspObj ? deepRequired(mspObj.deepRequired()) : required(mspObj)
-// }
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -475,91 +333,57 @@ export const wrapStringArrayInSingleQuotes = (typeStrings: string[]) =>
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export function initUnionTypes(baseObject: MinimumSafeParsableObject) {
-  errorFns = baseObject[defaultErrorFnSym]
+export function initUnionTypes(createBaseValidationBuilder: CreateBaseValidationBuilderGn) {
   let vUndefinedInstance: VUndefined
   let vNullInstance: VNull
-  let vNeverInstance: VNever
-  function setUnionInstances(
-    undefinedInstance: VUndefined,
-    nullInstance: VNull,
-    neverInstance: VNever,
-  ) {
+  function setInstances(undefinedInstance: VUndefined, nullInstance: VNull) {
     vUndefinedInstance = undefinedInstance
     vNullInstance = nullInstance
-    vNeverInstance = neverInstance
   }
 
-  const baseUnionObject = createValidationBuilder(baseObject, unionValidations)
-
-  function vUnionFn(
-    types: UnionType | ObjectUnionType | string[],
-    options:
-      | PartialDiscriminatedUnionOptions
-      | UnionOptions<VUnionOutput<UnionType>>
-      | StringLiteralUnionOptions<string> = {},
-    baseType = 'union',
-    definitionObject: object | undefined = undefined,
-  ): VUnion<any> | VUnion3<string> {
+  const vUnion = function vUnionFn(
+    types: UnionType,
+    options: PartialDiscriminatedUnionOptions | Partial<UnionOptions> = {},
+  ) {
     const typeString = stringArrayToUnionTypeString(types.map((type) => type.type))
+
+    let finalParser
 
     if ('discriminatedUnionKey' in options) {
       const fOptions = {
         unmatchedPropertyParser: vNeverInstance,
         ...options,
-        errorMessageFns: { ...options.errorMessageFns },
+        errorMessageFns: { ...defaultUnionErrors, ...(options.errorMessageFns ?? {}) },
         type: typeString,
       } as DiscriminatedUnionOptions
-      const parserFn = options.parser
+      finalParser = parseDiscriminatedUnion(types, fOptions)
+    } else {
+      const fOptions = { ...options, type: typeString } as UnionOptions
+      finalParser = options.parser
         ? options.parser(types as any, fOptions as any)
-        : parseDiscriminatedUnion(types as ObjectUnionType, fOptions)
-      return createFinalBaseObject(baseUnionObject, parserFn, typeString, 'discriminated union', {
-        unionTypes: types,
-        discriminatedUnionKey: fOptions.discriminatedUnionKey,
-        unmatchedPropertyParser: fOptions.unmatchedPropertyParser,
-      }) as VUnion<any>
+        : parseUnion(types)
     }
-    if ('stringLiteralUnion' in options) {
-      return createFinalBaseObject(
-        baseUnionObject,
-        options.parser ? options.parser : parseStringUnion(types as string[], options),
-        typeString,
-        'string union',
-        {
-          unionTypes: types,
-        },
-      ) as VUnion3<string>
-    }
-    return createFinalBaseObject(
-      baseUnionObject,
-      options.parser ? options.parser : parseUnion(types as UnionType),
+    const uUnion = createBaseValidationBuilder(
+      finalParser,
+      unionValidations_ as unknown as ValidationArray<any>,
       typeString,
-      baseType,
-      definitionObject === undefined
-        ? {
-            unionTypes: types,
-          }
-        : definitionObject,
-    ) as VUnion<any>
-  }
-
-  const vUnion: VUnionFn = ((types, options) => vUnionFn(types, options)) as VUnionFn
-
-  type BasicOptions<Output = any> = {
-    parser?: SafeParseFn<unknown, Output>
-  }
+    )
+    return Object.defineProperty(uUnion, 'unionTypes', { value: types })
+  } as VUnionFn
 
   const vOptional = function vOptionalFn<T extends MinimumSafeParsableObject>(
     type: T,
-    options: BasicOptions<VUnionOutput<[T, VUndefined]>> = {},
+    parser?: (
+      typeParsers: SafeParseFn<unknown, any>[],
+      value: unknown,
+    ) => ResultError<ValidationErrors, any>,
   ): VOptional<T> {
-    const result = vUnionFn([type, vUndefinedInstance], options, 'optional', {
-      wrappedType: type,
-    })
+    const result = (vUnion as unknown as any)([type, vUndefinedInstance], parser)
     Object.defineProperties(result, {
+      nonOptionalType: { value: type },
       required: {
         value() {
-          return type
+          return type.required()
         },
       },
     })
@@ -568,23 +392,31 @@ export function initUnionTypes(baseObject: MinimumSafeParsableObject) {
 
   const vNullable: VNullableFn = function vNullableFn<T extends MinimumSafeParsableObject>(
     type: T,
-    options: BasicOptions<VUnionOutput<[T, VNull]>> = {},
+    parser?: (
+      typeParsers: SafeParseFn<unknown, any>[],
+      value: unknown,
+    ) => ResultError<ValidationErrors, any>,
   ): VNullable<T> {
-    const result = vUnionFn([type, vNullInstance], options, 'nullable', {
-      wrappedType: type,
+    const result = (vUnion as unknown as any)([type, vNullInstance], parser)
+    Object.defineProperties(result, {
+      nonNullableType: { value: type },
     })
     return result as unknown as VNullable<T>
   } as VNullableFn
 
   const vNullish: VNullishFn = function vNullableFn<T extends MinimumSafeParsableObject>(
     type: T,
-    options: BasicOptions<VUnionOutput<[T, VNull, VUndefined]>> = {},
+    parser?: (
+      typeParsers: SafeParseFn<unknown, any>[],
+      value: unknown,
+    ) => ResultError<ValidationErrors, any>,
   ): VNullish<T> {
-    const result = vUnionFn([type, vNullInstance, vUndefinedInstance], options, 'nullish', {
-      wrappedType: type,
+    const result = (vUnion as unknown as any)([type, vNullInstance, vUndefinedInstance], parser)
+    Object.defineProperties(result, {
+      nonNullishType: { value: type },
     })
     return result as unknown as VNullish<T>
   } as VNullishFn
 
-  return { vUnion, vOptional, vNullable, vNullish, setUnionInstances }
+  return { vUnion, vOptional, vNullable, vNullish, setInstances }
 }

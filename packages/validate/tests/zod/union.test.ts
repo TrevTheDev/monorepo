@@ -1,10 +1,11 @@
 import { it, expect } from 'vitest'
 import { isResult } from 'toolbelt'
-import { vNeverInstance, vUnion } from '../../src/types/init'
+import { vNeverInstance, vUnion, vObject } from '../../src/types/init'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
-import { vObject } from '../../src/types/object'
-import { firstErrorFromResultError } from '../../src/types/base'
+import { firstErrorFromResultError } from '../../src/types/shared'
+
+// import { firstErrorFromResultError } from '../../src/types/shared'
 
 it('function parsing', () => {
   const schema = vUnion([vNeverInstance, vNeverInstance])
@@ -38,8 +39,8 @@ it('return dirty result over aborted', () => {
 
 it('options getter', () => {
   const union = vUnion([vStringInstance, vNumberInstance])
-  union.unionTypes[0].parse('asdf')
-  union.unionTypes[1].parse(1234)
+  union.definition.unionTypes[0].parse('asdf')
+  union.definition.unionTypes[1].parse(1234)
 })
 
 it('readonly union', () => {

@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { SingleArrayValidationError } from './array'
+import { SingleArrayValidationError } from './array'
 import { MinimumSafeParsableObject } from './base'
 import { MinimumObject, MinimumObjectDefinition, SingleObjectValidationError } from './object'
 
@@ -7,7 +6,7 @@ const JSONstringify = (unknownObject) => {
   try {
     return JSON.stringify(
       unknownObject,
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value), // return everything else unchanged
+      (_key, value) => (typeof value === 'bigint' ? value.toString() : value), // return everything else unchanged
     )
   } catch (e) {
     return String(unknownObject)
@@ -172,6 +171,9 @@ const defaultErrorFn = {
     `the parser ${stringify(parser)} is not of type object`,
   discriminatedUnionValueIsNotAnObject: (value: unknown) =>
     `value ${stringify(value)} is not of type object`,
+
+  parseStringUnion: (value: unknown, stringUnionDef: readonly string[]) =>
+    `value ${stringify(value)} not found in string union definition: ${stringify(stringUnionDef)}`,
   // invalidMapKey: (
   //   _value: Map<unknown, unknown>,
   //   mapKey: unknown,
@@ -186,7 +188,7 @@ const defaultErrorFn = {
   //   `value at key: '${String(mapKey)}' is '${mapValue}' and does not match expected value type: ${
   //     mapValueDef.type
   //   }`,
-  notAMap: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
+  parseMap: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
   minimumMapLength: (value: Map<unknown, unknown>, minLength: number) =>
     `${value.size} is more elements than the minimum of ${minLength}`,
   maximumMapLength: (value: Map<unknown, unknown>, maxLength: number) =>
@@ -195,7 +197,7 @@ const defaultErrorFn = {
     `${value.size} is not the required ${requiredLength} elements`,
   mapNonEmpty: (value: Map<unknown, unknown>) =>
     `${stringify(value)} must contain at least one element`,
-  notASet: (value: unknown) => `${stringify(value)} is not an instance of a Set`,
+  parseSet: (value: unknown) => `${stringify(value)} is not an instance of a Set`,
   minimumSetLength: (value: Set<unknown>, minLength: number) =>
     `${value.size} is more elements than the minimum of ${minLength}`,
   maximumSetLength: (value: Set<unknown>, maxLength: number) =>
@@ -203,9 +205,11 @@ const defaultErrorFn = {
   requiredSetLength: (value: Set<unknown>, requiredLength: number) =>
     `${value.size} is not the required ${requiredLength} elements`,
   setNonEmpty: (value: Set<unknown>) => `${stringify(value)} must contain at least one element`,
-  notAPromise: (value: unknown) => `${stringify(value)} doesn't have a 'then' and 'catch' method`,
-  notARecord: (value: unknown) => `${stringify(value)} is not a valid object`,
-  notAFunction: (value: unknown) => `${stringify(value)} is not a valid function`,
+  parsePromise: (value: unknown) => `${stringify(value)} doesn't have a 'then' and 'catch' method`,
+  parseRecord: (value: unknown) => `${stringify(value)} is not a valid object`,
+  parseFunction: (value: unknown) => `${stringify(value)} is not a valid function`,
 }
 
 export default defaultErrorFn
+
+export type DefaultErrorFn = typeof defaultErrorFn

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { it, expect } from 'vitest'
-import { vObject } from '../../src/types/object'
-import { vLiteral, vUnion } from '../../src/types/init'
+import { vLiteral, vUnion, vObject } from '../../src/types/init'
 import { vStringInstance } from '../../src/types/string'
 
 it('valid', () => {
+  debugger
   expect(
     vUnion(
       [

@@ -1,17 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResultError, isError } from 'toolbelt'
 
-import type {
+import {
   SafeParseFn,
   SafeParsableObject,
+  MinimumSafeParsableObject,
+  VInfer,
+  defaultErrorFnSym,
+  createFinalBaseObject,
+} from './base'
+
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationErrors,
   ValidationItem,
-  MinimumSafeParsableObject,
-  VInfer,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -54,7 +62,10 @@ export function parseMap<T extends MapDef>(
         },
       ]
     }
-    return [{ input: value, errors: [options.notAMap(value)] }, undefined]
+    return [
+      { input: value, errors: [((options as any).parseMap || errorFns.parseMap)(value)] },
+      undefined,
+    ]
   }
 }
 
@@ -70,7 +81,7 @@ export function minimumMapLength<T extends Map<unknown, unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     minLength: number,
-  ) => SingleValidationError = defaultErrorFn.minimumMapLength,
+  ) => SingleValidationError = errorFns.minimumMapLength,
 ) {
   return (value: T) => (value.size < length ? errorReturnValueFn(value, length) : undefined)
 }
@@ -80,7 +91,7 @@ export function maximumMapLength<T extends Map<unknown, unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     maxLength: number,
-  ) => SingleValidationError = defaultErrorFn.maximumMapLength,
+  ) => SingleValidationError = errorFns.maximumMapLength,
 ) {
   return (value: T) => (value.size > length ? errorReturnValueFn(value, length) : undefined)
 }
@@ -90,13 +101,13 @@ export function requiredMapLength<T extends Map<unknown, unknown>>(
   errorReturnValueFn: (
     invalidValue: T,
     requiredLength: number,
-  ) => SingleValidationError = defaultErrorFn.requiredMapLength,
+  ) => SingleValidationError = errorFns.requiredMapLength,
 ) {
   return (value: T) => (value.size !== length ? errorReturnValueFn(value, length) : undefined)
 }
 
 export function nonEmpty<T extends Map<unknown, unknown>>(
-  errorReturnValueFn: (invalidValue: T) => SingleValidationError = defaultErrorFn.mapNonEmpty,
+  errorReturnValueFn: (invalidValue: T) => SingleValidationError = errorFns.mapNonEmpty,
 ) {
   return (value: T) => (value.size === 0 ? errorReturnValueFn(value) : undefined)
 }
@@ -150,7 +161,7 @@ export type VMap<
   Output extends Map<any, any> = MapDefToMapType<T>,
   Input = unknown,
   Validations extends MapValidations<Output> = MapValidations<Output>,
-> = SafeParsableObject<Output, 'Map', Input> & {
+> = SafeParsableObject<Output, 'Map', 'map', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -159,24 +170,35 @@ export type VMap<
     : never]: (...args: Parameters<Validations[I][1]>) => VMap<T, Output, Input, Validations>
 }
 
-type MapOptions<T extends MapDef> = {
-  parser?: SafeParseFn<unknown, MapDefToMapType<T>>
-  breakOnFirstError: boolean
-  notAMap: typeof defaultErrorFn.notAMap
+type MapOptions<T extends MapDef> = (
+  | {
+      parser: SafeParseFn<unknown, MapDefToMapType<T>>
+    }
+  | {
+      parseMap: DefaultErrorFn['parseMap']
+    }
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
+) & {
+  breakOnFirstError?: boolean
 }
+
+const baseMapObject = createValidationBuilder(baseObject, mapValidations as any)
 
 export function vMap<T extends MapDef>(
   mapDefinitionParsers: T,
-  options: Partial<MapOptions<T>> = {},
-) {
+  options: MapOptions<T> = {},
+): VMap<T> {
   const fOptions: MapOptions<T> = {
     breakOnFirstError: true,
-    notAMap: defaultErrorFn.notAMap,
     ...options,
   }
-  return createBaseValidationBuilder(
-    fOptions.parser ? fOptions.parser : parseMap(mapDefinitionParsers, fOptions),
-    mapValidations as MapValidations<MapDefToMapType<T>>,
+
+  return createFinalBaseObject(
+    baseMapObject,
+    (options as any).parser || parseMap(mapDefinitionParsers, fOptions),
     `Map<${mapDefinitionParsers[0].type},${mapDefinitionParsers[1].type}>`,
-  ) as unknown as VMap<T>
+    'map',
+    { mapDefinitionParsers },
+  ) as VMap<T>
 }

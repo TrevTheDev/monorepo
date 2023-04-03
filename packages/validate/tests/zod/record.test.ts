@@ -131,7 +131,7 @@ it('key schema', () => {
 it('key and value getters', () => {
   const rec = vRecord(vStringInstance, vNumberInstance)
 
-  rec.keyParser.parse('asdf')
-  rec.valueParser.parse(1234)
+  rec.definition.keyParser.parse('asdf')
+  rec.definition.valueParser.parse(1234)
   //   rec.element.parse(1234)
 })

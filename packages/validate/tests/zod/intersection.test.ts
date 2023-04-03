@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect } from 'vitest'
-import { vUnion, vLiteral, vIntersection, vArray } from '../../src/types/init'
-import { vStringInstance } from '../../src/types/string'
-import { vObject } from '../../src/types/object'
-import { vBooleanInstance } from '../../src/types/boolean'
-import { VInfer, firstError, firstErrorFromResultError } from '../../src/types/base'
-import { vNumberInstance } from '../../src/types/number'
 import { isResult } from 'toolbelt'
+import { vUnion, vLiteral, vIntersection, vArray, vObject } from '../../src/types/init'
+import { vStringInstance } from '../../src/types/string'
+
+import { vBooleanInstance } from '../../src/types/boolean'
+import { VInfer } from '../../src/types/base'
+import { firstError, firstErrorFromResultError } from '../../src/types/shared'
+import { vNumberInstance } from '../../src/types/number'
 // import { vBoolean } from '../../src/types/boolean'
 // import { vString } from '../../src/types/string'
 
@@ -21,7 +22,7 @@ it('vIntersection', () => {
   const vU1 = vUnion(A)
   const vU2 = vUnion(B)
   const vU3 = vUnion(C)
-  const intersection = vIntersection([vU1, vU2, vU3] as const)
+  const intersection = vIntersection([vU1, vU2, vU3])
   // debugger
   const x = intersection.parse('B')
   expect(intersection.parse('B')).toEqual('B')

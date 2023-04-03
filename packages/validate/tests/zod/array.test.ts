@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest'
-import { vString, vStringInstance } from '../../src/types/string'
-import { VInfer, firstErrorFromResultError } from '../../src/types/base'
-import { vArray } from '../../src/types/init'
-import { vObject } from '../../src/types/object'
 import { isResult } from 'toolbelt'
+import { vStringInstance } from '../../src/types/string'
+import { VInfer } from '../../src/types/base'
+import { vArray, vObject } from '../../src/types/init'
+import { firstErrorFromResultError } from '../../src/types/shared'
 
 // import { vAny, vNever, vUnknown } from '../../src/types/literal'
 
@@ -53,8 +53,8 @@ it('parse empty array in nonempty', () => {
 })
 
 it('get element', () => {
-  justTwo.infiniteArrayItemParser.parse('asdf')
-  expect(() => justTwo.infiniteArrayItemParser.parse(12)).toThrow()
+  justTwo.definition.itemParser.parse('asdf')
+  expect(() => justTwo.definition.itemParser.parse(12)).toThrow()
 })
 
 it('continue parsing despite array size error', () => {

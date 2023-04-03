@@ -1,18 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isError } from 'toolbelt'
 import type { ResultError } from 'toolbelt'
-import type {
+import {
   SafeParseFn,
   SafeParsableObject,
-  SingleValidationError,
-  ValidationErrors,
   MinimumSafeParsableObject,
   VInfer,
   ParseFn,
+  defaultErrorFnSym,
+  createFinalBaseObject,
+  parserObject,
+  ParserObject,
 } from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+
+import { baseObject } from './init'
 import { vStringInstance } from './string'
+import {
+  SingleValidationError,
+  ValidationErrors,
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -40,10 +50,17 @@ type RecordDefToRecordType<
   Key extends string = KInfer<T[0]>,
 > = string extends Key ? Record<Key, VInfer<T[1]>> : Partial<Record<Key, VInfer<T[1]>>>
 
-type RecordOptions<T extends RecordDef> = {
-  parser?: SafeParseFn<unknown, RecordDefToRecordType<T>>
-  breakOnFirstError: boolean
-  notARecord: typeof defaultErrorFn.notARecord
+type RecordOptions<T extends RecordDef> = (
+  | {
+      parser: SafeParseFn<unknown, RecordDefToRecordType<T>>
+    }
+  | {
+      parseRecord: DefaultErrorFn['parseRecord']
+    }
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
+) & {
+  breakOnFirstError?: boolean
 }
 
 export function parseRecord<T extends RecordDef>(
@@ -75,7 +92,10 @@ export function parseRecord<T extends RecordDef>(
         },
       ]
     }
-    return [{ input: value, errors: [options.notARecord(value)] }, undefined]
+    return [
+      { input: value, errors: [((options as any).parseRecord || errorFns.parseRecord)(value)] },
+      undefined,
+    ]
   }
 }
 
@@ -119,14 +139,25 @@ export interface VRecord<
   Output extends RecordDefToRecordType<T> = RecordDefToRecordType<T>,
   Input = unknown,
   // Validations extends MapValidations<Output> = MapValidations<Output>,
-> extends SafeParsableObject<Output, `Record<${T[0]['type']},${T[1]['type']}>`, Input> {
+> extends SafeParsableObject<Output, string, 'record', Input> {
+  [parserObject]: ParserObject<
+    Output,
+    string,
+    'record',
+    Input,
+    { readonly keyParser: T[0]; readonly valueParser: T[1] }
+  >
+  readonly definition: { readonly keyParser: T[0]; readonly valueParser: T[1] }
   customValidator(
     customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
     ...otherArgs: unknown[]
   ): this
-  readonly keyParser: T[0]
-  readonly valueParser: T[1]
+  // readonly keyParser: T[0]
+  // readonly valueParser: T[1]
 }
+
+const baseRecordObject = createValidationBuilder(baseObject, recordValidations as any)
+
 export function vRecord<P extends MinimumSafeParsableObject>(
   recordParser: P,
 ): VRecord<[MinimumSafeParsableKey, P]>
@@ -134,11 +165,11 @@ export function vRecord<
   K extends MinimumSafeParsableKey,
   P extends MinimumSafeParsableObject,
   T extends RecordDef = [K, P],
->(keyParser: K, recordParser: P, options?: Partial<RecordOptions<T>>): VRecord<T>
+>(keyParser: K, recordParser: P, options?: RecordOptions<T>): VRecord<T>
 export function vRecord(
   recordOrKeyParser: MinimumSafeParsableKey | MinimumSafeParsableObject,
   recordParser?: MinimumSafeParsableObject,
-  options: Partial<RecordOptions<any>> = {},
+  options: RecordOptions<any> = {},
 ): any {
   const kParser: MinimumSafeParsableKey =
     recordParser === undefined
@@ -148,16 +179,13 @@ export function vRecord(
     recordParser === undefined ? recordOrKeyParser : recordParser
   const fOptions: RecordOptions<any> = {
     breakOnFirstError: true,
-    notARecord: defaultErrorFn.notARecord,
     ...options,
   }
-  const vRec = createBaseValidationBuilder(
-    fOptions.parser ? fOptions.parser : parseRecord([kParser, rParser], fOptions),
-    recordValidations as any,
+  return createFinalBaseObject(
+    baseRecordObject,
+    (options as any).parser || parseRecord([kParser, rParser], fOptions),
     `Record<${kParser.type},${rParser.type}>`,
+    'record',
+    { keyParser: kParser, valueParser: rParser },
   )
-  return Object.defineProperties(vRec, {
-    keyParser: { value: kParser },
-    valueParser: { value: rParser },
-  })
 }

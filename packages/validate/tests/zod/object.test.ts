@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { it, expect } from 'vitest'
-import { vObject } from '../../src/types/object'
 import { vNumber, vNumberInstance } from '../../src/types/number'
 import { vString, vStringInstance } from '../../src/types/string'
 import { vDateInstance } from '../../src/types/date'
-import { vArray, vUnion, vUnknownInstance } from '../../src/types/init'
+import { vArray, vUnion, vUnknownInstance, vObject } from '../../src/types/init'
 import { vBoolean } from '../../src/types/boolean'
 import { VInfer } from '../../src/types/base'
 
@@ -26,6 +25,7 @@ const testObject = vObject(obj)
 type Test = VInfer<typeof testObject>
 
 it('object type inference', () => {
+  // const x = testObject.parse({})
   type TestType = {
     f1: number
     f2?: string | undefined

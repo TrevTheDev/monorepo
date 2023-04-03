@@ -1,16 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from 'toolbelt'
 
-import type {
-  SafeParseFn,
-  SafeParsableObject,
+import { SafeParseFn, SafeParsableObject, defaultErrorFnSym, createFinalBaseObject } from './base'
+
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 // function saneBooleanParser(
 //   unmatchedValue: true | false | undefined,
@@ -64,8 +67,8 @@ import { createBaseValidationBuilder } from './init'
 // const safeSaneBooleanParser = defaultSaneBooleanParser(false)
 
 export function parseBoolean(
-  invalidBooleanFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseBoolean,
-): (value: unknown) => ResultError<ValidationErrors, boolean> {
+  invalidBooleanFn: (invalidValue: unknown) => SingleValidationError = errorFns.parseBoolean,
+): SafeParseFn<unknown, boolean> {
   return (value: unknown): ResultError<ValidationErrors, boolean> =>
     typeof value !== 'boolean'
       ? [{ input: value, errors: [invalidBooleanFn(value)] }, undefined]
@@ -90,11 +93,11 @@ export function parseBoolean(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export function beTrue(errorReturnValueFn: () => string = defaultErrorFn.beTrue) {
+export function beTrue(errorReturnValueFn: () => string = errorFns.beTrue) {
   return (value: boolean) => (!value ? errorReturnValueFn() : undefined)
 }
 
-export function beFalse(errorReturnValueFn: () => string = defaultErrorFn.beFalse) {
+export function beFalse(errorReturnValueFn: () => string = errorFns.beFalse) {
   return (value: boolean) => (value ? errorReturnValueFn() : undefined)
 }
 
@@ -133,7 +136,7 @@ export type VBoolean<
   Output extends boolean = boolean,
   Input = unknown,
   Validations extends ValidationArray<boolean> = BooleanValidations,
-> = SafeParsableObject<Output, 'boolean', Input> & {
+> = SafeParsableObject<Output, 'boolean', 'boolean', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -141,22 +144,38 @@ export type VBoolean<
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VBoolean<Output, Input, Validations>
 }
+type BooleanOptions =
+  | {
+      parseBooleanError: DefaultErrorFn['parseBoolean']
+    }
+  | {
+      parser: SafeParseFn<unknown, boolean>
+    }
+  | Record<string, never>
 
-type BooleanOptions = {
-  parser: SafeParseFn<unknown, boolean>
-  parseBooleanError: (invalidValue: unknown) => SingleValidationError
-}
+const baseBooleanObject = createValidationBuilder(
+  baseObject,
+  booleanValidations,
+) as unknown as VBoolean
 
-export const vBoolean = (options: Partial<BooleanOptions> = {}) =>
-  createBaseValidationBuilder(
-    options.parser
-      ? options.parser
-      : parseBoolean(
-          options.parseBooleanError ? options.parseBooleanError : defaultErrorFn.parseBoolean,
-        ),
-    booleanValidations,
+export function vBoolean(options: BooleanOptions = {}) {
+  return createFinalBaseObject(
+    baseBooleanObject,
+    (options as any).parser || parseBoolean((options as any).parseBooleanError),
     'boolean',
-  ) as unknown as VBoolean
+    'boolean',
+  )
+}
+//  =>
+//   createBaseValidationBuilder(
+//     options.parser
+//       ? options.parser
+//       : parseBoolean(
+//           options.parseBooleanError ? options.parseBooleanError : errorFns.parseBoolean,
+//         ),
+//     booleanValidations,
+//     'boolean',
+//   ) as unknown as VBoolean
 
 export const vBooleanInstance = vBoolean()
 

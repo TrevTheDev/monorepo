@@ -1,23 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { ResultError, DeepWriteable } from 'toolbelt'
-import type {
-  SafeParseFn,
-  SafeParsableObject,
+import { SafeParseFn, SafeParsableObject, defaultErrorFnSym, createFinalBaseObject } from './base'
+
+import { baseObject } from './init'
+import {
   SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
-} from './base'
-import defaultErrorFn from './defaultErrors'
-import { createBaseValidationBuilder } from './init'
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 export function parseDate(
-  invalidDateFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseDate,
-): (value: unknown) => ResultError<ValidationErrors, Date> {
+  invalidDateFn?: (invalidValue: string) => SingleValidationError,
+): SafeParseFn<unknown, Date> {
   return (value: unknown): ResultError<ValidationErrors, Date> =>
     !(value instanceof Date)
-      ? [{ input: value, errors: [invalidDateFn(String(value))] }, undefined]
+      ? [
+          { input: value, errors: [(invalidDateFn || errorFns.parseDate)(String(value))] },
+          undefined,
+        ]
       : [undefined, value as Date]
 }
 
@@ -34,7 +40,7 @@ export function after(
   errorReturnValueFn: (
     invalidValue: Date,
     afterDate: Date,
-  ) => SingleValidationError = defaultErrorFn.after,
+  ) => SingleValidationError = errorFns.after,
 ) {
   return (value: Date) => (value < date ? errorReturnValueFn(value, date) : undefined)
 }
@@ -44,7 +50,7 @@ export function before(
   errorReturnValueFn: (
     invalidValue: Date,
     beforeDate: Date,
-  ) => SingleValidationError = defaultErrorFn.before,
+  ) => SingleValidationError = errorFns.before,
 ) {
   return (value: Date) => (value > date ? errorReturnValueFn(value, date) : undefined)
 }
@@ -83,7 +89,7 @@ export type VDate<
   Output extends Date = Date,
   Input = unknown,
   Validations extends ValidationArray<Date> = DateValidations,
-> = SafeParsableObject<Output, 'Date', Input> & {
+> = SafeParsableObject<Output, 'Date', 'date', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -92,19 +98,33 @@ export type VDate<
     : never]: (...args: Parameters<Validations[I][1]>) => VDate<Output, Input, Validations>
 }
 
-type DateOptions = {
-  parser: SafeParseFn<unknown, Date>
-  parseDateError: (invalidValue: unknown) => SingleValidationError
-}
+type DateOptions =
+  | {
+      parseDateError: DefaultErrorFn['parseDate']
+    }
+  | {
+      parser: SafeParseFn<unknown, Date>
+    }
+  | Record<string, never>
 
-export const vDate = (options: Partial<DateOptions> = {}) =>
-  createBaseValidationBuilder(
-    options.parser
-      ? options.parser
-      : parseDate(options.parseDateError ? options.parseDateError : defaultErrorFn.parseDate),
+const baseDateObject = createValidationBuilder(baseObject, dateValidations) as unknown as VDate
 
-    dateValidations,
+export function vDate(options: DateOptions = {}): VDate {
+  return createFinalBaseObject(
+    baseDateObject,
+    (options as any).parser || parseDate((options as any).parseDateError),
     'Date',
-  ) as unknown as VDate
+    'date',
+  )
+}
+// =>
+//   createBaseValidationBuilder(
+//     options.parser
+//       ? options.parser
+//       : parseDate(options.parseDateError ? options.parseDateError : defaultErrorFn.parseDate),
+
+//     dateValidations,
+//     'Date',
+//   ) as unknown as VDate
 
 export const vDateInstance = vDate()

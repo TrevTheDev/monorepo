@@ -1,16 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DeepWriteable, ResultError } from 'toolbelt'
-import type {
+import {
   MinimumSafeParsableObject,
+  ParserObject,
   SafeParsableObject,
   SafeParseFn,
-  SingleValidationError,
   VInfer,
-  ValidationErrors,
+  createFinalBaseObject,
+  defaultErrorFnSym,
+  parserObject,
 } from './base'
 import { MinimumSafeParsableArray, VArrayFinite, ValidArrayItem } from './array'
-import { createBaseValidationBuilder, vArray } from './init'
-import defaultErrorFn from './defaultErrors'
+import { baseObject, vArray } from './init'
+import {
+  SingleValidationError,
+  ValidationErrors,
+  createValidationBuilder,
+} from './base validations'
+import { DefaultErrorFn } from './errorFns'
+
+const errorFns = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -21,10 +30,19 @@ import defaultErrorFn from './defaultErrors'
  ***************************************************************************************************************************** */
 type Fn = (...args: any) => any
 
-type FunctionOptions<Output extends Fn> = {
-  parser?: SafeParseFn<unknown, Output>
-  notAFunction: typeof defaultErrorFn.notAFunction
-}
+type FunctionOptions<Output extends Fn> =
+  | {
+      parseFunctionError: DefaultErrorFn['parseFunction']
+    }
+  | {
+      parser: SafeParseFn<unknown, Output>
+    }
+  | Record<string, never>
+
+// type FunctionOptions<Output extends Fn> = {
+//   parser?: SafeParseFn<unknown, Output>
+//   notAFunction: typeof defaultErrorFn.notAFunction
+// }
 
 interface FunctionTypes {
   args: unknown[]
@@ -32,38 +50,46 @@ interface FunctionTypes {
   fn: Fn
 }
 
-type FunctionDefinitionBase = {
-  parametersType?: MinimumSafeParsableArray | undefined
-  returnType?: MinimumSafeParsableObject | undefined
+type FunctionDefinition = {
+  parameterTypes: MinimumSafeParsableArray | undefined
+  returnType: MinimumSafeParsableObject | undefined
 }
 
-type FunctionDefinition =
-  | {
-      parametersType?: MinimumSafeParsableArray | undefined
-      returnType?: MinimumSafeParsableObject | undefined
-    }
-  | {
-      args?: ValidArrayItem[] | undefined
-      returnType?: MinimumSafeParsableObject | undefined
-    }
+type FunctionDefinitionType1<
+  P extends ValidArrayItem[] = ValidArrayItem[],
+  R extends MinimumSafeParsableObject = MinimumSafeParsableObject,
+> = {
+  args: P
+  returnType?: R | undefined
+}
 
-interface FnDefTpFnDefBase<
-  T extends FunctionDefinition,
-  PT extends MinimumSafeParsableArray | undefined = T extends {
+type FunctionDefinitionType2<
+  P extends MinimumSafeParsableArray = MinimumSafeParsableArray,
+  R extends MinimumSafeParsableObject = MinimumSafeParsableObject,
+> = {
+  parameterTypes: P
+  returnType?: R | undefined
+}
+
+type PartialFunctionDefinition =
+  | FunctionDefinitionType1
+  | FunctionDefinitionType2
+  | Record<string, never>
+
+interface PartialToFuncDef<T extends PartialFunctionDefinition> extends FunctionDefinition {
+  parameterTypes: T extends {
     args: infer A extends ValidArrayItem[]
   }
     ? VArrayFinite<A>
-    : T extends { parametersType: infer B extends MinimumSafeParsableArray }
+    : T extends { parameterTypes: infer B extends MinimumSafeParsableArray }
     ? B
-    : undefined,
-> extends FunctionDefinitionBase {
-  parametersType: PT
+    : undefined
   returnType: T extends { returnType: infer C extends MinimumSafeParsableObject } ? C : undefined
 }
 
 interface FunctionDefToFunction<
-  T extends FunctionDefinitionBase,
-  P extends MinimumSafeParsableArray | undefined = T['parametersType'],
+  T extends FunctionDefinition,
+  P extends MinimumSafeParsableArray | undefined = T['parameterTypes'],
   R extends MinimumSafeParsableObject | undefined = T['returnType'],
   Args extends unknown[] = P extends MinimumSafeParsableArray
     ? VInfer<P> extends any[]
@@ -90,7 +116,7 @@ function vFunctionWrapperB<
   P extends MinimumSafeParsableArray | undefined,
   R extends MinimumSafeParsableObject | undefined,
 >(
-  parametersType: P,
+  parameterTypes: P,
   returnType: R,
   implementation: (
     ...args: P extends MinimumSafeParsableArray
@@ -110,7 +136,7 @@ function vFunctionWrapperB<
     ...args
   ): R extends MinimumSafeParsableObject ? VInfer<R> : unknown {
     const params = (
-      parametersType ? parametersType.parse(args) : args
+      parameterTypes ? parameterTypes.parse(args) : args
     ) as P extends MinimumSafeParsableArray
       ? VInfer<P> extends any[]
         ? VInfer<P>
@@ -123,34 +149,12 @@ function vFunctionWrapperB<
   }
 }
 
-type FunctionDefinition1<
-  P extends readonly ValidArrayItem[],
-  R extends MinimumSafeParsableObject,
-> = {
-  args: P
-  returnType?: R
-  // implementation(
-  //   ...args: VInfer<VArrayFinite<PW>> extends any[] ? VInfer<VArrayFinite<PW>> : unknown[]
-  // ): [R] extends [never] ? any : VInfer<R>
-}
-
-type FunctionDefinition2<
-  P extends MinimumSafeParsableArray,
-  R extends MinimumSafeParsableObject,
-> = {
-  parametersType: P
-  returnType?: R
-  // implementation(
-  //   ...args: VInfer<P> extends any[] ? VInfer<P> : unknown[]
-  // ): [R] extends [never] ? any : VInfer<R>
-}
-
 export function vFunctionWrapper<
-  const P extends readonly ValidArrayItem[],
+  const P extends ValidArrayItem[],
   const R extends MinimumSafeParsableObject,
   PW extends ValidArrayItem[] = DeepWriteable<P>,
 >(
-  functionDefinition: FunctionDefinition1<P, R> & {
+  functionDefinition: FunctionDefinitionType1<P, R> & {
     implementation(
       ...args: VInfer<VArrayFinite<PW>> extends any[] ? VInfer<VArrayFinite<PW>> : unknown[]
     ): [R] extends [never] ? any : VInfer<R>
@@ -162,7 +166,7 @@ export function vFunctionWrapper<
   P extends MinimumSafeParsableArray,
   R extends MinimumSafeParsableObject,
 >(
-  functionDefinition: FunctionDefinition2<P, R> & {
+  functionDefinition: FunctionDefinitionType2<P, R> & {
     implementation(
       ...args: VInfer<P> extends any[] ? VInfer<P> : unknown[]
     ): [R] extends [never] ? any : VInfer<R>
@@ -171,13 +175,12 @@ export function vFunctionWrapper<
   ...args: VInfer<P> extends any[] ? VInfer<P> : unknown[]
 ) => [R] extends [never] ? any : VInfer<R>
 export function vFunctionWrapper(
-  functionDefinition: FunctionDefinitionBase & {
-    args?: ValidArrayItem[]
-    implementation(...args: unknown[]): unknown
+  functionDefinition: (FunctionDefinitionType1 | FunctionDefinitionType2) & {
+    implementation(...args: any[]): any
   },
 ): (...args: unknown[]) => unknown {
-  let paramParser: MinimumSafeParsableArray | undefined = functionDefinition.parametersType
-  if (functionDefinition.args) paramParser = vArray(functionDefinition.args)
+  let paramParser: MinimumSafeParsableArray | undefined = (functionDefinition as any).parameterTypes
+  if ('args' in functionDefinition) paramParser = vArray(functionDefinition.args)
   return vFunctionWrapperB(
     paramParser,
     functionDefinition.returnType,
@@ -194,20 +197,27 @@ export function vFunctionWrapper(
  ***************************************************************************************************************************** */
 
 export function parseFunction<
-  T extends FunctionDefinitionBase,
-  RT extends FunctionTypes = FunctionDefToFunction<T>,
->(
-  functionDefinition: T,
-  options: FunctionOptions<RT['fn']>,
-): (value: unknown) => ResultError<ValidationErrors, RT['fn']> {
-  const { parametersType, returnType } = functionDefinition
+  T extends FunctionDefinition,
+  RT extends Fn = FunctionDefToFunction<T>['fn'],
+>(functionDefinition: T, options: FunctionOptions<RT> = {}): SafeParseFn<unknown, RT> {
+  const { parameterTypes, returnType } = functionDefinition
   const rFn =
-    parametersType === undefined && returnType === undefined
-      ? (value: RT['fn']) => value
-      : (value: RT['fn']) => vFunctionWrapperB(parametersType, returnType, value)
-  return (value: unknown): ResultError<ValidationErrors, RT['fn']> => {
-    if (typeof value === 'function') return [undefined, rFn(value as RT['fn'])]
-    return [{ input: value, errors: [options.notAFunction(value)] }, undefined]
+    parameterTypes === undefined && returnType === undefined
+      ? (value: RT) => value
+      : (value: RT) => vFunctionWrapperB(parameterTypes, returnType, value)
+  return (value: unknown): ResultError<ValidationErrors, RT> => {
+    if (typeof value === 'function') return [undefined, rFn(value as any) as RT]
+    return [
+      {
+        input: value,
+        errors: [
+          ('parseFunctionError' in options ? options.parseFunctionError : errorFns.parseFunction)(
+            value,
+          ),
+        ],
+      },
+      undefined,
+    ]
   }
 }
 
@@ -247,13 +257,32 @@ const functionValidations = [
 
 export interface VFunction<
   T extends FunctionDefinition,
-  Output extends Fn = FunctionDefToFunction<FnDefTpFnDefBase<T>>['fn'],
+  Output extends Fn = FunctionDefToFunction<T>['fn'],
   Input = unknown,
-> extends SafeParsableObject<Output, 'Function', Input> {
-  functionDefinition: T
+> extends SafeParsableObject<Output, string, 'function', Input> {
+  [parserObject]: ParserObject<
+    Output,
+    string,
+    'function',
+    Input,
+    {
+      readonly parameterTypes: MinimumSafeParsableArray
+      readonly returnType: MinimumSafeParsableObject
+    }
+  >
+  readonly definition: {
+    readonly parameterTypes: MinimumSafeParsableArray
+    readonly returnType: MinimumSafeParsableObject
+  }
+  // functionDefinition: T
   args<S extends ValidArrayItem[]>(
     ...params: S
-  ): VFunction<{ [K in keyof T | 'args']: K extends 'args' ? S : K extends keyof T ? T[K] : never }>
+  ): T['parameterTypes'] extends MinimumSafeParsableArray
+    ? never
+    : VFunction<PartialToFuncDef<{ args: S; returnType: T['returnType'] }>>
+  parameterTypes<S extends MinimumSafeParsableArray>(
+    types: S,
+  ): VFunction<PartialToFuncDef<{ parameterTypes: S; returnType: T['returnType'] }>>
   returns<S extends MinimumSafeParsableObject>(
     returnType: S,
   ): VFunction<Omit<T, 'returnType'> & { returnType: S }>
@@ -264,48 +293,71 @@ export interface VFunction<
   ): this
 }
 
+const baseFunctionObject = createValidationBuilder(baseObject, functionValidations as any)
+
+function finaliseFunctionDefinition<T extends PartialFunctionDefinition>(
+  functionDefinition?: T,
+): PartialToFuncDef<T> {
+  if (functionDefinition) {
+    let parameterTypes: MinimumSafeParsableArray | undefined
+    if ('args' in functionDefinition && functionDefinition.args)
+      parameterTypes = vArray(functionDefinition.args)
+    else if ('parameterTypes' in functionDefinition)
+      parameterTypes = functionDefinition.parameterTypes
+    return {
+      parameterTypes,
+      returnType: functionDefinition.returnType,
+    } as unknown as PartialToFuncDef<T>
+  }
+  return {
+    parameterTypes: undefined,
+    returnType: undefined,
+  } as unknown as PartialToFuncDef<T>
+}
+
 export function vFunction<
-  T extends FunctionDefinition,
-  T2 extends FunctionDefinitionBase = FnDefTpFnDefBase<T>,
+  T extends PartialFunctionDefinition,
+  T2 extends FunctionDefinition = PartialToFuncDef<T>,
 >(
   functionDefinition?: T,
-  options: Partial<FunctionOptions<FunctionDefToFunction<T2>['fn']>> = {},
-): VFunction<T> {
-  const fOptions: FunctionOptions<FunctionDefToFunction<T2>['fn']> = {
-    notAFunction: defaultErrorFn.notAFunction,
-    ...options,
-  }
-  let parametersType
-  const fType: FunctionDefinition = functionDefinition || {}
-  if ('args' in fType && fType.args) parametersType = vArray(fType.args)
-  else if ('parametersType' in fType && fType.parametersType) parametersType = fType.parametersType
+  options: FunctionOptions<FunctionDefToFunction<T2>['fn']> = {},
+): VFunction<T2> {
+  const funcDef: FunctionDefinition = finaliseFunctionDefinition(functionDefinition)
 
-  const fDef = {
-    parametersType,
-    returnType: fType.returnType,
-  } as T2
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  const obj = createBaseValidationBuilder(
-    fOptions.parser
-      ? fOptions.parser
-      : parseFunction<T2, FunctionDefToFunction<T2>>(fDef, fOptions),
-    functionValidations as any,
-    `Function<(...args: ${fDef.parametersType ? fDef.parametersType.type : 'unknown[]'})=>${
-      fDef.returnType ? fDef.returnType.type : 'unknown'
-    }>`,
-  ) as VFunction<T>
+  const obj = createFinalBaseObject(
+    baseFunctionObject,
+    (options as any).parser || parseFunction(funcDef, options),
+    `Function<(...args: ${
+      funcDef.parameterTypes !== undefined ? funcDef.parameterTypes.type : 'unknown[]'
+    })=>${funcDef.returnType !== undefined ? funcDef.returnType.type : 'unknown'}>`,
+    'function',
+    funcDef,
+  ) as VFunction<T2>
   Object.defineProperties(obj, {
-    functionDefinition: {
-      value: functionDefinition,
-    },
     args: {
-      value(...params: ValidArrayItem[]) {
-        return vFunction({ ...functionDefinition, args: params }, options)
+      value(...params: ValidArrayItem[]): MinimumSafeParsableObject {
+        if (funcDef.parameterTypes !== undefined)
+          throw new Error('args cannot be set, if a parameterTypes has been supplied')
+        return (vFunction as any)(
+          { returnType: funcDef.returnType, args: params },
+          options,
+        ) as MinimumSafeParsableObject
+      },
+    },
+    parameterTypes: {
+      value(params: MinimumSafeParsableArray): MinimumSafeParsableObject {
+        return vFunction(
+          { returnType: funcDef.returnType, parameterTypes: params },
+          options,
+        ) as MinimumSafeParsableObject
       },
     },
     returns: {
-      value(returnType: MinimumSafeParsableObject) {
-        return vFunction({ ...functionDefinition, returnType }, options)
+      value(returnType: MinimumSafeParsableObject): MinimumSafeParsableObject {
+        return vFunction(
+          { ...(functionDefinition as any), returnType },
+          options,
+        ) as MinimumSafeParsableObject
       },
     },
   })

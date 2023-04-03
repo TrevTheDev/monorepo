@@ -2,7 +2,7 @@ import { it, expect } from 'vitest'
 import { vStringInstance } from '../../src/types/string'
 import { vArray } from '../../src/types/init'
 import { vNumberInstance } from '../../src/types/number'
-import { firstError } from '../../src/types/base'
+import { firstError } from '../../src/types/shared'
 
 it('array min', () => {
   try {

@@ -1,10 +1,10 @@
 import { it, expect } from 'vitest'
-import { vObject } from '../../src/types/object'
+
 import { ValidatedPromise, vPromise } from '../../src/types/promise'
 import { vStringInstance } from '../../src/types/string'
 import { vNumberInstance } from '../../src/types/number'
 import { VInfer } from '../../src/types/base'
-import { vLiteral } from '../../src/types/init'
+import { vLiteral, vObject } from '../../src/types/init'
 
 type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
   ? true
@@ -105,5 +105,5 @@ it('async promise parsing', () => {
 it('resolves', () => {
   const foo = vLiteral('foo')
   const res = vPromise(foo)
-  expect(res.resultParser).toEqual(foo)
+  expect(res.definition.resultParser).toEqual(foo)
 })

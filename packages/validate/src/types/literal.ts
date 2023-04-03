@@ -1,27 +1,44 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError } from 'toolbelt'
-import type {
-  CreateBaseValidationBuilderGn,
+import {
   SafeParseFn,
   SafeParsableObject,
-  SingleValidationError,
-  ValidationArray,
-  ValidationErrors,
-  ValidationItem,
+  defaultErrorFnSym,
+  createFinalBaseObject,
+  MinimumSafeParsableObject,
+  parserObject,
+  ParserObject,
 } from './base'
 
-import defaultErrorFn from './defaultErrors'
+import {
+  SingleValidationError,
+  ValidationErrors,
+  createValidationBuilder,
+} from './base validations'
+import defaultErrorFn from './errorFns'
 
+let errorFns = defaultErrorFn
+
+/** ****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ * parsers
+ * *****************************************************************************************************************************
+ * *****************************************************************************************************************************
+ ***************************************************************************************************************************** */
 export function parseLiteral<T>(
   literal: T,
-  invalidLiteralFn: (
-    invalidValue: unknown,
-    literalValue: T,
-  ) => SingleValidationError = defaultErrorFn.parseLiteral,
-): (value: unknown) => ResultError<ValidationErrors, T> {
+  invalidLiteralFn?: (typeof errorFns)['parseLiteral'],
+): SafeParseFn<unknown, T> {
   return (value: unknown): ResultError<ValidationErrors, T> =>
     literal !== value
-      ? [{ input: value, errors: [invalidLiteralFn(value, literal)] }, undefined]
+      ? [
+          {
+            input: value,
+            errors: [(invalidLiteralFn || errorFns.parseLiteral)(value, literal)],
+          },
+          undefined,
+        ]
       : [undefined, value as T]
 }
 
@@ -57,28 +74,20 @@ const literalValidations = literalValidations_ as LiteralValidations<any>
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * vBoolean
+ * VLiteral
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-interface VLiteral2<Output, Type extends string, Input>
-  extends SafeParsableObject<Output, Type, Input> {
-  literal: Output
-}
-
-export type VLiteral<
-  Output,
-  Type extends string = string,
-  Input = unknown,
-  Validations extends ValidationArray<Output> = LiteralValidations<Output>,
-> = VLiteral2<Output, Type, Input> & {
-  // default validations
-  [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
-      ? Validations[I][0]
-      : never
-    : never]: (...args: Parameters<Validations[I][1]>) => VLiteral<Output, Type, Input, Validations>
+export interface VLiteral<Output, Type extends string = string, Input = unknown>
+  extends SafeParsableObject<Output, Type, 'literal', Input> {
+  [parserObject]: ParserObject<Output, Type, 'literal', Input, { readonly literal: Output }>
+  readonly definition: { readonly literal: Output }
+  // literal: Output
+  customValidator<S extends unknown[]>(
+    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
+    ...otherArgs: S
+  ): this
 }
 
 export type VNaN = VLiteral<number, 'number'>
@@ -116,20 +125,23 @@ type VLiteralFn = {
   <T, Type extends string>(literal: T, options: LiteralOptions<T, Type>): VLiteral<T, Type>
 }
 
-export function initLiteralTypes(createBaseValidationBuilder: CreateBaseValidationBuilderGn) {
+export function initLiteralTypes(baseObject: MinimumSafeParsableObject) {
+  errorFns = baseObject[defaultErrorFnSym]
+  const baseLiteralObject = createValidationBuilder(baseObject, literalValidations)
+
+  /** ****************************************************************************************************************************
+   * vLiteral
+   ***************************************************************************************************************************** */
   const vLiteral = function vLiteralFunc<T, Type extends string>(
     literal: T,
     options: LiteralOptions<T, Type> = {},
   ): VLiteral<T, Type> {
-    return createBaseValidationBuilder(
-      'parser' in options
-        ? options.parser
-        : parseLiteral(
-            literal,
-            'invalidValueFn' in options ? options.invalidValueFn : defaultErrorFn.parseLiteral,
-          ),
-      literalValidations,
+    return createFinalBaseObject(
+      baseLiteralObject,
+      'parser' in options ? options.parser : parseLiteral(literal, options.invalidValueFn),
       options.type === undefined ? convertLiteralToString(literal) : options.type,
+      'literal',
+      { literal },
     ) as unknown as VLiteral<T, Type>
   } as unknown as VLiteralFn
 
@@ -137,107 +149,125 @@ export function initLiteralTypes(createBaseValidationBuilder: CreateBaseValidati
     | { parser: SafeParseFn<unknown, number> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
+  /** ****************************************************************************************************************************
+   * vNaN
+   ***************************************************************************************************************************** */
   function vNaN(options: Partial<NaNOptions> = {}): VNaN {
-    const invalidValueFn: (invalidValue: string) => SingleValidationError =
-      'invalidValueFn' in options ? options.invalidValueFn : defaultErrorFn.parseNaN
-
     const vOptions = {
       parser: (value: unknown): ResultError<ValidationErrors, number> =>
         !Number.isNaN(value)
-          ? [{ input: value, errors: [invalidValueFn(String(value))] }, undefined]
+          ? [
+              {
+                input: value,
+                errors: [((options as any).invalidValueFn || errorFns.parseNaN)(String(value))],
+              },
+              undefined,
+            ]
           : [undefined, value as number],
 
       ...options,
     }
-    return vLiteral<number, 'number'>(NaN, { parser: vOptions.parser }) as unknown as VNaN
+    return vLiteral<number, 'NaN'>(NaN, vOptions) as unknown as VNaN
   }
 
+  /** ****************************************************************************************************************************
+   * vUndefined
+   ***************************************************************************************************************************** */
   type UndefinedOptions =
     | { parser: SafeParseFn<unknown, undefined> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   const vUndefined = (
-    options: Partial<UndefinedOptions> = { invalidValueFn: defaultErrorFn.parseUndefined },
+    options: UndefinedOptions = { invalidValueFn: (val) => errorFns.parseUndefined(val) },
   ): VUndefined =>
     vLiteral<undefined, 'undefined'>(undefined, {
       ...options,
       type: 'undefined',
     }) as unknown as VUndefined
 
+  /** ****************************************************************************************************************************
+   * vNull
+   ***************************************************************************************************************************** */
   type NullOptions =
     | { parser: SafeParseFn<unknown, null> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   const vNull = (
-    options: Partial<NullOptions> = { invalidValueFn: defaultErrorFn.parseNull },
-  ): VNull => vLiteral<null, 'null'>(null, { ...options, type: 'null' }) as unknown as VNull
+    options: NullOptions = { invalidValueFn: (val) => errorFns.parseNull(val) },
+  ): VNull => vLiteral<null, 'null'>(null, { ...options, type: 'null' }) as VNull
 
+  /** ****************************************************************************************************************************
+   * vNullishL
+   ***************************************************************************************************************************** */
   type NullishOptions =
     | { parser: SafeParseFn<unknown, null | undefined> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
+    | Record<string, never>
 
-  function vNullishL(
-    options: Partial<NullishOptions> = {},
-    // parser?: ParseFn<unknown, null | undefined>,
-    // invalidNullFn: (invalidValue: unknown) => SingleValidationError = defaultErrorFn.parseNullish,
-  ): VNullishL {
-    const invalidValueFn: (invalidValue: unknown) => SingleValidationError =
-      'invalidValueFn' in options ? options.invalidValueFn : defaultErrorFn.parseNullish
-
-    const vOptions = {
-      parser: (value: unknown): ResultError<ValidationErrors, null | undefined> =>
-        value !== null && value !== undefined
-          ? [{ input: value, errors: [invalidValueFn(value)] }, undefined]
-          : [undefined, value],
-
-      ...options,
-    }
+  function vNullishL(options: NullishOptions = {}): VNullishL {
     return vLiteral<null | undefined, 'null|undefined'>(
       'null|undefined' as unknown as null | undefined,
       {
-        parser: vOptions.parser,
+        parser:
+          (options as any).parser ||
+          ((value: unknown): ResultError<ValidationErrors, null | undefined> =>
+            value !== null && value !== undefined
+              ? [
+                  {
+                    input: value,
+                    errors: [((options as any).invalidValueFn || errorFns.parseNullish)(value)],
+                  },
+                  undefined,
+                ]
+              : [undefined, value]),
         type: 'null|undefined',
       },
-    ) as unknown as VNullishL
+    ) as VNullishL
   }
 
-  type AnyOptions = { parser: SafeParseFn<unknown, any> }
-
-  function vAny(options?: AnyOptions): VAny {
-    const aOptions = {
-      parser: (value: unknown): ResultError<ValidationErrors, any> => [undefined, value as any],
-      ...(options || {}),
+  /** ****************************************************************************************************************************
+   * vAny
+   ***************************************************************************************************************************** */
+  function vAny(options: { parser?: SafeParseFn<unknown, any> } = {}): VAny {
+    return vLiteral<any, 'any'>('any', {
+      parser:
+        options.parser ||
+        ((value: unknown): ResultError<ValidationErrors, any> => [undefined, value as any]),
       type: 'any' as const,
-    }
-    return vLiteral<any, 'any'>('any', aOptions) as unknown as VAny
+    }) as VAny
   }
 
-  type UnknownOptions = { parser: SafeParseFn<unknown, unknown> }
-
-  function vUnknown(options?: UnknownOptions): VUnknown {
-    const aOptions = {
-      parser: (value: unknown): ResultError<ValidationErrors, any> => [undefined, value as unknown],
-      ...(options || {}),
+  /** ****************************************************************************************************************************
+   * vUnknown
+   ***************************************************************************************************************************** */
+  function vUnknown(options: { parser?: SafeParseFn<unknown, unknown> } = {}): VUnknown {
+    return vLiteral<unknown, 'unknown'>('unknown', {
+      parser:
+        options.parser ||
+        ((value: unknown): ResultError<ValidationErrors, any> => [undefined, value as unknown]),
       type: 'unknown' as const,
-    }
-    return vLiteral<unknown, 'unknown'>('unknown', aOptions) as unknown as VUnknown
+    }) as VUnknown
   }
 
+  /** ****************************************************************************************************************************
+   * vNever
+   ***************************************************************************************************************************** */
   type NeverOptions =
     | { parser: SafeParseFn<unknown, never> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
+    | Record<string, never>
 
-  function vNever(options?: NeverOptions): VNever {
-    const nOptions = {
-      parser: (value: unknown): ResultError<ValidationErrors, number> => [
-        { input: value, errors: [nOptions.invalidValueFn(value)] },
+  function vNever(options: NeverOptions = {}): VNever {
+    return vLiteral<never, 'never'>('never' as never, {
+      parser: (value: unknown): ResultError<ValidationErrors, never> => [
+        {
+          input: value,
+          errors: [((options as any).invalidValueFn || errorFns.parseNever)(value)],
+        },
         undefined,
       ],
-      invalidValueFn: defaultErrorFn.parseNever,
-      ...options,
       type: 'never' as const,
-    }
-    return vLiteral<never, 'never'>('never' as never, nOptions) as unknown as VNever
+    }) as VNever
   }
 
   return { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever, vNullishL }
