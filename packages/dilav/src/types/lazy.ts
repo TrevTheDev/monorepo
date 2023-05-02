@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFinalBaseObject } from './base'
 import { BaseSchema, MinimumSchema, SafeParsableObjectTypes } from './types'
 import { baseObject } from './init'

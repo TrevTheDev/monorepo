@@ -4,8 +4,6 @@ import { ResultError, isResult } from 'toolbelt'
 import {
   MinimumArrayRestSchema,
   MinimumSchema,
-  ObjectDefinition,
-  VObject,
   VOptional,
   ValidArrayItem,
   ValidationErrors,
