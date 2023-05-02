@@ -1,6 +1,6 @@
 {
   "name": "dilav",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "runtime type validation for javascript",
   "main": "./src/index",
   "scripts": {
@@ -40,6 +40,6 @@
     "node": ">=19.0.0"
   },
   "dependencies": {
-    "toolbelt": "*"
+    "@trevthedev/toolbelt": "*"
   }
 }
