@@ -12,7 +12,7 @@ import {
   parserObject,
 } from './types'
 
-export function typeOfItem(val: any): string {
+function typeOfItem(val: any): string {
   // eslint-disable-next-line no-nested-ternary
   return val === null
     ? 'Null'
@@ -55,11 +55,9 @@ export function isTransformed(schema: MinimumSchema): boolean {
   return def !== undefined && 'transformed' in def && def.transformed === true
 }
 
-export function isObjectSchema(
-  mspo: MinimumSchema,
-): mspo is VObject<ObjectDefinition, MinimumSchema> {
-  return mspo.baseType === 'object'
-}
+// function isObjectSchema(mspo: MinimumSchema): mspo is VObject<ObjectDefinition, MinimumSchema> {
+//   return mspo.baseType === 'object'
+// }
 
 export function isSpread(schema: ValidArrayItem): schema is MinimumArrayRestSchema {
   return 'isSpread' in schema && schema.isSpread === true

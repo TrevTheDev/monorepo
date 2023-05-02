@@ -277,14 +277,14 @@ export function parseDiscriminatedUnion<
  * @param typeStrings - any array of strings
  * @returns
  */
-export const stringArrayToUnionTypeString = (typeStrings: string[]) => typeStrings.join('|')
-/**
- * Wraps each item in a string array in single quotes e.g. ['A','B'] becomes ["'A'","'B'"]
- * @param typeStrings - any array of strings
- * @returns
- */
-export const wrapStringArrayInSingleQuotes = (typeStrings: string[]) =>
-  typeStrings.map((string) => `'${string}'`)
+const stringArrayToUnionTypeString = (typeStrings: string[]) => typeStrings.join('|')
+// /**
+//  * Wraps each item in a string array in single quotes e.g. ['A','B'] becomes ["'A'","'B'"]
+//  * @param typeStrings - any array of strings
+//  * @returns
+//  */
+// const wrapStringArrayInSingleQuotes = (typeStrings: string[]) =>
+//   typeStrings.map((string) => `'${string}'`)
 
 // export function deepRequired(mspObj: MinimumSafeParsableObject): MinimumSafeParsableObject {
 //   return 'deepRequired' in mspObj ? deepRequired(mspObj.deepRequired()) : required(mspObj)

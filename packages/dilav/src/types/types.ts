@@ -54,7 +54,7 @@ export const parserObject = Symbol('parser')
 // type ParserObjectSymbol = typeof parserObject
 
 export const defaultErrorFnSym = Symbol('defaultErrorFnSym')
-export type DefaultErrorFnSym = typeof defaultErrorFnSym
+// export type DefaultErrorFnSym = typeof defaultErrorFnSym
 
 export type SafeParsableObjectTypes =
   | 'infinite array'
@@ -1131,7 +1131,7 @@ type RequiredObject<
   },
 > = RT
 
-export interface VObjectBase<
+interface VObjectBase<
   PropertySchemas extends ObjectDefinition,
   UnmatchedPropertySchema extends MinimumSchema,
   Options extends { type: string },
