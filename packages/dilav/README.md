@@ -1,10 +1,108 @@
-# Why I did this project
-
-I'm currently unemployed and to show case my programming skills I created this project. If you like it and know of someone needing similar projects created, please contact me.
-
 # Introduction
 
-Dilav transforms `unknown` types, into known typescript types. Similar to how Typescript provides type assurance at compile time, Dilav provides type assurance at run-time.
+Dilav is a blazingly fast way to transforms `unknown` types, into valid known typescript types. Similar to how Typescript provides type assurance at compile time, Dilav provides type assurance at run-time. Dilav is a heteropalindrome of valid.
+
+- [Introduction](#introduction)
+  - [Why I created this project](#why-i-created-this-project)
+  - [Relationship to Zod](#relationship-to-zod)
+  - [Status](#status)
+  - [Advantages of Dilav](#advantages-of-dilav)
+- [Installation](#installation)
+  - [Requirements](#requirements)
+  - [npm install](#npm-install)
+  - [Basic usage](#basic-usage)
+- [Documentation](#documentation)
+  - [Primitives](#primitives)
+  - [Coercion for primitives](#coercion-for-primitives)
+  - [Literals](#literals)
+  - [Special Literal Types](#special-literal-types)
+    - [NaN](#nan)
+    - [Null](#null)
+    - [Nullish](#nullish)
+    - [Any](#any)
+    - [Unknown](#unknown)
+    - [Never](#never)
+    - [Void](#void)
+    - [Undefined](#undefined)
+  - [Strings](#strings)
+    - [ISO datetimes](#iso-datetimes)
+    - [`v.customize.string`](#vcustomizestring)
+  - [Numbers](#numbers)
+    - [`v.customize.number`](#vcustomizenumber)
+  - [BigInts](#bigints)
+    - [`v.customize.bigInt`](#vcustomizebigint)
+  - [Booleans](#booleans)
+    - [`v.customize.boolean`](#vcustomizeboolean)
+  - [Dates](#dates)
+    - [`v.customize.date`](#vcustomizedate)
+  - [Enums](#enums)
+    - [`string` enums](#string-enums)
+    - [Typescript enums](#typescript-enums)
+    - [`const` enums](#const-enums)
+  - [Optionals](#optionals)
+  - [Nullables](#nullables)
+  - [Nullishables](#nullishables)
+  - [Objects](#objects)
+    - [`.definition`](#definition)
+    - [`.extends`](#extends)
+    - [`.merge`](#merge)
+    - [`.pick/.omit`](#pickomit)
+    - [`.partial`](#partial)
+    - [`.deepPartial`](#deeppartial)
+    - [`.required`](#required)
+    - [`.passThrough`](#passthrough)
+    - [`.strict`](#strict)
+    - [`.catchAll`](#catchall)
+    - [`v.object`](#vobject)
+  - [Arrays](#arrays)
+    - [.definition](#definition-1)
+    - [validations](#validations)
+    - [`.spread`](#spread)
+    - [`v.array`](#varray)
+  - [Unions](#unions)
+    - [Discriminated Unions](#discriminated-unions)
+    - [String Literal Unions](#string-literal-unions)
+  - [Intersections](#intersections)
+  - [Promises](#promises)
+  - [InstanceOfs](#instanceofs)
+  - [Records](#records)
+  - [Maps](#maps)
+  - [Sets](#sets)
+  - [Recursive types](#recursive-types)
+  - [Functions](#functions)
+  - [Custom Schemas](#custom-schemas)
+  - [Schema Methods](#schema-methods)
+    - [`.parse`](#parse)
+    - [`.parseAsync`](#parseasync)
+    - [`.safeParse`](#safeparse)
+    - [`.safeParseAsync`](#safeparseasync)
+    - [`.optional`](#optional)
+    - [`.nullable`](#nullable)
+    - [`.nullish`](#nullish-1)
+    - [`.array`](#array)
+    - [`.promise`](#promise)
+    - [`.or`](#or)
+    - [`.and`](#and)
+    - [`.pipe`](#pipe)
+    - [`.type`](#type)
+    - [`.baseType`](#basetype)
+    - [`.customValidation`](#customvalidation)
+    - [`.customValidationAsync`](#customvalidationasync)
+    - [transformation methods](#transformation-methods)
+      - [`.preprocess`](#preprocess)
+      - [`.postprocess`](#postprocess)
+      - [`.transform`](#transform)
+      - [`.catch`](#catch)
+      - [`.default`](#default)
+  - [Other Topics](#other-topics)
+    - [Type inference](#type-inference)
+    - [Writing generic functions](#writing-generic-functions)
+    - [Error handling](#error-handling)
+      - [`DefaultErrorFn`](#defaulterrorfn)
+
+## Why I created this project
+
+I'm currently unemployed and to showcase my skills I developed this project. If you like it and know of someone needing similar projects created, please contact me.
 
 ## Relationship to Zod
 
@@ -14,26 +112,27 @@ Whilst the APIs are similar, Dilav includes significant changes and is therefore
 
 Zod has ~3,950 lines of JavaScript code and Dilav has ~2,650.
 
-The benchmarks in the test folder shows Dilav is ~240% faster on my computer for Benchmark 1 which parses objects and arrays and 780% faster for Benchmark 2 which parses only a string and 2200% faster for Benchmark 3 which only parses a string. These numbers appear high to me and I haven't yet fully explored why they are so high, so they should be taken with a pinch of salt.
+The benchmarks in the test folder shows Dilav is ~240% faster on my computer for Benchmark 1 which parses objects and arrays and 890% faster for Benchmark 2 which parses only a string and 250% faster for Benchmark 3 which only parses a string. These numbers appear high to me and I haven't yet fully explored why they are so high, so they should be taken with a pinch of salt.
 
 **Select API changes from Zod:**
 
-- `v.Object` returns the original object and not a new object
+- `v.Object` by default returns the original object and not a new object
 - `v.Object` by default doesn't allow unspecified properties
 - `z.tuple` functionality has been merged into `v.array`
-- `z.discriminatedUnion` functionality was merged into `v.union``
-- ``safeParse` instead of returning an object, returns an array of type `ResultError`
-- most primitives do not need to be called - `v.string` vs `z.string() `
+- `z.discriminatedUnion` functionality was merged into `v.union`
+- `z.nativeEnum` functionality was merged into `v.enum`
+- `safeParse` instead of returning an object, returns an array of type `ResultError`
+- most primitives do not need to be called - `v.string` vs `z.string()`
 - customisation of errors is done via functions, rather than strings
-- minor capitalisation and spelling changes to methods.
+- minor capitalisation and spelling changes to methods
 - `z.ZodType` is split across multiple types
-- `.refine` and `z.superRefine` are not required as `.preprocess` and `.postprocess` and multiple other methods enable one to appropriately customise schemas and errors.
+- `.refine` and `z.superRefine` are not replaced by `.customValidation`, `.preprocess` and `.postprocess` enable one to appropriately customise input values, validations, errors and return values
 - `.describe` not implemented
 - `.brand` not implemented
 
 ## Status
 
-Dilav is in it's first alpha release, to seek feedback from people who may be interested in the project. There are a number of things that may be improved in the public API in subsequent releases. I'm also considering releasing an even more performance focused API.
+Dilav is in it's first alpha release, to seek feedback from people who may be interested in the project. There are a number of things that may be improved in the public API in subsequent releases. I'm also considering releasing an even more performance focused API. Dilav follows Zod's example with regards to async validations, but the API could be better so I may rework that API entirely.
 
 ## Advantages of Dilav
 
@@ -41,7 +140,7 @@ Dilav is in it's first alpha release, to seek feedback from people who may be in
 - It's small
 - It has no dependencies
 - It should be tree shakeable allowing one to use only the parts one needs
-- Its architecture is simple, meaning once stabilised it should be highly reliable
+- It's architecture is simple, meaning once stabilised it should be highly reliable
 
 # Installation
 
@@ -95,6 +194,8 @@ const userSchema = v.object({ username: v.string })
 type UserType = v.Infer<typeof userSchema> //  infers the schema type: { username: string }
 const user = userSchema.parse({ username: 'Fred' }) // => { username: 'Fred' }
 ```
+
+# Documentation
 
 ## Primitives
 
@@ -155,6 +256,65 @@ v.literal(aDate).parse(aDate)
 v.literal('hello').definition.literal // => 'hello'
 ```
 
+## Special Literal Types
+
+### NaN
+
+```typescript
+v.NaN.parse(NaN)
+v.customize.NaN({ invalidValueFn: (value) => `${value} is not NaN` }).parse(1) // throws
+```
+
+### Null
+
+```typescript
+v.null.parse(null)
+v.customize.null({ invalidValueFn: (value) => `${value} is not null` }).parse(1) // throws
+```
+
+### Nullish
+
+```typescript
+v.nullish.parse(null)
+v.nullish.parse(undefined)
+// NOTE the .nullishL not .nullish
+v.customize.nullishL({ invalidValueFn: (value) => `${value} is not nullish` }).parse(1) // throws
+```
+
+### Any
+
+```typescript
+v.any.parse('hello')
+```
+
+### Unknown
+
+```typescript
+v.unknown.parse('hello')
+```
+
+### Never
+
+```typescript
+v.never.parse(1) // throws
+v.customize.never({ invalidValueFn: (value) => `${value} is not never` }).parse(1) // throws
+```
+
+### Void
+
+```typescript
+v.void.parse()
+v.void.parse(undefined)
+v.customize.void({ invalidValueFn: (value) => `${value} is not void` }).parse(1) // throws
+```
+
+### Undefined
+
+```typescript
+v.undefined.parse(undefined)
+v.customize.undefined({ invalidValueFn: (value) => `${value} is not undefined` }).parse(1) // throws
+```
+
 ## Strings
 
 ```typescript
@@ -205,7 +365,7 @@ One can often provide customised validation error messages when adding a validat
 v.string.max(5, (value) => `${value} is too long!`).parse('12345')
 ```
 
-String validations have the following call signatures (`DefaultErrorFn` is defined elsewhere TODO):
+String validations have the following call signatures:
 
 ```typescript
 type ValidationError = string
@@ -232,7 +392,8 @@ type StringValidationFn = (value: string) => ValidationError | undefined
 - `includes(includedString: string, position?: number, errorFn?: DefaultErrorFn['includes']): StringValidationFn`
 - `startsWith(startString: string, errorFn?: DefaultErrorFn['startsWith']): StringValidationFn`
 - `endsWith(endString: string, errorFn?: DefaultErrorFn['endsWith']): StringValidationFn`
-- `customValidation<S extends unknown[]>( customValidator: (value: string, ...otherArgs: S) => ValidationError | undefined, ...otherArgs: S): StringValidationFn`
+
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
 
 ### ISO datetimes
 
@@ -301,30 +462,28 @@ v.number.finite().parse(1) // value must be finite, not Infinity or -Infinity
 v.number.safe() // value must be between Number.MIN_SAFE_INTEGER and Number.MAX_SAFE_INTEGER
 ```
 
-Number validations have the following call signatures (`DefaultErrorFn` is defined elsewhere TODO):
+Number validations have the following call signatures:
 
 ```typescript
 type ValidationError = string
 type NumberValidationFn = (value: number) => ValidationError | undefined
-
-greaterThan(number: number, errorFn?: DefaultErrorFn['greaterThan']): NumberValidationFn;
-greaterThanOrEqualTo(number: number, errorFn?: DefaultErrorFn['greaterThanOrEqualTo']): NumberValidationFn;
-lesserThan(number: number, errorFn?: DefaultErrorFn['lesserThan']): NumberValidationFn;
-lesserThanOrEqualTo(number: number, errorFn?: DefaultErrorFn['lesserThanOrEqualTo']): NumberValidationFn;
-integer(errorFn?: DefaultErrorFn['integer']): NumberValidationFn;
-positive(errorFn?: DefaultErrorFn['positive']): NumberValidationFn;
-nonNegative(errorFn?: DefaultErrorFn['nonNegative']): NumberValidationFn;
-negative(errorFn?: DefaultErrorFn['negative']): NumberValidationFn;
-nonPositive(errorFn?: DefaultErrorFn['nonPositive']): NumberValidationFn;
-notNaN(errorFn?: DefaultErrorFn['notNaN']): NumberValidationFn;
-multipleOf(number: number, errorFn?: DefaultErrorFn['multipleOf']): NumberValidationFn;
-finite(errorFn?: DefaultErrorFn['finite']): NumberValidationFn;
-safe(errorFn?: DefaultErrorFn['safe']): NumberValidationFn;
-customValidation<S extends unknown[]>(
-    customValidator: (value: number, ...otherArgs: S) => ValidationError | undefined,
-    ...otherArgs: S
-): NumberValidationFn
 ```
+
+- `greaterThan(number: number, errorFn?: DefaultErrorFn['greaterThan']): NumberValidationFn;`
+- `greaterThanOrEqualTo(number: number, errorFn?: DefaultErrorFn['greaterThanOrEqualTo']): NumberValidationFn;`
+- `lesserThan(number: number, errorFn?: DefaultErrorFn['lesserThan']): NumberValidationFn;`
+- `lesserThanOrEqualTo(number: number, errorFn?: DefaultErrorFn['lesserThanOrEqualTo']): NumberValidationFn;`
+- `integer(errorFn?: DefaultErrorFn['integer']): NumberValidationFn;`
+- `positive(errorFn?: DefaultErrorFn['positive']): NumberValidationFn;`
+- `nonNegative(errorFn?: DefaultErrorFn['nonNegative']): NumberValidationFn;`
+- `negative(errorFn?: DefaultErrorFn['negative']): NumberValidationFn;`
+- `nonPositive(errorFn?: DefaultErrorFn['nonPositive']): NumberValidationFn;`
+- `notNaN(errorFn?: DefaultErrorFn['notNaN']): NumberValidationFn;`
+- `multipleOf(number: number, errorFn?: DefaultErrorFn['multipleOf']): NumberValidationFn;`
+- `finite(errorFn?: DefaultErrorFn['finite']): NumberValidationFn;`
+- `safe(errorFn?: DefaultErrorFn['safe']): NumberValidationFn;`
+
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
 
 ### `v.customize.number`
 
@@ -351,32 +510,22 @@ v.bigInt.negative() // < 0n
 v.bigInt.nonPositive() // <= 0n
 ```
 
-BigInt validations have the following call signatures (`DefaultErrorFn` is defined elsewhere TODO):
-
 ```typescript
 type ValidationError = string
 type BigIntValidationFn = (value: bigint) => ValidationError | undefined
-
-greaterThan(bigint: bigint, errorFn?: DefaultErrorFn['bigIntGreaterThan']): BigIntValidationFn
-greaterThanOrEqualTo(
-bigint: bigint,
-errorFn?: DefaultErrorFn['bigIntGreaterThanOrEqualTo'],
-): BigIntValidationFn
-lesserThan(bigint: bigint, errorFn?: DefaultErrorFn['bigIntLesserThan']): BigIntValidationFn
-lesserThanOrEqualTo(
-bigint: bigint,
-errorFn?: DefaultErrorFn['bigIntLesserThanOrEqualTo'],
-): BigIntValidationFn
-integer(errorFn?: DefaultErrorFn['bigIntInteger']): BigIntValidationFn
-positive(errorFn?: DefaultErrorFn['bigIntPositive']): BigIntValidationFn
-nonNegative(errorFn?: DefaultErrorFn['bigIntNonNegative']): BigIntValidationFn
-negative(errorFn?: DefaultErrorFn['bigIntNegative']): BigIntValidationFn
-nonPositive(errorFn?: DefaultErrorFn['bigIntNonPositive']): BigIntValidationFn
-customValidation<S extends unknown[]>(
-    customValidator: (value: bigint, ...otherArgs: S) => ValidationError | undefined,
-    ...otherArgs: S
-): BigIntValidationFn
 ```
+
+- `greaterThan(bigint: bigint, errorFn?: DefaultErrorFn['bigIntGreaterThan']): BigIntValidationFn`
+- `greaterThanOrEqualTo(bigint: bigint,errorFn?: DefaultErrorFn['bigIntGreaterThanOrEqualTo']): BigIntValidationFn`
+- `lesserThan(bigint: bigint, errorFn?: DefaultErrorFn['bigIntLesserThan']): BigIntValidationFn`
+- `lesserThanOrEqualTo(bigint: bigint,errorFn?: DefaultErrorFn['bigIntLesserThanOrEqualTo']): BigIntValidationFn`
+- `integer(errorFn?: DefaultErrorFn['bigIntInteger']): BigIntValidationFn`
+- `positive(errorFn?: DefaultErrorFn['bigIntPositive']): BigIntValidationFn`
+- `nonNegative(errorFn?: DefaultErrorFn['bigIntNonNegative']): BigIntValidationFn`
+- `negative(errorFn?: DefaultErrorFn['bigIntNegative']): BigIntValidationFn`
+- `nonPositive(errorFn?: DefaultErrorFn['bigIntNonPositive']): BigIntValidationFn`
+
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
 
 ### `v.customize.bigInt`
 
@@ -385,12 +534,6 @@ v.customize.bigInt(
   options?: {
     parseBigIntError? : (value: unknown) => string,  // function that returns string on parsing error
   }) // => v.BigInt
-```
-
-## NaNs
-
-```typescript
-v.NaN.parse(NaN)
 ```
 
 ## Booleans
@@ -454,15 +597,21 @@ v.customize.date(
 
 ## Enums
 
-```typescript
-const animalTypes = v.enum(['Dog', 'Cat', 'Fish'])
-type AnimalTypes = v.Infer<typeof animalTypes> // "Dog" | "Cat" | "Fish"
-animalTypes.parse('Dog') // => 'Dog'
-animalTypes.parse('dog') // => throws
+Dilav supports three types of enums: `string` enums, Typescript enums and `const` enums.
 
-console.log(animalTypes.definition.enumValues) // => ['Dog', 'Cat', 'Fish']
-console.log(animalTypes.enum.Dog) // => 'Dog'
-console.log(animalTypes.enum) // => { Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
+### `string` enums
+
+```typescript
+const animalTypes1 = v.enum(['Dog', 'Cat', 'Fish'])
+// equivalent to :
+const animalTypes2 = v.union(['Dog', 'Cat', 'Fish'], { stringLiteralUnion: true })
+
+type AnimalTypes = v.Infer<typeof animalTypes1> // "Dog" | "Cat" | "Fish"
+animalTypes1.parse('Dog') // => 'Dog'
+expect(() => animalTypes1.parse('dog')).toThrow() // => throws
+console.log(animalTypes1.definition.unionTypes) // => ['Dog', 'Cat', 'Fish']
+console.log(animalTypes1.enum) // => {Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
+console.log(animalTypes1.enum.Dog === 'Dog') // => true
 ```
 
 Due to limitations of Typescript, Dilav enums can't correctly infer string arrays of type `string[]`, and so the `as const` modifier is required:
@@ -472,22 +621,34 @@ const animalTypes = ['Dog', 'Cat', 'Fish'] as const // as const is required
 const animalEnum = v.enum(animalTypes)
 ```
 
-## Native enums
+A second options parameter may be passed to `v.enum` of the type:
 
-`nativeEnum` takes any object as it's definition, including native typescript enums, and on parsing if it finds a matching key, it returns the value of that key.
+`{ parseStringUnion?: DefaultErrorFn['parseStringUnion'] }`
+
+### Typescript enums
+
+Typescript enums takes a typescript enum or any valid object as input, and on parsing if it finds a matching value (default) or key, it returns the matched value or key.
 
 ```typescript
 enum fooEnum {
-  Cat,
+  Cat = 1,
   Dog,
 }
-const fooEnumSchema = v.nativeEnum(fooEnum)
+const fooEnumSchema = v.enum(fooEnum)
 type FooEnumSchema = v.Infer<typeof fooEnumSchema> // fooEnum
-fooEnumSchema.parse('Cat') // => 0
-fooEnumSchema.parse(1) // => 'Dog'
+const x1 = fooEnumSchema.parse('Cat') // => 'Cat'
+const x2 = fooEnumSchema.parse(1) // => 1
 fooEnumSchema.parse('Rat') // throws
-console.log(fooEnumSchema.definition.enum) // => the original fooEnum
+console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
+
+A second options parameter may be passed to `v.enum` of the type:
+
+`{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+
+The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
+
+### `const` enums
 
 It also works with `const` objects:
 
@@ -495,18 +656,25 @@ It also works with `const` objects:
 const fooEnum = {
   Cat: 1,
   Dog: 'Dog',
-} as const // as const is required for correct typing
-const fooEnumSchema = v.nativeEnum(fooEnum)
+} as const
+const fooEnumSchema = v.enum(fooEnum)
 type FooEnumSchema = v.Infer<typeof fooEnumSchema> // 1 | "Dog"
-fooEnumSchema.parse('Cat') // => 1
-fooEnumSchema.parse(1) // throws
+fooEnumSchema.parse(1)
+fooEnumSchema.parse('Dog')
+fooEnumSchema.parse('Cat') // throws
 fooEnumSchema.parse('Rat') // throws
-console.log(fooEnumSchema.definition.enum) // => the original fooEnum
+console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
+
+A second options parameter may be passed to `v.enum` of the type:
+
+`{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+
+The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
 
 ## Optionals
 
-Any schema can be made optional with `v.optional()`.
+Schemas can be made optional with `v.optional()`.
 
 ```typescript
 const schema = v.optional(v.string)
@@ -529,6 +697,9 @@ The wrapped schema can be extracted via `.definition.wrappedSchema`
 const stringSchema = v.string
 const optionalString = stringSchema.optional()
 optionalString.definition.wrappedSchema // => stringSchema
+
+// alternatively one can extract it via:
+const unwrappedSchema = optionalString.required()
 ```
 
 ## Nullables
@@ -556,9 +727,34 @@ const nullableString = stringSchema.nullable()
 nullableString.definition.wrappedSchema // => stringSchema
 ```
 
+## Nullishables
+
+`nullish` type `(value|undefined|null)` can be created with `v.nullishable`:
+
+```typescript
+const nullishString = v.nullishable(v.string)
+nullishString.parse('asdf') // => "asdf"
+nullishString.parse(null) // => null
+nullishString.parse(undefined) // => undefined
+```
+
+Or use the `.nullish()` method.
+
+```typescript
+const schema = v.string.nullish()
+type Schema = v.Infer<typeof schema> // string | null | undefined
+```
+
+The wrapped schema can be extracted via `.definition.wrappedSchema`
+
+```typescript
+const nullishString = v.string.nullish()
+nullishString.definition.wrappedSchema // => v.string
+```
+
 ## Objects
 
-Dilav parses the object provided and doesn't return a different object.
+Dilav parses the object provided and by default returns the original object. However if a transformation method is applied to any one of the properties, then a new object is returned with the transformed value(s), and copies of all other properties.
 
 ```typescript
 const foo = v.object({
@@ -580,9 +776,10 @@ Use `.definition.propertySchemas` to access the schema for a particular key.
 ```typescript
 foo.definition.propertySchemas.name.parse('string') // => string schema
 foo.definition.propertySchemas.age.parse(1) // => number schema
+foo.definition.unmatchedPropertySchema.parse(1) // => never, so throws
 ```
 
-### .extends
+### `.extends`
 
 Additional fields can be added to an object schema with the `.extend` method.
 
@@ -596,7 +793,7 @@ const fooWithType = foo.extends({
 
 ### `.merge`
 
-Merges schemas and if they share keys, the properties of merged schema overrides the initial schema. The second schemas' `unmatchedPropertySchema` is also used.
+Merges schemas and if they share keys, the properties of merged schema overrides the initial schema. The last schemas' `unmatchedPropertySchema` will be used.
 
 ```typescript
 const foo = v.object({ items: v.array(v.string) })
@@ -609,6 +806,8 @@ const fooWithId2 = foo
   .extends(idObject.definition.propertySchemas, idObject.definition.unmatchedPropertySchema)
   .parse({ items: ['A'], id: 1 })
 ```
+
+whilst similar, `.and` intersects each object and its properties, whereas merge overrides prior objects.
 
 ### `.pick/.omit`
 
@@ -627,7 +826,7 @@ const omitIdAndName = foo.omit('name', 'id') // { owners: string[]; }
 
 ### `.partial`
 
-Makes properties optional.
+Makes all properties optional.
 
 ```typescript
 const foo = v.object({ email: v.string, name: v.string })
@@ -637,7 +836,7 @@ const partialName = foo.partial('name') //  { email: string ; name?: string ; }
 
 ### `.deepPartial`
 
-`.partial` marks items one level down `optional`. `.deepPartial` does it for all included objects and arrays.
+`.partial` marks items one level down `optional`. and `.deepPartial` does it for all included objects and arrays.
 
 ```typescript
 const foo = v.object({
@@ -668,7 +867,7 @@ const requiredFoo = foo.required()
 // { email: string; name: string; }
 ```
 
-### .passthrough
+### `.passThrough`
 
 By default object schemas set the `unmatchedPropertySchema` to `v.never`. `.passThrough` sets it to `v.unknown`. Equivalent to `.catchAll(v.unknown)`
 
@@ -688,7 +887,7 @@ foo.passThrough().parse({
 }) // => { name: string; } & {[P: keyof Any]: unknown; }
 ```
 
-### .strict
+### `.strict`
 
 Sets the `unmatchedPropertySchema` to `v.never`. Equivalent to `.catchAll(v.never)`
 
@@ -708,7 +907,7 @@ expect(() =>
 ).toThrow()
 ```
 
-### .catchall
+### `.catchAll`
 
 Sets the `unmatchedPropertySchema` to any valid schema.
 
@@ -728,14 +927,16 @@ v.object(
   propertySchemas: { [key: keyof any]: v.MinimumSchema },
   unmatchedPropertySchema?: v.MinimumSchema = v.Never,
   options?: {
-    invalidObjectFn?: typeof errorFns.parseObject
-    invalidObjectPropertiesFn?: typeof errorFns.invalidObjectPropertiesFn
-    missingProperty?: typeof errorFns.missingProperty
-    missingPropertyInDef?: typeof errorFns.missingPropertyInDef
+    invalidObjectFn?: DefaultErrorFn['parseObject']
+    invalidObjectPropertiesFn?: DefaultErrorFn['invalidObjectPropertiesFn']
+    missingProperty?: DefaultErrorFn['missingProperty']
+    missingPropertyInDef?: DefaultErrorFn['missingPropertyInDef']
   }) // => v.Object
 ```
 
 ## Arrays
+
+Dilav parses the array provided and by default returns the original unaltered array. However if a transformation method is applied to any one of array schemas, then a new array is returned with the transformed element(s).
 
 ```typescript
 const array1 = v.array(v.string).parse([]) // string[]
@@ -749,7 +950,7 @@ const array3 = v
 
 ### .definition
 
-`.defintion` accesses the schema for elements of the array.
+`.definition` accesses the schema for elements of the array.
 
 ```typescript
 const itemSchema = v.array(v.string).definition.itemSchema.parse('string')
@@ -766,24 +967,24 @@ v.array(v.number).min(3).parse([1, 2, 3])
 v.array(v.number).length(3).parse([1, 2, 3])
 v.array(v.number).nonEmpty().parse([1])
 v.array(v.number)
-    .customValidation((arrayValue) => (arrayValue.includes(1) ? undefined : 'error'))
-    .parse([1])
+  .customValidation((arrayValue) => (arrayValue.includes(1) ? undefined : 'error'))
+  .parse([1])
+```
 
+```typescript
 // type call signatures:
 type ValidationError = string
 type ArrayValidationFn = (value: unknown[]) => ValidationError | undefined
-
-minimumArrayLength(length: number, errorFn?: DefaultErrorFn['minimumArrayLength']): ArrayValidationFn
-maximumArrayLength(length: number, errorFn?: DefaultErrorFn['maximumArrayLength']): ArrayValidationFn
-requiredArrayLength(length: number,errorFn?: DefaultErrorFn['requiredArrayLength']): ArrayValidationFn
-nonEmpty(errorFn?: DefaultErrorFn['arrayNonEmpty']): ArrayValidationFn
-customValidation<S extends unknown[]>(
-    customValidator: (value: unknown[], ...otherArgs: S) => ValidationError | undefined,
-    ...otherArgs: S
-): ArrayValidationFn
 ```
 
-### .spread
+- `minimumArrayLength(length: number, errorFn?: DefaultErrorFn['minimumArrayLength']): ArrayValidationFn`
+- `maximumArrayLength(length: number, errorFn?: DefaultErrorFn['maximumArrayLength']): ArrayValidationFn`
+- `requiredArrayLength(length: number,errorFn?: DefaultErrorFn['requiredArrayLength']): ArrayValidationFn`
+- `nonEmpty(errorFn?: DefaultErrorFn['arrayNonEmpty']): ArrayValidationFn`
+
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
+
+### `.spread`
 
 `.spread` within an array behaves similarly to the spread `...` in Typescript. A key limitation is that whilst multiple spreads are okay, only one can have an infinite length.
 
@@ -797,15 +998,15 @@ const foo = v
 
 ```typescript
 type ArrayOptions = {
-  parseArray?: typeof errorFns.parseArray
-  invalidArrayElementsFn?: typeof errorFns.invalidArrayElementsFn
-  arrayDefinitionElementMustBeOptional?: typeof errorFns.arrayDefinitionElementMustBeOptional
-  elementRequiredAt?: typeof errorFns.elementRequiredAt
-  extraArrayItemsFn?: typeof errorFns.extraArrayItemsFn
-  restCantFollowRest?: typeof errorFns.restCantFollowRest
-  optionalElementCantFollowRest?: typeof errorFns.optionalElementCantFollowRest
-  missingItemInItemSchemas?: typeof errorFns.missingItemInItemSchemas
-  unableToSelectItemFromArray?: typeof errorFns.unableToSelectItemFromArray
+  parseArray?: DefaultErrorFn['parseArray']
+  invalidArrayElementsFn?: DefaultErrorFn['invalidArrayElementsFn']
+  arrayDefinitionElementMustBeOptional?: DefaultErrorFn['arrayDefinitionElementMustBeOptional']
+  elementRequiredAt?: DefaultErrorFn['elementRequiredAt']
+  extraArrayItemsFn?: DefaultErrorFn['extraArrayItemsFn']
+  restCantFollowRest?: DefaultErrorFn['restCantFollowRest']
+  optionalElementCantFollowRest?: DefaultErrorFn['optionalElementCantFollowRest']
+  missingItemInItemSchemas?: DefaultErrorFn['missingItemInItemSchemas']
+  unableToSelectItemFromArray?: DefaultErrorFn['unableToSelectItemFromArray']
 }
 v.array(itemSchema: MinimumSchema, options?: ArrayOptions) // => v.ArrayInfinite
 v.array(
@@ -847,11 +1048,13 @@ One could create a union of string literals and then parse against those, howeve
 
 ```typescript
 const fooBar = v.union(['foo', 'bar'], { stringLiteralUnion: true }).parse('foo') // => 'foo' | 'bar'
+// equivalent:
+const fooBar = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
 ```
 
 ## Intersections
 
-Intersections are similar to `&` in Typescript.
+Intersections are similar to `&` in Typescript. In general each item in the intersection must parse without error, for the intersection to successfully parse. By default, intersection errors on the first parsing error it encounters. If one requires a complete list of errors, one can set `{ breakOnFirstError: false }` as a second option to intersection.
 
 ```typescript
 const foo1 = v.intersection([
@@ -868,18 +1071,32 @@ const b = foo2.parse('B') // 'B'
 expect(() => foo2.parse('A')).toThrow()
 ```
 
-When intersecting object schemas the `unmatchedPropertySchema` of the object schema is set to `v.unknown`
+When intersecting only object schemas a new `object` schema is returned, with each property also intersected and with the `unmatchedPropertySchema` set to an intersection of all the objects `unmatchedPropertySchema`s
 
 ```typescript
 const foo1 = v
   .intersection([v.object({ a: v.string }), v.object({ b: v.string })])
-  .parse({ a: 'A', b: 'B', c: 'extraProp' }) // => { a: 'A', b: 'B', c: 'extraProp' }
+  .parse({ a: 'A', b: 'B' }) // => { a: 'A', b: 'B' }
 
 // equivalent to:
 const foo2 = v
   .object({ a: v.string })
   .and(v.object({ b: v.string }))
   .parse({ a: 'A', b: 'B' }) // => { a: 'A', b: 'B' }
+```
+
+When intersecting only infinite arrays the `itemParser`'s are intersected and a new array schema is returned
+
+```typescript
+const foo1 = v
+  .intersection([v.array(v.object({ a: v.string })), v.array(v.object({ b: v.string }))])
+  .parse([{ a: 'A', b: 'B' }]) // => [{ a: 'A', b: 'B' }]
+
+// equivalent to:
+const foo2 = v
+  .array(v.object({ a: v.string }))
+  .and(v.array(v.object({ b: v.string })))
+  .parse([{ a: 'A', b: 'B' }]) // => [{ a: 'A', b: 'B' }]
 ```
 
 ## Promises
@@ -898,9 +1115,13 @@ try {
 }
 ```
 
+A second options parameter may be passed to `v.promise` of the type:
+
+`{ parsePromise: DefaultErrorFn['parsePromise'] }`
+
 ## InstanceOfs
 
-Validates than an object is an `instanceof` a particular class.
+Validates than an object is an `instanceOf` a particular class.
 
 ```typescript
 class Foo {
@@ -909,6 +1130,10 @@ class Foo {
 
 const foo = v.instanceOf(Foo).parse(new Foo())
 ```
+
+A second options parameter may be passed to `v.instanceOf` of the type:
+
+`{ parseInstanceOf: DefaultErrorFn['parseInstanceOf'] }`
 
 ## Records
 
@@ -926,6 +1151,10 @@ expect(() => v.record(v.string.min(5), v.number).parse({ a: 1 })).toThrow()
 
 As JavaScript casts all object keys to strings at this time only object keys of type string are supported. One could create a custom validator to parse numerical string property names.
 
+A third options parameter may be passed to `v.record` of the type:
+
+`{ parseRecord?: DefaultErrorFn['parseRecord']; breakOnFirstError?: boolean  }`
+
 ## Maps
 
 ```typescript
@@ -933,7 +1162,7 @@ const foo = v.map([v.string, v.number]).parse(new Map([['apple', 1]])) // => Map
 expect(() => v.map([v.string, v.number]).parse(new Map([['apple', '1']]))).toThrow()
 ```
 
-Mao schemas can be further constrained with the following validation methods.
+Map schemas can be further constrained with the following validation methods.
 
 ```typescript
 v.map([v.string, v.number])
@@ -952,6 +1181,10 @@ v.map([v.string, v.number])
   .customValidation((valueMap) => (valueMap.size === 1 ? undefined : 'error'))
   .parse(new Map([['apple', 1]]))
 ```
+
+A second options parameter may be passed to `v.map` of the type:
+
+`{ parseMap?: DefaultErrorFn['parseMap']; breakOnFirstError?: boolean  }`
 
 ## Sets
 
@@ -979,6 +1212,10 @@ v.set(v.number)
   .customValidation((valueSet) => (valueSet.size === 1 ? undefined : 'error'))
   .parse(new Set([1]))
 ```
+
+A second options parameter may be passed to `v.set` of the type:
+
+`{ parseSet?: DefaultErrorFn['parseSet']; breakOnFirstError?: boolean  }`
 
 ## Recursive types
 
@@ -1051,6 +1288,10 @@ const fn = foo1.parse((a) => a)
 fn(1 as any) // returns 1 and won't throw as fn is not wrapped in a validation function.
 ```
 
+The options parameter may also include:
+
+`{ parseFunctionError?: DefaultErrorFn['parseFunction'] }`
+
 One can access the input and output schemas from a function schema via:
 
 ```typescript
@@ -1061,7 +1302,7 @@ foo.definition.parameters.parse(['hello']) // parameter array type
 
 ## Custom Schemas
 
-Custom schemas can be created by providing a function of type `(value:unknow)=>boolean` which returns `true` if the value is of the supplied type, or `false` if it is not.
+Custom schemas can be created by providing a function of type `(value:unknown)=>boolean` which returns `true` if the value is of the supplied type, or `false` if it is not.
 
 ```typescript
 const pxSchema = v.custom<`${number}px`>((value) => /^\d+px$/.test(value as string))
@@ -1072,13 +1313,17 @@ pxSchema.parse('50px') // => "50px"
 expect(() => pxSchema.parse('50vw')).toThrow() // throws;
 ```
 
+A second options parameter may be passed to `v.custom` of the type: `DefaultErrorFn['parseCustom']` to control the error message returned.
+
 ## Schema Methods
 
 Schemas contain the following shared methods:
 
 ### `.parse`
 
-`.parse(data: unknown): T`
+```typescript
+.parse(data: unknown): T
+```
 
 The `.parse` parses the `data` and returns it if it is valid. Otherwise, an error is thrown.
 
@@ -1091,9 +1336,8 @@ stringSchema.parse(123) // throws error
 
 ### `.parseAsync`
 
-`.parseAsync(data:Promise<unknown>): Promise<T>`
-
 ```typescript
+.parseAsync(data:Promise<unknown>): Promise<T>
 const stringSchema = v.string
 
 const result = await stringSchema.parseAsync(Promise.resolve('result')) // => returns "result"
@@ -1101,7 +1345,9 @@ const result = await stringSchema.parseAsync(Promise.resolve('result')) // => re
 
 ### `.safeParse`
 
-`.safeParse(data:unknown): ResultError<T>`
+```typescript
+.safeParse(data:unknown): ResultError<T>
+```
 
 `.safeParse` parses the data and returns either a result or an error in the form of a `ResultError<T>` - see below.
 
@@ -1145,51 +1391,6 @@ An asynchronous version of `safeParse`.
 
 ```typescript
 await v.string.safeParseAsync(Promise.resolve('result')) // => returns [undefined, "result"]
-```
-
-### `.preprocess`
-
-Processes data before parsing
-
-```typescript
-// preprocess runs a function before parsing, the output of which is then parsed
-v.number.preprocess((value) => (value as string).length).parse('hello') // => 5
-```
-
-### `.postprocess`
-
-Processes data after parsing and any validations. The input to the function is of type `ResultError` and it must return a value of type `ResultError`
-
-```typescript
-// postprocess runs a function after parsing, the output of which is then returned
-v.string.postprocess(([error, value]) => [undefined, value?.toLowerCase()]).parse('HELLO') // => 'hello'
-```
-
-### `.transform`
-
-Processes data after parsing and any validations. It is similar to `.postprocess` except the error case is handled automatically.
-
-```typescript
-// transform runs a function after parsing, the output of which is then returned
-v.string.transform((value) => value.toLowerCase()).parse('HELLO') // => 'hello'
-```
-
-### `.catch`
-
-Replaces an error value, with the value specified.
-
-```typescript
-// if parsing returns an error, catch replaces the error with the `catchValue`
-v.string.catch('default on error').parse(1) // => 'default on error'
-```
-
-### `.default`
-
-If the input value is undefined, a default value is substituted.
-
-```typescript
-// if value being parsed is undefined, then it is replaced with the `defaultValue` before parsing
-v.string.default('default on undefined').parse(undefined) // => 'default on undefined'
 ```
 
 ### `.optional`
@@ -1255,7 +1456,7 @@ v.union([v.string, v.number])
 
 ### `.and`
 
-A convenience method for creating intersection types.
+Creates intersection types.
 
 ```typescript
 const nameAndAge = z.object({ name: v.string }).and(v.object({ age: v.number })) // { name: string } & { age: number }
@@ -1264,7 +1465,7 @@ const nameAndAge = z.object({ name: v.string }).and(v.object({ age: v.number }))
 v.intersection(v.object({ name: v.string }), v.object({ age: v.number }))
 ```
 
-### `.pipe()`
+### `.pipe`
 
 `.pipe()` - pipes the output from one schema into the input of another schema, making it possible to chain schemas together:
 
@@ -1293,6 +1494,121 @@ const toBigInt = v.bigInt.coerce
 expect(() => toBigInt.safeParse(null)).toThrow() // => throws
 const toBigIntSchema = v.union([v.string, v.number, v.bigInt, v.boolean]).pipe(toBigInt)
 v.isResult(toBigIntSchema.safeParse(null)) // => false
+```
+
+### `.type`
+
+A string of the schema type (warning: not properly tested yet!)
+
+### `.baseType`
+
+The Dilav schema type: `'infinite array' | 'finite array' | 'bigint' | 'boolean' | 'date' | 'enum' | 'instanceof' | 'intersection' | 'literal' | 'map' | 'set' | 'string' | 'symbol' | 'union' | 'discriminated union' | 'string union' | 'optional' | 'nullable' | 'nullish' | 'function' | 'object' | 'number' | 'promise' | 'record' | 'lazy' | 'preprocess' | 'postprocess' | 'custom'`
+
+### `.customValidation`
+
+All schemas have a `.customValidation` method, enabling one to supply any validation code that must be run as part of validation. A `customValidatorFn` must return a `string` which is the error message if validation fails, or `undefined` if validation passes.
+
+```typescript
+// customValidation<S extends unknown[]>( customValidatorFn: (value: Output, ...otherArgs: S)
+//   =>ValidationError | undefined, ...otherArgs: S): Schema
+// example:
+v.string.customValidation((value) => (value === 'A' ? 'cannot be A' : undefined))
+```
+
+### `.customValidationAsync`
+
+All schemas have a `.customValidationAsync` method, enabling one to supply any validation code that must be run asynchronously as part of validation. A `customValidatorFn` must return a promise which evaluates to either a `string` which is the error message if validation fails, or `undefined` if validation passes.
+
+```typescript
+// customValidationAsync<S extends unknown[]>( customValidatorFn: (value: Output, ...otherArgs: S)
+//   => Promise<ValidationError | undefined>, ...otherArgs: S): Schema
+// example:
+v.string.customValidation(async (value) => ((await IsA(value)) ? 'cannot be A' : undefined))
+```
+
+### transformation methods
+
+By default Dilav returns the original unaltered parsed value. However sometimes one wants to transform that input into another value. Dilav provides the transformation methods below for that.
+
+Note: Dilav doesn't allow transformed types as inputs into `.and`, `.or`, `.union`, `.intersection`, `.partial`, `.deepPartial` as this may produce unexpected and surprising results as explained below.
+
+**Note:** transformation methods in a way break the separation of concerns: Dilav validates that a value matches a type, whereas transformation methods transform a type. I included them because Zod includes them, however I may change my mind.
+
+```typescript
+// consider the illustrative example below.  The intersection could transform `undefined` into `A`
+// even though `A` may be invalid, it could transform it into `B`, a third alternative would be to return
+// the original input value of `undefined` as valid.
+const example = v
+  .intersection([v.enum(['A', 'B']).default('A'), v.enum(['B', 'C']).default('B')])
+  .parse(undefined)
+
+// the above is resolved by the following explicit solutions:
+const alt1 = v
+  .enum(['A', 'B'])
+  .default('A')
+  .pipe(v.intersection([v.enum(['A', 'B']), v.enum(['B', 'C'])]))
+  .parse(undefined) // => throws
+const alt2 = v
+  .enum(['B', 'C'])
+  .default('B')
+  .pipe(v.intersection([v.enum(['A', 'B']), v.enum(['B', 'C'])]))
+  .parse(undefined) // => B
+const alt3 = v
+  .union([v.intersection([v.enum(['A', 'B']), v.enum(['B', 'C'])]), v.undefined])
+  .parse(undefined) // => undefined
+```
+
+#### `.preprocess`
+
+Processes data before parsing
+
+```typescript
+// preprocess runs a function before parsing, the output of which is then parsed
+v.number.preprocess((value) => (value as string).length).parse('hello') // => 5
+```
+
+#### `.postprocess`
+
+Processes data after parsing and any validations. The input to the function is of type `ResultError` and it must return a value of type `ResultError`
+
+```typescript
+// postprocess runs a function after parsing, the output of which is then returned
+v.string.postprocess(([error, value]) => [undefined, value?.toLowerCase()]).parse('HELLO') // => 'hello'
+```
+
+#### `.transform`
+
+Processes data after parsing and any validations. It is similar to `.postprocess` except the error case is handled automatically.
+
+```typescript
+// transform runs a function after parsing, the output of which is then returned
+v.string.transform((value) => value.toLowerCase()).parse('HELLO') // => 'hello'
+```
+
+#### `.catch`
+
+Replaces an error value, with the value specified.
+
+```typescript
+// if parsing returns an error, catch replaces the error with the `catchValue`
+v.string.catch('default on error').parse(1) // => 'default on error'
+
+// catch with objects may produce surprising results:
+const foo = v.object({ inner: v.string.catch('does change object') }).catch({
+  inner: 'hello',
+})
+foo.parse(undefined)) // => { inner: 'hello' }
+foo.parse({}) // => { inner: 'does change object' }
+foo.parse({ inner: undefined }) // => { inner: 'does change object' }
+```
+
+#### `.default`
+
+If the input value is undefined, a default value is substituted.
+
+```typescript
+// if value being parsed is undefined, then it is replaced with the `defaultValue` before parsing
+v.string.default('default on undefined').parse(undefined) // => 'default on undefined'
 ```
 
 ## Other Topics
@@ -1349,7 +1665,7 @@ All Dilav schemas have one of these types associated with them:
 
 - `v.VNaN` - the literal NaN
 - `v.Undefined` - the literal undefined
-- `v.Null `- the literal null
+- `v.Null`- the literal null
 - `v.NullishL` - the literal null|undefined
 - `v.Any` - the literal any
 - `v.Unknown` - the literal unknown
@@ -1390,16 +1706,14 @@ const foo = v.string.safeParse(1)
 if (v.isError(foo)) console.log(foo[0].errors[0]) // => `that's not a string!`
 ```
 
-All of the global default messages than can set are listed in the `errorFns.ts` tile.
-
 Dilav provides some helper utilities for working with results and errors:
 
 - `v.isError` - returns true if `ResultError` is an error, false otherwise
-- `v.isResult ` - returns true if `ResultError` is a result, false otherwise
+- `v.isResult` - returns true if `ResultError` is a result, false otherwise
 - `v.firstError` - returns the first error from a `ValidationErrors` object.
 - `v.firstErrorFromResultError` - returns the first error from a `ResultError` array. Throws if it's a result.
 - `v.resultFromResultError` - returns the results from a `ResultError` array. Throws if it's an error.
-- `v.errorFromResultError ` - returns the `ValidationErrors` object from a `ResultError` array. Throws if it's a result.
+- `v.errorFromResultError` - returns the `ValidationErrors` object from a `ResultError` array. Throws if it's a result.
 
 ```typescript
 const foo = v.string.custom({ parseStringError: () => `not a string!` }).safeParse(1)
@@ -1413,5 +1727,10 @@ Dilav provides some useful types for working with results:
 
 - `v.ResultError` - `ResultError<E, R> = [error: E, result?: undefined] | [error: undefined, result: R]`
 - `v.ValidationErrors` - `{  input: unknown;   errors: string[] }`
+- `v.ValidationError` - the error type of thrown validation errors - inherits from `Error`, and includes the following additional properties: `{  input: unknown;   errors: string[], errorObject: v.ValidationErrors, readonly firstError: string  }`
 - `v.SingleArrayValidationError` - return type of a single array error: `[index: number, errors: string[]]`
 - `v.SingleObjectValidationError` - return type of a single object validation error: `[key: string | number | symbol, errors: string[]]`
+
+#### `DefaultErrorFn`
+
+All of the global default messages than can be set are listed in the `errorFns.ts` file.

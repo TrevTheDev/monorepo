@@ -3,16 +3,9 @@
 import type { ResultError } from 'toolbelt'
 
 import { createFinalBaseObject } from './base'
-import {
-  SafeParseFn,
-  BaseSchema,
-  defaultErrorFnSym,
-  ValidationErrors,
-  SingleValidationError,
-} from './types'
+import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
 
 import { baseObject } from './init'
-import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
 const errorFns = baseObject[defaultErrorFnSym]
@@ -44,42 +37,6 @@ export function parseInstanceOf<T extends InstanceOfType>(
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * validators
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-// type InstanceOfValidations<T> = [
-//   [
-//     'customValidation',
-//     (
-//       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-//       ...otherArgs: unknown[]
-//     ) => (value: T) => SingleValidationError | undefined,
-//   ],
-// ]
-
-const instanceOfValidations = [
-  [
-    'customValidation',
-    (customValidator, ...otherArgs) =>
-      (value) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-
-// export const instanceOfValidations = instanceOfValidations_ as InstanceOfValidations
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * vBigInt
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -91,13 +48,11 @@ abstract class Class {
 
 type InstanceOfType = typeof Class // { new (...args: any): any; name: string }
 
-export interface VInstanceOf<T extends InstanceOfType, Output = InstanceType<T>, Input = unknown>
-  extends BaseSchema<Output, T extends { name: string } ? T['name'] : string, 'instanceof', Input> {
-  customValidations<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
-}
+export type VInstanceOf<
+  T extends InstanceOfType,
+  Output = InstanceType<T>,
+  Input = unknown,
+> = BaseSchema<Output, T extends { name: string } ? T['name'] : string, 'instanceof', Input>
 
 type InstanceOfOptions<T extends InstanceOfType> =
   | {
@@ -113,7 +68,7 @@ type InstanceOfOptions<T extends InstanceOfType> =
 //   parseInstanceOf: (invalidValue: unknown, instanceOfItem: T) => SingleValidationError
 // }
 
-const baseInstanceOfObject = createValidationBuilder(baseObject, instanceOfValidations as any)
+const baseInstanceOfObject = Object.create(baseObject)
 
 export function vInstanceOf<T extends InstanceOfType>(
   instanceOfItem: T,

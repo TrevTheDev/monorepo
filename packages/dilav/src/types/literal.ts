@@ -18,7 +18,6 @@ import {
   VNever,
 } from './types'
 
-import { createValidationBuilder } from './base validations'
 import defaultErrorFn from './errorFns'
 
 let errorFns = defaultErrorFn
@@ -45,35 +44,6 @@ export function parseLiteral<T>(
         ]
       : [undefined, value as T]
 }
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-type LiteralValidations<T> = [
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
-]
-const literalValidations_ = [
-  [
-    'customValidation',
-    (
-        customValidator: (value: any, ...otherArgs: unknown[]) => string | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: boolean) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-const literalValidations = literalValidations_ as LiteralValidations<any>
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -110,7 +80,7 @@ type VLiteralFn = {
 
 export function initLiteralTypes(baseObject: MinimumSchema) {
   errorFns = baseObject[defaultErrorFnSym]
-  const baseLiteralObject = createValidationBuilder(baseObject, literalValidations)
+  const baseLiteralObject = Object.create(baseObject)
 
   /** ****************************************************************************************************************************
    * vLiteral

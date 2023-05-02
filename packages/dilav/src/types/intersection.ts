@@ -10,14 +10,12 @@ import {
   MSPOArrayToIntersection,
   VIntersectionT,
   ValidationErrors,
-  SingleValidationError,
   MinimumObjectSchema,
   ObjectDefinition,
   SafeParsableObjectTypes,
   VArrayInfinite,
   parserObject,
 } from './types'
-import { createValidationBuilder } from './base validations'
 import { VObjectFn, allKeys } from './object'
 import { VArrayFn } from './array'
 import { isTransformed } from './shared'
@@ -88,35 +86,6 @@ export function parseIntersection<
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-type IntersectionValidations<T> = [
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => string | undefined,
-  ],
-]
-const intersectionValidations_ = [
-  [
-    'customValidation',
-    <T>(
-        customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: T) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-const intersectionValidations = intersectionValidations_ as IntersectionValidations<any>
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * VIntersection
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -127,7 +96,7 @@ export function initIntersectionType(
   vArray: VArrayFn,
   vObject: VObjectFn,
 ): VIntersectionFn {
-  const baseIntersectionObject = createValidationBuilder(baseObject, intersectionValidations)
+  const baseIntersectionObject = Object.create(baseObject)
 
   function intersectObjects(objectSchemas: MinimumObjectSchema[]) {
     const mergeObjectDefinition: { [key: PropertyKey]: MinimumSchema[] } = {}

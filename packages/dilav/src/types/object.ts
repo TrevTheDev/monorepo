@@ -269,20 +269,7 @@ export function parseObject<T extends MinimumObjectDefinition & { transformed: b
  ***************************************************************************************************************************** */
 type ObjectValidations = DeepWriteable<typeof objectValidations_>
 
-const objectValidations_ = [
-  [
-    'customValidation',
-    (
-        customValidator: (
-          value: object,
-          ...otherArgs: unknown[]
-        ) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: object) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
+const objectValidations_ = [] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
 const objectValidations = objectValidations_ as ObjectValidations
 
@@ -496,10 +483,11 @@ export function initVObject(baseObject: MinimumSchema): {
       },
       deepPartial: {
         value(...keysToDeepPartial) {
-          if (transformed)
+          if (transformed) {
             throw new Error(
               'deepPartial on objects that included transformed schemas is not supported',
             )
+          }
           const keys =
             keysToDeepPartial.length === 0 ? Object.keys(propertySchemas) : keysToDeepPartial
           const newPropertySchemas = Object.entries(propertySchemas).reduce(

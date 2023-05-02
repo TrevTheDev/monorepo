@@ -41,7 +41,7 @@ it('recursion with v.lazy', () => {
       subcategories: v.array(category),
     }),
   )
-  const x = category.parse(testCategory)
+  category.parse(testCategory)
 })
 
 it.skip('schema getter', () => {

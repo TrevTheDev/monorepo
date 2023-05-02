@@ -17,6 +17,7 @@ import {
   ValidationErrors,
   AsyncValidationFn,
   SingleValidationError,
+  ValidationFn,
 } from './types'
 import { VOptionalFn, VNullableFn, VNullishFn, VUnionFn } from './union'
 
@@ -81,14 +82,36 @@ export function initBase() {
       if (asyncValidationErrors !== undefined) errors.push(...asyncValidationErrors)
       return errors.length !== 0 ? [{ value, errors }, undefined] : [undefined, parsedOutput[1]]
     },
-    customAsyncValidation(this: MinimumSchema, fn: AsyncValidationFn<any>) {
+    customValidation(
+      this: MinimumSchema,
+      fn: ValidationFn<any, unknown[]>,
+      ...otherArgs: unknown[]
+    ) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const oldObject = this
       return {
         __proto__: oldObject,
         [parserObject]: {
           ...oldObject[parserObject],
-          asyncValidators: [...oldObject[parserObject].asyncValidators, fn],
+          validators: [...oldObject[parserObject].validators, (value) => fn(value, ...otherArgs)],
+        },
+      }
+    },
+    customAsyncValidation(
+      this: MinimumSchema,
+      fn: AsyncValidationFn<any, unknown[]>,
+      ...otherArgs: unknown[]
+    ) {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      const oldObject = this
+      return {
+        __proto__: oldObject,
+        [parserObject]: {
+          ...oldObject[parserObject],
+          asyncValidators: [
+            ...oldObject[parserObject].asyncValidators,
+            (value) => fn(value, ...otherArgs),
+          ],
         },
       }
     },

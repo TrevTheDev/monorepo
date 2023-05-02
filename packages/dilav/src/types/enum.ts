@@ -5,14 +5,12 @@ import { createFinalBaseObject } from './base'
 import {
   BaseSchema,
   SafeParseFn,
-  SingleValidationError,
   VUnionStringLiterals,
   ValidationErrors,
   defaultErrorFnSym,
 } from './types'
 
 import { baseObject, vUnion } from './init'
-import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 import { StringLiteralUnionOptions } from './union'
 
@@ -57,35 +55,6 @@ export function parseEnum<T extends object>(
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-type EnumValidations<T> = [
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
-]
-const enumValidations_ = [
-  [
-    'customValidation',
-    (
-        customValidator: (value: any, ...otherArgs: unknown[]) => string | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: boolean) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-const enumValidations = enumValidations_ as EnumValidations<any>
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * vBoolean
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -105,26 +74,13 @@ export interface VEnum<
   > {
   readonly definition: { readonly enum: T; readonly transformed?: boolean }
   readonly enum: T
-  customValidator(
-    customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-    ...otherArgs: unknown[]
-  ): this
 }
-
-// & {
-//   // default validations
-//   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-//     ? Validations[I] extends ValidationItem<any>
-//       ? Validations[I][0]
-//       : never
-//     : never]: (...args: Parameters<Validations[I][1]>) => VEnum<Output, Input, Validations>
-// }
 
 type StringEnumOptions<T extends string> = Identity<
   Omit<StringLiteralUnionOptions<T>, 'stringLiteralUnion'>
 >
 
-const baseEnumObject = createValidationBuilder(baseObject, enumValidations)
+const baseEnumObject = Object.create(baseObject)
 
 export function vEnum<const T extends readonly [string, ...string[]]>(
   stringEnums: T,

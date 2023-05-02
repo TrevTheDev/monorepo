@@ -124,13 +124,6 @@ type MapValidations<T extends Map<unknown, unknown>> = [
   ['max', typeof maximumMapLength<T>],
   ['size', typeof requiredMapLength<T>],
   ['nonempty', typeof nonEmpty<T>],
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
 ]
 
 const mapValidations = [
@@ -138,12 +131,6 @@ const mapValidations = [
   ['max', maximumMapLength],
   ['size', requiredMapLength],
   ['nonempty', nonEmpty],
-  [
-    'customValidation',
-    (customValidator, ...otherArgs) =>
-      (value) =>
-        customValidator(value, ...otherArgs),
-  ],
 ] as const
 
 // export const mapValidations = instanceOfValidations_ as InstanceOfValidations

@@ -14,7 +14,7 @@ import {
   SingleValidationError,
 } from './types'
 
-import { asyncValidate, createValidationBuilder, validate } from './base validations'
+import { asyncValidate, validate } from './base validations'
 import defaultErrorFn, { DefaultErrorFn } from './errorFns'
 import ValidationError from './Validation error'
 
@@ -117,7 +117,7 @@ export type VPromiseFn = <T extends MinimumSchema>(
 export function initPromise(baseObject: MinimumSchema): VPromiseFn {
   errorFns = baseObject[defaultErrorFnSym]
 
-  const basePromiseObject = createValidationBuilder(baseObject, [])
+  const basePromiseObject = Object.create(baseObject)
 
   return function vPromise<T extends MinimumSchema>(
     resultSchema: T,

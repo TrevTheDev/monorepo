@@ -13,7 +13,7 @@ it('object intersection', () => {
     id: 'asdfasdf',
   }
 
-  type T = v.Infer<typeof Teacher>
+  // type T = v.Infer<typeof Teacher>
 
   expect(Teacher.parse(data)).toEqual(data)
   expect(() => Teacher.parse({ subject: data.subjects })).toThrow()

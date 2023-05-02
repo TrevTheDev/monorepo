@@ -115,13 +115,6 @@ type SetValidations<T extends Set<unknown>> = [
   ['max', typeof maximumSetLength<T>],
   ['size', typeof requiredSetLength<T>],
   ['nonempty', typeof nonEmpty<T>],
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
 ]
 
 const setValidations = [
@@ -129,12 +122,6 @@ const setValidations = [
   ['max', maximumSetLength],
   ['size', requiredSetLength],
   ['nonempty', nonEmpty],
-  [
-    'customValidation',
-    (customValidator, ...otherArgs) =>
-      (value) =>
-        customValidator(value, ...otherArgs),
-  ],
 ] as const
 
 // export const setValidations = instanceOfValidations_ as InstanceOfValidations

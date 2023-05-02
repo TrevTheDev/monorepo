@@ -212,7 +212,7 @@ it('test and vs merge', async () => {
   type asdf = v.Infer<typeof asdf>
   assertEqual<asdf, { a: never }>(true)
   const asdf2 = v.object({ a: v.string }).merge(v.object({ a: v.number }))
-  const c2 = asdf2.parse({ a: 1 })
+  asdf2.parse({ a: 1 })
   type asdf2 = v.Infer<typeof asdf2>
   assertEqual<asdf2, { a: number }>(true)
 })
@@ -263,23 +263,25 @@ it('Inferred picked object type with optional properties', async () => {
   assertEqual<Picked, { b?: string }>(true)
 })
 
+// I followed the way Typescript does.
+
 it.skip('Inferred type for unknown/any keys', () => {
-  const myType = v.object({
-    anyOptional: v.any.optional(),
-    anyRequired: v.any,
-    unknownOptional: v.unknown.optional(),
-    unknownRequired: v.unknown,
-  })
-  type myType = v.Infer<typeof myType>
-  assertEqual<
-    myType,
-    {
-      anyOptional?: any
-      anyRequired?: any
-      unknownOptional?: unknown
-      unknownRequired?: unknown
-    }
-  >(true)
+  // const myType = v.object({
+  //   anyOptional: v.any.optional(),
+  //   anyRequired: v.any,
+  //   unknownOptional: v.unknown.optional(),
+  //   unknownRequired: v.unknown,
+  // })
+  // type myType = v.Infer<typeof myType>
+  // assertEqual<
+  //   myType,
+  //   {
+  //     anyOptional?: any
+  //     anyRequired?: any
+  //     unknownOptional?: unknown
+  //     unknownRequired?: unknown
+  //   }
+  // >(true)
 })
 
 it('setKey', () => {
@@ -425,5 +427,5 @@ it('passthrough index signature', () => {
   assertEqual<{ a: string }, a>(true)
   const b = a.passThrough()
   type b = v.Infer<typeof b>
-  assertEqual<{ a: string } & { [k: string]: unknown }, b>(true)
+  assertEqual<{ a: string } & { [k: PropertyKey]: unknown }, b>(true)
 })

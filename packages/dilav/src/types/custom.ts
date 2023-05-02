@@ -11,7 +11,6 @@ import {
 } from './types'
 
 import { baseObject } from './init'
-import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
 const errorFns = baseObject[defaultErrorFnSym]
@@ -37,30 +36,6 @@ export function parseCustom<Output, T extends (value: unknown) => boolean>(
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-// type MapValidations<Output> = [
-//   [
-//     'customValidation',
-//     (
-//       customValidator: (
-//         value: Output,
-//         ...otherArgs: unknown[]
-//       ) => SingleValidationError | undefined,
-//       ...otherArgs: unknown[]
-//     ) => (value: Output) => SingleValidationError | undefined,
-//   ],
-// ]
-
-const customValidations = [] as const
-
-// export const mapValidations = instanceOfValidations_ as InstanceOfValidations
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * vMap
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -73,7 +48,7 @@ export type VCustom<Output, Type extends string = string, Input = unknown> = Bas
   Input
 >
 
-const baseCustomObject = createValidationBuilder(baseObject, customValidations as any)
+const baseCustomObject = Object.create(baseObject)
 
 type CustomOptions<Output, Type extends string = string> = (
   | { parser: SafeParseFn<unknown, Output> }

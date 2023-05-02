@@ -23,9 +23,15 @@ export type ValidationErrors = {
   input: unknown
   errors: SingleValidationError[]
 }
-export type ValidationFn<T> = (value: T) => SingleValidationError | undefined
+export type ValidationFn<T, S extends unknown[] = []> = (
+  value: T,
+  ...otherArgs: S
+) => SingleValidationError | undefined
 
-export type AsyncValidationFn<T> = (value: T) => Promise<SingleValidationError | undefined>
+export type AsyncValidationFn<T, S extends unknown[] = []> = (
+  value: T,
+  ...otherArgs: S
+) => Promise<SingleValidationError | undefined>
 
 export type ValidationItem<T> = [
   propName: string,
@@ -233,7 +239,14 @@ export interface BaseSchema<
     ? VPostProcess<this, L['safeParse']>
     : never
   promise(): VPromise<this>
-  customAsyncValidation(customAsyncValidationFn: AsyncValidationFn<Output>): this
+  customValidation<S extends unknown[]>(
+    customValidator: ValidationFn<Output, S>,
+    ...otherArgs: S
+  ): this
+  customAsyncValidation<S extends unknown[]>(
+    customAsyncValidationFn: AsyncValidationFn<Output, S>,
+    ...otherArgs: S
+  ): this
 }
 
 /** ****************************************************************************************************************************
@@ -265,10 +278,6 @@ export interface VUnionStringLiterals<
   exclude<const T extends readonly [Output, ...Output[]]>(
     valuesToExclude: T,
   ): VUnionStringLiterals<Exclude<Output, T[number]>>
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 export interface VUnion<
@@ -284,10 +293,6 @@ export interface VUnion<
     { readonly unionTypes: T; readonly transformed: boolean }
   > {
   readonly definition: { readonly unionTypes: T; readonly transformed: boolean }
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 // export type VUnion<
@@ -317,10 +322,6 @@ export interface VOptional<
   readonly definition: { readonly wrappedSchema: T; readonly transformed: boolean }
   optional(): this
   required(): T
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 type baseNullable<Output, Type extends string, Input, T extends MinimumSchema> = Omit<
@@ -342,10 +343,6 @@ export interface VNullable<
 > extends baseNullable<Output, Type, Input, T> {
   readonly definition: { readonly wrappedSchema: T; readonly transformed: boolean }
   nullable(): this
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 type baseNullish<Output, Type extends string, Input, T extends MinimumSchema> = Omit<
@@ -367,10 +364,6 @@ export interface VNullish<
 > extends baseNullish<Output, Type, Input, T> {
   readonly definition: { readonly wrappedSchema: T; readonly transformed: boolean }
   nullish(): this
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 /** ****************************************************************************************************************************
@@ -654,10 +647,6 @@ interface BaseArraySchema2<
     errorReturnValueFn?: DefaultErrorFn['requiredArrayLength'] | undefined,
   ): this
   nonEmpty(errorReturnValueFn?: DefaultErrorFn['arrayNonEmpty'] | undefined): this
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 type BaseArraySchema<
@@ -950,10 +939,6 @@ type FiniteArrayBuilder<T extends ValidArrayItemsW> = FiniteArrayBuilder2<Flatte
 export interface VIntersection<Output, Type extends string, Input>
   extends BaseSchema<Output, Type, 'intersection', Input, { readonly transformed?: boolean }> {
   readonly definition: { readonly transformed?: boolean }
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 export type IntersectionT = [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
@@ -1213,11 +1198,6 @@ export interface VObjectBase<
 
   // keyof(): keyof T['propertyParsers'][]
 
-  customValidation<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
-
   // and<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
   //   ...schemas: S
   // ): [this, ...S] extends [MinimumObjectSchema, MinimumObjectSchema, ...MinimumObjectSchema[]]
@@ -1322,10 +1302,6 @@ export interface VPreprocess<
     readonly preprocessFn: S
     readonly transformed: true
   }
-  customValidator(
-    customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-    ...otherArgs: unknown[]
-  ): this
 }
 
 type VPostProcessBase<
@@ -1350,10 +1326,6 @@ export interface VPostProcess<
     readonly postprocessFn: S
     readonly transformed: true
   }
-  customValidator(
-    customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-    ...otherArgs: unknown[]
-  ): this
 }
 
 export type VDefault<T extends MinimumSchema> = VPreprocess<T, (value: unknown) => unknown>
@@ -1378,11 +1350,6 @@ export interface VLiteral<Output, Type extends string = string, Input = unknown>
     { readonly literal: Output; readonly transformed?: boolean }
   > {
   readonly definition: { readonly literal: Output; readonly transformed?: boolean }
-  // literal: Output
-  customValidator<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
 export type VNaN = VLiteral<number, 'number'>

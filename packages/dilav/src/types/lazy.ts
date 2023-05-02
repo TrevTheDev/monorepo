@@ -1,38 +1,17 @@
-import { DeepWriteable } from 'toolbelt'
 import { createFinalBaseObject } from './base'
-import { BaseSchema, SingleValidationError } from './types'
+import { BaseSchema, MinimumSchema, SafeParsableObjectTypes } from './types'
 import { baseObject } from './init'
-import { createValidationBuilder } from './base validations'
 
-type LazyValidations = DeepWriteable<typeof lazyValidations_>
+export type VLazy<Output, Type extends string = string, Input = unknown> = BaseSchema<
+  Output,
+  Type,
+  SafeParsableObjectTypes,
+  Input,
+  any
+>
 
-const lazyValidations_ = [
-  [
-    'customValidation',
-    (
-        customValidator: (
-          value: object,
-          ...otherArgs: unknown[]
-        ) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: object) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
-
-const lazyValidations = lazyValidations_ as LazyValidations
-
-export interface VLazy<Output, Type extends string = string, Input = unknown>
-  extends BaseSchema<Output, Type, 'lazy', Input> {
-  customValidator(
-    customValidator: (value: Output, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-    ...otherArgs: unknown[]
-  ): this
-}
-
-const baseLazyObject = createValidationBuilder(baseObject, lazyValidations)
-export function vLazy<T>(propFn: () => any, options: { type?: string } = {}): VLazy<T> {
+const baseLazyObject = Object.create(baseObject)
+export function vLazy<T>(propFn: () => MinimumSchema, options: { type?: string } = {}): VLazy<T> {
   return createFinalBaseObject(
     baseLazyObject,
     (value) => propFn().safeParse(value),

@@ -10,7 +10,6 @@ import {
   MinimumSchema,
   SafeParsableObjectTypes,
   SafeParseFn,
-  SingleValidationError,
   UnionType,
   VInfer,
   VNever,
@@ -25,7 +24,6 @@ import {
   ValidationErrors,
   defaultErrorFnSym,
 } from './types'
-import { createValidationBuilder } from './base validations'
 import defaultErrorFn, { DefaultErrorFn } from './errorFns'
 import { isTransformed } from './shared'
 
@@ -269,35 +267,6 @@ export function parseDiscriminatedUnion<
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-type UnionValidations<T> = [
-  [
-    'customValidation',
-    (
-      customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-      ...otherArgs: unknown[]
-    ) => (value: T) => SingleValidationError | undefined,
-  ],
-]
-const unionValidations_ = [
-  [
-    'customValidation',
-    <T>(
-        customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: T) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-const unionValidations = unionValidations_ as UnionValidations<any>
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * Utils
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -362,7 +331,7 @@ export function initUnionTypes(baseObject: MinimumSchema) {
     vNeverInstance = neverInstance
   }
 
-  const baseUnionObject = createValidationBuilder(baseObject, unionValidations)
+  const baseUnionObject = Object.create(baseObject)
 
   function vUnionFn(
     schemasOrStrings: UnionType | StringUnionType | ObjectUnionSchemas,

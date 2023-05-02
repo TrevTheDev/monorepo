@@ -11,8 +11,6 @@ import {
   ValidationErrors,
 } from './types'
 
-import { createValidationBuilder } from './base validations'
-
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -34,25 +32,6 @@ export function parsePostProcessed<
 >(postprocessFn: S, schema: T) {
   return (value: unknown) => postprocessFn(schema.safeParse(value) as ReturnType<T['safeParse']>)
 }
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-
-const defaultValidations = [
-  [
-    'customValidation',
-    (customValidator, ...otherArgs) =>
-      (value) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-
-// export const mapValidations = instanceOfValidations_ as InstanceOfValidations
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -91,7 +70,7 @@ export function initDefault(baseObject: MinimumSchema): {
   vDefault: VDefaultFn
   vCatch: VCatchFn
 } {
-  const baseDefaultObject = createValidationBuilder(baseObject, defaultValidations as any)
+  const baseDefaultObject = Object.create(baseObject)
   function vPreprocess<T extends MinimumSchema, S extends (value: unknown) => unknown>(
     preprocessFn: S,
     schema: T,

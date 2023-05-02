@@ -257,18 +257,6 @@ const stringValidations_ = [
     (regex: RegExp, errorReturnValueFn?: (value: string) => string) =>
       validateAgainstRegex(regex, errorReturnValueFn)(),
   ],
-  [
-    'customValidation',
-    (
-        customValidator: (
-          value: string,
-          ...otherArgs: unknown[]
-        ) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: string) =>
-        customValidator(value, ...otherArgs),
-  ],
 ] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
 const stringValidations = stringValidations_ as StringValidations
@@ -320,10 +308,6 @@ export interface VString<Output extends string = string, Input = unknown>
   // includes(includedString: string, errorFn?: DefaultErrorFn['includes']): this
   // startsWith(startString: string, errorFn?: DefaultErrorFn['startsWith']): this
   // endsWith(endString: string, errorFn?: DefaultErrorFn['endsWith']): this
-  // customValidation<S extends unknown[]>(
-  //   customValidator: (value: string, ...otherArgs: S) => SingleValidationError | undefined,
-  //   ...otherArgs: S
-  // ): this
 }
 
 // & {

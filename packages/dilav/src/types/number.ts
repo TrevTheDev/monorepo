@@ -5,7 +5,6 @@ import {
   SafeParseFn,
   BaseSchema,
   defaultErrorFnSym,
-  SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
@@ -184,18 +183,6 @@ const numberValidations_ = [
   ['step', multipleOf],
   ['finite', finite],
   ['safe', safe],
-  [
-    'customValidation',
-    (
-        customValidator: (
-          value: number,
-          ...otherArgs: unknown[]
-        ) => SingleValidationError | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: number) =>
-        customValidator(value, ...otherArgs),
-  ],
 ] as const // [propName: string, validationFn: (...args) => (value: string) => string | undefined][]
 
 const numberValidations = numberValidations_ as NumberValidations

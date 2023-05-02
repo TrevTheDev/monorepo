@@ -9,10 +9,10 @@ it('passing validations', () => {
 
 it('string params', () => {
   const example1 = v.custom<number>((x) => typeof x !== 'number', {
-    invalidValueFn: () => 'customerr',
+    invalidValueFn: () => 'customer',
   })
   const result = example1.safeParse(1234)
   expect(v.isResult(result)).toEqual(false)
   if (v.isError(result))
-    expect(JSON.stringify(result[0].errors[0]).includes('customerr')).toEqual(true)
+    expect(JSON.stringify(result[0].errors[0]).includes('customer')).toEqual(true)
 })

@@ -7,7 +7,6 @@ import {
   MinimumSchema,
   BaseSchema,
   SafeParseFn,
-  SingleValidationError,
   VArrayFinite,
   VArrayInfinite,
   VInfer,
@@ -20,7 +19,6 @@ import {
 } from './types'
 
 import { baseObject, vArray, vNeverInstance } from './init'
-import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
 const errorFns = baseObject[defaultErrorFnSym]
@@ -220,32 +218,6 @@ export function parseFunction<
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-// type FunctionValidations<T extends Fn> = [
-//   [
-//     'customValidation',
-//     (
-//       customValidator: (value: T, ...otherArgs: unknown[]) => SingleValidationError | undefined,
-//       ...otherArgs: unknown[]
-//     ) => (value: T) => SingleValidationError | undefined,
-//   ],
-// ]
-
-const functionValidations = [
-  [
-    'customValidation',
-    (customValidator, ...otherArgs) =>
-      (value) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * vFunction
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -277,14 +249,9 @@ export interface VFunction<
     types: S,
   ): VFunction<PartialToFuncDef<{ parameters: S; returns: T['returns'] }>>
   returns<S extends MinimumSchema>(returns: S): VFunction<Omit<T, 'returns'> & { returns: S }>
-  // default validations
-  customValidations<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
 }
 
-const baseFunctionObject = createValidationBuilder(baseObject, functionValidations as any)
+const baseFunctionObject = Object.create(baseObject)
 
 function finaliseFunctionDefinition<T extends PartialFunctionDefinition>(
   functionDefinition: T,

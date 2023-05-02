@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { it, expect } from 'vitest'
 import { v } from '../../src'
 

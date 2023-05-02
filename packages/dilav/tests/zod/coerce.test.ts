@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable max-len */
 import { it, expect } from 'vitest'
 import { v } from '../../src'
@@ -97,12 +98,12 @@ it('bigint coercion', () => {
   expect(() => schema.parse(-Infinity)).toThrow() // not a v.ZodError!
   expect(schema.parse(true)).toEqual(BigInt(1))
   expect(schema.parse(false)).toEqual(BigInt(0))
-  expect(() => schema.parse(null)).toThrow() // not a v.ZodError!
-  expect(() => schema.parse(undefined)).toThrow() // not a v.ZodError!
-  expect(() => schema.parse({ hello: 'world!' })).toThrow() // not a v.ZodError!
-  expect(() => schema.parse(['item', 'another_item'])).toThrow() // not a v.ZodError!
-  expect(schema.parse([])).toEqual(BigInt(0))
-  expect(schema.parse(new Date(1670139203496))).toEqual(BigInt(1670139203496))
+  expect(() => schema.parse(null as unknown as any)).toThrow() // not a v.ZodError!
+  expect(() => schema.parse(undefined as unknown as any)).toThrow() // not a v.ZodError!
+  expect(() => schema.parse({ hello: 'world!' } as unknown as any)).toThrow() // not a v.ZodError!
+  expect(() => schema.parse(['item', 'another_item'] as unknown as any)).toThrow() // not a v.ZodError!
+  expect(schema.parse([] as unknown as any)).toEqual(BigInt(0))
+  expect(schema.parse(new Date(1670139203496) as unknown as any)).toEqual(BigInt(1670139203496))
 })
 
 it('date coercion', () => {
@@ -120,16 +121,16 @@ it('date coercion', () => {
   expect(schema.parse(0)).toBeInstanceOf(Date)
   expect(schema.parse(-5)).toBeInstanceOf(Date)
   expect(schema.parse(3.14)).toBeInstanceOf(Date)
-  expect(() => schema.parse(BigInt(5))).toThrow() // not a v.ZodError!
+  expect(() => schema.parse(BigInt(5) as unknown as any)).toThrow() // not a v.ZodError!
   expect(() => schema.parse(NaN)).toThrow() // v.ZodError
   expect(() => schema.parse(Infinity)).toThrow() // v.ZodError
   expect(() => schema.parse(-Infinity)).toThrow() // v.ZodError
-  expect(schema.parse(true)).toBeInstanceOf(Date)
-  expect(schema.parse(false)).toBeInstanceOf(Date)
-  expect(schema.parse(null)).toBeInstanceOf(Date)
-  expect(() => schema.parse(undefined)).toThrow() // v.ZodError
-  expect(() => schema.parse({ hello: 'world!' })).toThrow() // v.ZodError
-  expect(() => schema.parse(['item', 'another_item'])).toThrow() // v.ZodError
-  expect(() => schema.parse([])).toThrow() // v.ZodError
+  expect(schema.parse(true as unknown as any)).toBeInstanceOf(Date)
+  expect(schema.parse(false as unknown as any)).toBeInstanceOf(Date)
+  expect(schema.parse(null as unknown as any)).toBeInstanceOf(Date)
+  expect(() => schema.parse(undefined as unknown as any)).toThrow() // v.ZodError
+  expect(() => schema.parse({ hello: 'world!' } as unknown as any)).toThrow() // v.ZodError
+  expect(() => schema.parse(['item', 'another_item'] as unknown as any)).toThrow() // v.ZodError
+  expect(() => schema.parse([] as unknown as any)).toThrow() // v.ZodError
   expect(schema.parse(new Date())).toBeInstanceOf(Date)
 })

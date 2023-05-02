@@ -52,7 +52,7 @@ it('parse', () => {
   // type X = v.Infer<typeof i>
   // const x = i.safeParse({})
 
-  const y = crazySchema.parse({
+  crazySchema.parse({
     tuple: ['asdf', 1234, true, null, undefined, '1234'],
     merged: { k1: 'asdf', k2: 12 },
     union: ['asdf', 12, 'asdf', 12, 'asdf', 12],
@@ -66,5 +66,4 @@ it('parse', () => {
     numProm: Promise.resolve(12),
     lenfun: (x: string) => x.length,
   })
-  const x1 = y.intersection
 })

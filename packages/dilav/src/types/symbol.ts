@@ -1,17 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable } from 'toolbelt'
+import type { ResultError } from 'toolbelt'
 
 import { createFinalBaseObject } from './base'
-import {
-  SafeParseFn,
-  BaseSchema,
-  defaultErrorFnSym,
-  SingleValidationError,
-  ValidationErrors,
-} from './types'
+import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
 
 import { baseObject } from './init'
-import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
 const errorFns = baseObject[defaultErrorFnSym]
@@ -36,39 +29,16 @@ export function parseSymbol(
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
- * all validations
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
- ***************************************************************************************************************************** */
-type SymbolValidations = DeepWriteable<typeof symbolValidations_>
-const symbolValidations_ = [
-  [
-    'customValidation',
-    (
-        customValidator: (value: symbol, ...otherArgs: unknown[]) => string | undefined,
-        ...otherArgs: unknown[]
-      ) =>
-      (value: symbol) =>
-        customValidator(value, ...otherArgs),
-  ],
-] as const
-const symbolValidations = symbolValidations_ as SymbolValidations
-
-/** ****************************************************************************************************************************
- * *****************************************************************************************************************************
- * *****************************************************************************************************************************
  * vBoolean
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export interface VSymbol<Output extends symbol = symbol, Input = unknown>
-  extends BaseSchema<Output, string, 'symbol', Input> {
-  // default validations
-  customValidations<S extends unknown[]>(
-    customValidator: (value: Output, ...otherArgs: S) => SingleValidationError | undefined,
-    ...otherArgs: S
-  ): this
-}
+export type VSymbol<Output extends symbol = symbol, Input = unknown> = BaseSchema<
+  Output,
+  string,
+  'symbol',
+  Input
+>
 
 type SymbolOptions =
   | {
@@ -79,7 +49,7 @@ type SymbolOptions =
     }
   | Record<string, never>
 
-const baseSymbolObject = createValidationBuilder(baseObject, symbolValidations)
+const baseSymbolObject = Object.create(baseObject)
 
 export function vSymbol(options: SymbolOptions = {}): VSymbol {
   return createFinalBaseObject(
