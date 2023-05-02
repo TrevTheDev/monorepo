@@ -89,8 +89,7 @@ export function enhancedMap<V, K = number>(...iterable: readonly V[]) {
       return map.delete(key)
     },
     forEach(callbackfn: (value: V, key: K) => void, thisArg?: unknown) {
-      return
-      map.forEach(callbackfn, thisArg)
+      return map.forEach(callbackfn, thisArg)
     },
     get(key: K) {
       return map.get(key)

@@ -3,7 +3,7 @@
 
 import { enhancedMap } from '.'
 import type { EnhancedMap } from '.'
-import { LMerge, RecursiveUnion } from './typescript utils'
+import { RMerge } from './typescript utils'
 
 type CouplerOptions = {
   outgoingCallbackName: string
@@ -25,7 +25,7 @@ type PartialOptions = Partial<CouplerOptions>
 
 type FinalOption<
   Options extends PartialOptions,
-  T = LMerge<DefaultOptions, Options>,
+  T = RMerge<[DefaultOptions, Options]>,
   RT extends CouplerOptions = T extends CouplerOptions ? T : never,
 > = RT
 
@@ -36,7 +36,7 @@ type OutgoingCallback<T extends AnyCallback> = (incomingCallback: IncomingCallba
 export type AsyncCoupler<
   Options extends CouplerOptions,
   IncomingCallbackT extends AnyCallback,
-> = RecursiveUnion<
+> = RMerge<
   [
     {
       [key in Options['outgoingCallbackName']]: Options['indexed'] extends true

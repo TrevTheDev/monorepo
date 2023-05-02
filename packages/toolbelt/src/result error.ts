@@ -8,11 +8,15 @@ export function toError<T>(error: T): [T, undefined] {
   return [error, undefined]
 }
 
-export function isResult<E, R>(output: ResultError<E, R>): output is [error: undefined, result: R] {
+export function isResult<E, R>(
+  output: [error: E, result?: undefined] | [error: undefined, result: R],
+): output is [error: undefined, result: R] {
   return output[0] === undefined
 }
 
-export function isError<E, R>(output: ResultError<E, R>): output is [error: E, result: undefined] {
+export function isError<E, R>(
+  output: [error: E, result?: undefined] | [error: undefined, result: R],
+): output is [error: E, result?: undefined] {
   return output[0] !== undefined
 }
 

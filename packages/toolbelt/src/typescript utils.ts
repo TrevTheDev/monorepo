@@ -39,85 +39,95 @@ export type JustSignatures<T> = T extends {
  */
 export type Identity<T> = T extends object ? {} & { [P in keyof T]: T[P] } : T
 
-/**
- * merges T1 with T2.  For duplicate properties, T2 overwrites T1.
- * Gotcha: doesn't merge call signatures or constructors.
- * @example
- * type U = Union<{a: number}, {b: string}>     // {a: number, b: string}
- * type U = Union<{ a: number }, { a: string }> // {a: string}
- * type U = Union<{ a: 'a1'; b: 'b1'; c: 'c1' }, { a: 'a2', c: 'c2', d: 'd2' }> // { a: "a2"; c: "c2"; d: "d2"; b: "b1"; }
- */
-export type Union<
-  T1 extends UnknownObject,
-  T2 extends UnknownObject,
-  R extends UnknownObject = {
-    [K in keyof T2 | keyof T1]: K extends keyof T2 ? T2[K] : K extends keyof T1 ? T1[K] : never
-  },
-> = R
+// /**
+//  * merges T1 with T2.  For duplicate properties, T2 overwrites T1.
+//  * Gotcha: doesn't merge call signatures or constructors.
+//  * @example
+//  * type U = Union<{a: number}, {b: string}>     // {a: number, b: string}
+//  * type U = Union<{ a: number }, { a: string }> // {a: string}
+//  * type U = Union<{ a: 'a1'; b: 'b1'; c: 'c1' }, { a: 'a2', c: 'c2', d: 'd2' }> // { a: "a2"; c: "c2"; d: "d2"; b: "b1"; }
+//  */
+// export type Union<
+//   T1 extends UnknownObject,
+//   T2 extends UnknownObject,
+//   R extends UnknownObject = {
+//     [K in keyof T2 | keyof T1]: K extends keyof T2 ? T2[K] : K extends keyof T1 ? T1[K] : never
+//   },
+// > = R
+
+// /**
+//  * alternative implementation of Union
+//  */
+// export type Union2<T1 extends UnknownObject, T2 extends UnknownObject> = {
+//   [K in keyof T1]: K extends keyof T2 ? T2[K] : T1[K]
+// } & T2 extends infer O
+//   ? { [K in keyof O]: O[K] }
+//   : never
 
 /**
- * alternative implementation of Union
- */
-export type Union2<T1 extends UnknownObject, T2 extends UnknownObject> = {
-  [K in keyof T1]: K extends keyof T2 ? T2[K] : T1[K]
-} & T2 extends infer O
-  ? { [K in keyof O]: O[K] }
-  : never
-
-/**
- * merges an array of UnknownObject into a single object.  Recursively uses `Union` - so may
- * have performance impacts
+ * merges an array of UnknownObject into a single object.
  * @example
  * type U = RecursiveUnion<[{ a: 'a' }, { b?: 'b' }, { c: 'c' }, { d?: 'd' }]>
  * { a: 'a'; b?: 'b'; c: 'c'; d?: 'd'; }
  */
-export type RecursiveUnion<
-  T extends [UnknownObject, UnknownObject, ...UnknownObject[]],
-  MergedObject01 extends UnknownObject = Union<T[0], T[1]>,
-  MergedObjects extends UnknownObject = T extends [
-    any,
-    any,
-    ...infer R extends [UnknownObject, ...UnknownObject[]],
-  ]
-    ? [MergedObject01, ...R] extends [UnknownObject, UnknownObject, ...UnknownObject[]]
-      ? RecursiveUnion<[MergedObject01, ...R]>
-      : MergedObject01
-    : MergedObject01,
-> = MergedObjects
+// export type RecursiveUnion<T extends UnknownObject[]> = T extends [
+//   infer H extends UnknownObject,
+//   ...infer R extends UnknownObject[],
+// ]
+//   ? [] extends R
+//     ? H
+//     : Identity<H & RecursiveUnion<R>>
+//   : never
+
+// export type RecursiveUnion<
+//   T extends [UnknownObject, UnknownObject, ...UnknownObject[]],
+//   MergedObject01 extends UnknownObject = Union<T[0], T[1]>,
+//   MergedObjects extends UnknownObject = T extends [
+//     any,
+//     any,
+//     ...infer R extends [UnknownObject, ...UnknownObject[]],
+//   ]
+//     ? [MergedObject01, ...R] extends [UnknownObject, UnknownObject, ...UnknownObject[]]
+//       ? RecursiveUnion<[MergedObject01, ...R]>
+//       : MergedObject01
+//     : MergedObject01,
+// > = MergedObjects
 
 /**
- * returns a union of all keys that match the criteria
+ * returns a union of keys where the value matches the Criteria
  * @example
  * type Foo1 = KeysMatching<{a: string, b: undefined, c: undefined, d: number}, undefined> // 'b'|'c'
  */
-export type KeysMatching<T extends UnknownObject, Criteria> = {
-  [K in keyof T]-?: T[K] extends Criteria ? K : never
-}[keyof T]
+export type KeysMatching<T extends UnknownObject, Criteria> = keyof {
+  [K in keyof T as T[K] extends Criteria ? K : never]: K
+}
 
-/**
- * Overwrites any properties in T1, that are also in T2.  Any extra properties in T2 are ignored.
- * @example
- * type U = LMerge<{ a: number }, { b: string }> // {a: number}
- * type U = LMerge<{ a: number; c: boolean }, { a: string; b: number }> // {a: string, c:boolean}
- */
-export type LMerge<
-  T1 extends UnknownObject,
-  T2 extends UnknownObject,
-  R extends UnknownObject = {
-    [k in keyof T1]: k extends keyof T2 ? T2[k] : T1[k]
-  },
-> = R
+// /**
+//  * Overwrites any properties in T1, that are also in T2.  Any extra properties in T2 are ignored.
+//  * @example
+//  * type U = LMerge<{ a: number }, { b: string }> // {a: number}
+//  * type U = LMerge<{ a: number; c: boolean }, { a: string; b: number }> // {a: string, c:boolean}
+//  */
+// export type LMerge<
+//   T1 extends UnknownObject,
+//   T2 extends UnknownObject,
+//   R extends UnknownObject = {
+//     [k in keyof T1]: k extends keyof T2 ? T2[k] : T1[k]
+//   },
+// > = R
 
 /**
  * Renames a property in a type object.
  * @example
  * type U = RenameProperty<{ a: number; c?: boolean; d?: string }, 'c', 'b'> // { a: number,  b?: boolean, d?: string }
  */
-export type RenameProperty<T, OldPropertyName extends keyof T, NewPropertyName extends string> = {
+export type RenameProperty<
+  T,
+  OldPropertyName extends keyof T,
+  NewPropertyName extends PropertyKey,
+> = {
   [P in keyof T as P extends OldPropertyName ? NewPropertyName : P]: T[P]
-} extends infer O
-  ? { [Key in keyof O]: O[Key] }
-  : never
+}
 
 /**
  * Omits call signature from a type
@@ -377,6 +387,7 @@ export type ObjectValuesToTuple<
  * type U1 = TupleToIntersection<['a'|'b'|'c', 'a'|'b', 'b'|'c']> // 'b'
  * type U2 = TupleToIntersection<['a']> // 'a'
  * type U4 = TupleToIntersection<[string, any, number]>  // never
+ * type U5 = TupleToIntersection<[{ a: string }, { a: number }]> // { a: string; } & { a: number; }
  */
 export type TupleToIntersection<T extends [any, ...any[]]> = {
   [I in keyof T]: (x: T[I]) => void
@@ -391,11 +402,19 @@ export type TupleToIntersection<T extends [any, ...any[]]> = {
  * type U2 = TupleToIntersectionAlt<['a']> // 'a'
  * type U3 = TupleToIntersectionAlt<[]> // never
  * type U4 = TupleToIntersectionAlt<[string, any, number]>  // any
+ * type U5 = TupleToIntersectionAlt<[{ a: string }, { a: number }]> // { a: string; } & { a: number; }
  */
 export type TupleToIntersectionAlt<
   Rest extends any[],
   T = Rest extends [any, ...any[]] ? Rest['0'] : never,
 > = Rest extends [infer H, ...infer S] ? TupleToIntersectionAlt<S, H & T> : T
+
+// export type TupleToIntersectionAlt<T extends any[], PreviousItem = never> = T extends [
+//   infer H,
+//   ...infer Rest,
+// ]
+//   ? H & TupleToIntersectionAlt<Rest, H>
+//   : PreviousItem
 
 /**
  * removes the `readonly` attribute from a type
@@ -546,19 +565,9 @@ export function narrowingAssert<T>(toBeAsserted: any): asserts toBeAsserted is T
  * type Foo3 = IsFinite<string[], 'yes', 'no'>                          // 'no'
  * type Foo4 = IsFinite<[arg1: string, ...args: string[]], 'yes', 'no'> // 'no'
  */
-export type IsFinite<Tuple extends any[], Finite, Infinite> = {
-  empty: Finite
-  nonEmpty: [...args: Tuple] extends [arg: any, ...args: infer Rest]
-    ? IsFinite<Rest, Finite, Infinite>
-    : never
-  infinite: Infinite
-}[Tuple extends []
-  ? 'empty'
-  : Tuple extends (infer Element)[]
-  ? Element[] extends Tuple
-    ? 'infinite'
-    : 'nonEmpty'
-  : never]
+export type IsFinite<T extends any[], Finite = true, Infinite = false> = number extends T['length']
+  ? Finite
+  : Infinite
 
 /**
  * Prepends item(s) to the front of a tuple
@@ -577,11 +586,9 @@ export type Prepend<Tuple extends any[], NewHead extends any[]> = [
  * type U = ReverseTuple<['a', 'b', 'c']> // ["c", "b", "a"]
  * type U = ReverseTuple<['a']> // ["a"]
  */
-export type ReverseTuple<T, Result extends any[] = []> = T extends []
-  ? Result
-  : T extends [infer First, ...infer Rest]
-  ? ReverseTuple<Rest, [First, ...Result]>
-  : Result
+export type ReverseTuple<T extends any[]> = T extends [infer First, ...infer Rest]
+  ? [...ReverseTuple<Rest>, First]
+  : []
 
 /**
  * Returns the length of a string
@@ -601,13 +608,38 @@ export type LengthOfString<
  * type U3 = Join<[]> // ""
  * type U4 = Join<['', '', '']> // ""
  */
-export type Join<
-  Strings extends string[],
-  Separator extends string = ',',
-  Result extends string = '',
-> = Strings extends [infer H extends string, ...infer Rest extends string[]]
-  ? Join<Rest, Separator, '' extends Result ? H : `${Result}${Separator}${H}`>
-  : Result
+export type Join<T extends string[], Separator extends string = ','> = T extends [
+  infer H extends string,
+  ...infer Rest extends string[],
+]
+  ? `${H}${Join<Rest, Separator> extends '' ? '' : `${Separator}${Join<Rest, Separator>}`}`
+  : ''
+
+// type ProhibitExtra<T, K extends PropertyKey> = T & { [P in Exclude<K, keyof T>]?: never }
+type SealUnion<T, K extends PropertyKey = T extends unknown ? keyof T : never> = T extends unknown
+  ? T & { [P in Exclude<K, keyof T>]?: never }
+  : never
+/**
+ * Flattens an union of objects into a single object
+ *
+ * Based on : https://stackoverflow.com/a/76092753/3091013
+ * @example
+ * type U1 = FlattenObjectUnion<{ a: string } | { b: number }> // { a?: string; b?: number }
+ * type U2 = FlattenObjectUnion<{ a: string } | { a: number }> // { a: string | number }
+ * type U3 = FlattenObjectUnion<
+ *   { a?: string, b: number, c: boolean, d?: Date } |
+ *   { c: string, d?: number, e: boolean, f?: Date }
+ * >
+ * // => type F3 =
+ * //   a?: string;
+ * //   b?: number;
+ * //   c: string | boolean;
+ * //   d?: number | Date;
+ * //   e?: boolean;
+ * //   f?: Date;
+ * // }
+ */
+export type FlattenObjectUnion<T extends object> = Omit<SealUnion<T>, never>
 
 /** ***********************************************************************************************************************************************************************
  * To delete?
@@ -708,3 +740,111 @@ export type ConcatTuple<Tuple1 extends unknown[], Tuple2 extends unknown[]> = [.
 // type TypeToString<T> = string & T
 
 // type Z = `${TypeToString<{ a: 1; b: 2; c: 3; 1: 2 }>}`
+
+/**
+ * In [ A, B , ...] A and B are merged, with B taking precedence
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = Identity<RMerge<[{ a?: 'a'; c?: 'a' }, { b: 'b'; c: 'b' }]>> // { a?: 'a'; b: 'b'; c: 'b'; }
+ */
+export type ObjectArray = [object, object, ...object[]]
+
+export type RMerge<T extends ObjectArray, MergedObject = Omit<T[0], keyof T[1]> & T[1]> = [
+  MergedObject,
+  ...(T extends [any, any, ...infer R extends object[]] ? R : []),
+] extends infer NewT extends ObjectArray
+  ? RMerge<NewT>
+  : MergedObject
+
+// NewT extends ObjectArray ? RMerge<NewT> : MergedObject
+
+/**
+ * In [ A, B , ...] A and B are merged, with A taking precedence
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = Identity<LMerge2<[{ a?: 'a', c: 'a'}, { b: 'b', c?: 'b' }]>> // { b: 'b'; a?: 'a'; c: 'a'; }
+ */
+export type LMerge<
+  T extends ObjectArray,
+  MergedObject extends object = Omit<T[1], keyof T[0]> & T[0],
+  NewT = [MergedObject, ...(T extends [any, any, ...infer R extends object[]] ? R : [])],
+> = NewT extends ObjectArray ? LMerge<NewT> : MergedObject
+
+/**
+ * In [ A, B , ... ] A and B are merged limited to A's properties, with B taking precedence
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = Identity<RMergeL2<[{ a?: 'a', c: 'a'}, { b: 'b', c?: 'b' }]>> // { a: "a" | undefined; c?: 'b'; }
+ */
+export type RMergeLimited<
+  T extends ObjectArray,
+  MergedObject extends object = Pick<T[1], keyof T[1] & keyof T[0]> & Omit<T[0], keyof T[1]>,
+  NewT = [MergedObject, ...(T extends [any, any, ...infer R extends object[]] ? R : [])],
+> = NewT extends ObjectArray ? RMergeLimited<NewT> : MergedObject
+
+/**
+ * In [ A, B , ... ] A and B are merged limited to B's properties, with A taking precedence
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = Identity<LMergeL2<[{ a: 'a'; c?: 'a' }, { b?: 'b'; c: 'b' }]>> // { c?: 'a'; b?: 'b'; }
+ */
+export type LMergeLimited<
+  T extends ObjectArray,
+  MergedObject extends object = Pick<T[0], keyof T[1] & keyof T[0]> & Omit<T[1], keyof T[0]>,
+  NewT = [MergedObject, ...(T extends [any, any, ...infer R extends object[]] ? R : [])],
+> = NewT extends ObjectArray ? LMergeLimited<NewT> : MergedObject
+
+/**
+ * In [ A, B , ... ] where properties exist in both A and B, return A's matched properties
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = MatchA2<[{ a: 'a', c?: 'a'}, { b: 'b', c: 'b' }]> // { c?: 'a'; }
+ */
+export type MatchA<
+  T extends ObjectArray,
+  MergedObject extends object = Pick<T[0], keyof T[1] & keyof T[0]>,
+  NewT = [MergedObject, ...(T extends [any, any, ...infer R extends object[]] ? R : [])],
+> = NewT extends ObjectArray ? MatchA<NewT> : MergedObject
+
+/**
+ * In [ A, B , ... ] where properties exist in both A and B, return B's matched properties
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = MatchB<[{ a: 'a', c: 'a'}, { b: 'b', c?: 'b' }]> // { c?: 'b'; }
+ */
+export type MatchB<
+  T extends ObjectArray,
+  MergedObject extends object = Pick<T[1], keyof T[1] & keyof T[0]>,
+  NewT = [MergedObject, ...(T extends [any, any, ...infer R extends object[]] ? R : [])],
+> = NewT extends ObjectArray ? MatchB<NewT> : MergedObject
+
+/**
+ * In [ A, B, C, ... ] returns A & B & C & ...
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = Identity<IntersectType1<[{ a: 'a' }, { b?: 'b' }, { c: 'c' }]>> // { a: 'a'; b?: 'b'; c: 'c'; }
+ */
+export type IntersectType1<T extends [object, ...object[]]> = {
+  [I in keyof T]: (x: T[I]) => void
+}[number] extends (x: infer I) => void
+  ? I
+  : never
+
+/**
+ * In [ A, B, C, ... ] returns (( A & B ) & C ) & ...)
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type U = IntersectType2<[{ a: string }, { a: any; b: 'b' }, { a: number }]> // { a: any; b: 'b }
+ * type U = IntersectType2<[{ a: 'a' }, { b?: 'b' }, { c: 'c' }]> // { a: 'a'; b?: 'b'; c: 'c'; }
+ */
+export type IntersectType2<T extends [object, ...object[]]> = T extends [
+  infer T1 extends object,
+  infer T2 extends object,
+  ...infer R extends object[],
+]
+  ? IntersectType2<[Identity<T1 & T2>, ...R]>
+  : T[0]
+
+// // A union B
+// type Union<T1 extends object,T2 extends object> = T1 | T2 extends infer O ? { [K in keyof O]: O[K] }: never
+// type UnionX1 = Union<A,B> // { a: 'a'; c: 'a'; } | { b: 'b'; c: 'b'; }

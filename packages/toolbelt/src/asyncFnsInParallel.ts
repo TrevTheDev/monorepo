@@ -32,9 +32,9 @@ export type Resolver<
       },
 > = RT extends ValidResolver ? RT : never
 
-export type AsyncFnAny = (input: any, resolver: any) => any
+type AsyncFnAny = (input: any, resolver: any) => any
 
-export type AsyncFn<
+type AsyncFn<
   Input,
   ResultFn extends ResultCb,
   ErrorFn extends ErrorCb | never,
@@ -171,57 +171,45 @@ function asyncFnsInParallel<T extends AsyncFnAny>(...asyncFns: T[]): AsyncFnsInP
 function asyncFnsInParallel<AsyncFns extends [AsyncFnAny, ...AsyncFnAny[]]>(
   ...asyncFns: AsyncFns & ConstrainedAsyncFns<AsyncFns>
 ): AsyncFnsInParallel2<AsyncFns>
-function asyncFnsInParallel<
-  AsyncFns extends [AsyncFnAny, ...AsyncFnAny[]],
-  ResultsArray = AsyncFnArrays<AsyncFns, 'results'>,
-  ErrorsArray = AsyncFnArrays<AsyncFns, 'errors'>,
->(...asyncFns: AsyncFns & ConstrainedAsyncFns<AsyncFns>): any {
-  // type ResultsArray = AsyncFnArrays<AsyncFns, 'results'>
-  // type ErrorsArray = AsyncFnArrays<AsyncFns, 'errors'>
-  type ControllerArray = AsyncFnArrays<AsyncFns, 'controllers'>
+function asyncFnsInParallel(...asyncFns: AsyncFnAny[]): any {
+  // type ControllerArray = AsyncFnArrays<AsyncFns, 'controllers'>
 
-  type Input = FirstInput<AsyncFns>
+  // type Input = FirstInput<AsyncFns>
 
   // let state: State = 'init'
 
   const asyncFnsInParallelObj = {
     await: (
-      input: Input,
-      resultCb: (resultArray: ResultsArray) => void,
-      errorCb?: (errorArray: ErrorsArray, resultArray: ResultsArray) => void,
+      input,
+      resultCb: (resultArray) => void,
+      errorCb?: (errorArray, resultArray) => void,
     ) => {
       let state: State = 'awaited'
       let hasErrors = false
       const arrayLength = asyncFns.length
-      const resultArray = new Array(arrayLength) as unknown as Partial<ResultsArray>
-      const errorArray = new Array(arrayLength) as unknown as Partial<ErrorsArray>
-      const controllerArray = new Array(arrayLength) as ControllerArray
+      const resultArray = new Array(arrayLength)
+      const errorArray = new Array(arrayLength)
+      const controllerArray = new Array(arrayLength)
 
       let resultCount = 0
 
       const finalDoneCb = () => {
         state = 'done'
-        resultCb(resultArray as ResultsArray)
+        resultCb(resultArray)
       }
 
       const finalErrorCb = () => {
         state = 'error'
         if (!errorCb) throw new Error('no `errorCb` provided, and one is required')
-        errorCb(errorArray as ErrorsArray, resultArray as ResultsArray)
+        errorCb(errorArray, resultArray)
       }
 
-      const asyncFnsInParallelController: AsyncFnsInParallelController<
-        Partial<ControllerArray>,
-        Partial<ResultsArray>,
-        Partial<ErrorsArray>
-      > = {
+      const asyncFnsInParallelController = {
         get state() {
           return state
         },
         get controllers() {
-          return controllerArray.filter(
-            (controller) => controller !== undefined,
-          ) as FilterController<ControllerArray>
+          return controllerArray.filter((controller) => controller !== undefined)
         },
         get resultQueue() {
           return resultArray
@@ -242,10 +230,7 @@ function asyncFnsInParallel<
 
         let asyncFnState: AsyncFnState = 'executing'
 
-        function cleanUpAndCheckDone(
-          finalQueue: Partial<ResultsArray> | Partial<ErrorsArray>,
-          result: any[],
-        ) {
+        function cleanUpAndCheckDone(finalQueue, result) {
           if (asyncFnState === 'executing' && state === 'awaited') {
             // debugger
             asyncFnState = 'resolved'
@@ -283,7 +268,7 @@ function asyncFnsInParallel<
       asyncFns.forEach((asyncFn, i) => runAsyncFn(asyncFn, i))
       return asyncFnsInParallelController
     },
-    promise(input: Input) {
+    promise(input) {
       return new Promise((resolve, reject) => {
         asyncFnsInParallelObj.await(input, resolve, reject)
       })

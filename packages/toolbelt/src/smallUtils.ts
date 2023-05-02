@@ -81,7 +81,7 @@ export function runFunctionsOnlyOnce<E extends DuplicateCallErrorFn | any = neve
 // const x = runFunctionsOnlyOnce()((a: string) => a)
 
 /**
- * Function wrapper that executes `testFn` with functions args and if it returns true, throws an error via errorCb
+ * Function wrapper that executes `fn` with functions args and if it returns true, throws an error via errorCb
  * @param errorCb: (meta?: M, args?: P) => never - function that throws a custom error
  * @param isValidArgs: (args: P, meta?: M) => boolean - function that performs some test and if it returns `false` then `errorCb` is called
  * @returns (fn: T, meta?: M)=> T - a function that accepts a function `fn` and optional meta data `meta` that may be passed to `errorCb`
@@ -98,30 +98,30 @@ export function validateFn<
     }
 }
 
-/**
- * Function wrapper that throws an error `errorMsg` if arg is undefined, '', null or []
- * @param fn: (arg: any) => unknown - any function that requires `arg` be returned
- * @param errorMsg
- * @returns return value of `fn`
- */
-export function requireValue<T extends (arg: any) => any>(
-  fn: T,
-  errorMsg = `this function requires a value`,
-) {
-  type P = T extends (arg: infer A) => any ? A : never
-  return validateFn(
-    () => {
-      throw new Error(errorMsg)
-    },
-    (arg: [P]) =>
-      !(
-        arg[0] === undefined ||
-        arg[0] === null ||
-        arg[0] === '' ||
-        (Array.isArray(arg[0]) && arg[0].length === 0)
-      ),
-  )(fn)
-}
+// /**
+//  * Function wrapper that throws an error `errorMsg` if arg is undefined, '', null or []
+//  * @param fn: (arg: any) => unknown - any function that requires `arg` be returned
+//  * @param errorMsg
+//  * @returns return value of `fn`
+//  */
+// export function requireValue<T extends (arg: any) => any>(
+//   fn: T,
+//   errorMsg = `this function requires a value`,
+// ) {
+//   type P = T extends (arg: infer A) => any ? A : never
+//   return validateFn(
+//     () => {
+//       throw new Error(errorMsg)
+//     },
+//     (arg: [P]) =>
+//       !(
+//         arg[0] === undefined ||
+//         arg[0] === null ||
+//         arg[0] === '' ||
+//         (Array.isArray(arg[0]) && arg[0].length === 0)
+//       ),
+//   )(fn)
+// }
 
 /**
  * Can add many callbacks that are all triggered when `triggerCallbacks` is executed.
@@ -255,37 +255,37 @@ export function capitaliseWords(stringToCapitalise: string, separators = [' ', '
   )
 }
 
-export function functionClass<
-  ClassType extends Record<string, unknown>,
-  InstantiationArgs extends unknown[],
-  PrivateVariables extends unknown[],
->(
-  this: ClassType,
-  ctor: (
-    instantiatorArg: (...privateVariables: PrivateVariables) => ClassType,
-    ...args0: InstantiationArgs
-  ) => ClassType,
-  callAction: string,
-  instantiator: (...privateVariables: PrivateVariables) => ClassType,
-) {
-  const fn = function Ctor(...args: InstantiationArgs) {
-    console.log(1)
-    const self = function CallSelf(...callArgs: any) {
-      return (self[callAction] as any)(...callArgs)
-    } as unknown as ClassType
+// export function functionClass<
+//   ClassType extends Record<string, unknown>,
+//   InstantiationArgs extends unknown[],
+//   PrivateVariables extends unknown[],
+// >(
+//   this: ClassType,
+//   ctor: (
+//     instantiatorArg: (...privateVariables: PrivateVariables) => ClassType,
+//     ...args0: InstantiationArgs
+//   ) => ClassType,
+//   callAction: string,
+//   instantiator: (...privateVariables: PrivateVariables) => ClassType,
+// ) {
+//   const fn = function Ctor(...args: InstantiationArgs) {
+//     console.log(1)
+//     const self = function CallSelf(...callArgs: any) {
+//       return (self[callAction] as any)(...callArgs)
+//     } as unknown as ClassType
 
-    const instantiatorFn = (...args1: PrivateVariables) => {
-      const obj = instantiator.apply(self, args1)
-      Object.assign(self, obj)
-      return self
-    }
+//     const instantiatorFn = (...args1: PrivateVariables) => {
+//       const obj = instantiator.apply(self, args1)
+//       Object.assign(self, obj)
+//       return self
+//     }
 
-    const that = ctor.call(self, instantiatorFn, ...args)
-    return that
-  }
+//     const that = ctor.call(self, instantiatorFn, ...args)
+//     return that
+//   }
 
-  return fn
-}
+//   return fn
+// }
 
 type ObjectWithExecutableProperty<P extends string> = { [K in P]: (...args: any[]) => any }
 

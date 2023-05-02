@@ -39,5 +39,6 @@ yarn-error.log*
 .turbo
 
 archive
+.archive
 
 .VSCodeCounter

@@ -5,6 +5,13 @@ export {
   runFunctionsOnlyOnce,
   times,
   isObjectAndHasExecutableProperty,
+  validateFn,
+  capitaliseWords,
+  isGetter,
+  isSetter,
+  isValue,
+  isFunction,
+  callbackTee,
 } from './smallUtils'
 
 export { enhancedMap } from './enhancedMap'
@@ -22,22 +29,23 @@ export { default as compositor } from './compositor'
 
 export { difference, intersection } from './difference'
 
-export { default as chain } from './chain'
+export { default as chain, chainNodeType } from './chain'
 export type { AwaitedChainController, Resolver, AsyncFunc } from './chain'
 
-export { default as enhancedChain } from './enhancedChain'
+export { default as enhancedChain, enhancedChainNodeType, toAsyncFn } from './enhancedChain'
 
-export { default as outputPins, resultNone } from './outputPins'
-export type {
-  OutputPinSetter,
-  OutputPinGetter,
-  OutputPinCallbacks,
-  ResultNoneSetter,
-  ResultNone,
-} from './outputPins'
+// export { default as outputPins, resultNone } from './outputPins'
+// export type {
+//   OutputPinSetter,
+//   OutputPinGetter,
+//   OutputPinCallbacks,
+//   ResultNoneSetter,
+//   ResultNone,
+// } from './outputPins'
 
 export {
   toResult,
+  toError,
   resultErrorToResultNever,
   resultNeverToResultError,
   onlyExecuteOnResult,

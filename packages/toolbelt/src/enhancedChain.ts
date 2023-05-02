@@ -13,7 +13,7 @@ import type {
   SharedProperties,
 } from './chain'
 
-import type { LMerge, Union } from './typescript utils'
+import type { RMerge } from './typescript utils'
 import type { Fn, FunctionChainArray } from './compose'
 import compositor from './compositor'
 
@@ -65,7 +65,7 @@ type PartialOptions = Partial<EnhanceChainOptions>
 
 type FinalOption<
   Options extends PartialOptions,
-  RT = LMerge<DefaultOptions, Options>,
+  RT = RMerge<[DefaultOptions, Options]>,
 > = RT extends EnhanceChainOptions ? RT : never
 
 type SyncFunctionChainArray<
@@ -169,13 +169,15 @@ type EnhancedResultCall<Chain extends ChainGenerics, Options extends EnhanceChai
 type EnhancedChainNode<
   Chain extends ChainGenerics,
   Options extends EnhanceChainOptions,
-  RT = Union<
-    SharedProperties<Chain>,
-    {
-      type: typeof enhancedChainNodeType
-      sync: SyncResultCall<Chain, Options>
-      input(input: Chain['Input']): Promise<Chain['LastNode']['Output']>
-    }
+  RT = RMerge<
+    [
+      SharedProperties<Chain>,
+      {
+        type: typeof enhancedChainNodeType
+        sync: SyncResultCall<Chain, Options>
+        input(input: Chain['Input']): Promise<Chain['LastNode']['Output']>
+      },
+    ]
   > &
     EnhancedResultCall<Chain, Options>,
 > = RT

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IsStrictAny, Lookup, Union } from './typescript utils'
+import { IsStrictAny, Lookup, RMerge } from './typescript utils'
 
 export const chainNodeType = Symbol('Chain Node')
 
@@ -107,7 +107,7 @@ export type ResultCallTypes<
   },
 > = Res
 
-export type ResultCall<Chain extends ChainGenerics> = {
+type ResultCall<Chain extends ChainGenerics> = {
   <
     T extends [ValidAsyncFn, ...ValidAsyncFn[]],
     RT extends {
@@ -128,7 +128,7 @@ export type ResultCall<Chain extends ChainGenerics> = {
  * the use of `any` is a hack required due to:
  * https://stackoverflow.com/questions/74229462/how-to-enforce-type-compliance-on-callback-parameters
  */
-export type ValidResolver =
+type ValidResolver =
   | {
       (result: any): any
       result: (result: any) => any
@@ -166,7 +166,7 @@ type InferAsyncFnBase = {
   ConstrainedAsyncFn: ValidAsyncFn
 }
 
-export type InferAsyncFn<
+type InferAsyncFn<
   T extends ValidAsyncFn,
   TResolver = T extends (input: any, resolver: infer R) => any ? R : never,
   ResultResolver extends ResultCb<any, any> = TResolver extends {
@@ -212,7 +212,7 @@ type ConstrainAsyncFn<
         ResultResolverController
       >
     : AsyncFunc<Input, ResultCb<any, any>, ErrorCb<any, any>, ResultResolverController>,
-> = IsStrictAny<T, Union<T, { ConstrainedAsyncFn: ConstrainedAsyncFn }>>
+> = IsStrictAny<T, RMerge<[T, { ConstrainedAsyncFn: ConstrainedAsyncFn }]>>
 
 type ConstrainAsyncFnBaseOnFirstNode<T extends InferAsyncFnBase> = ConstrainAsyncFn<
   T,

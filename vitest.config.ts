@@ -13,7 +13,7 @@ if (process.env.DEBUG === 'jest') {
 
 export default defineConfig({
   test: {
-    include: ['./packages/validate/tests/**/*.ts'],
-    exclude: ['./packages/*/tests/archive/**/*.ts'],
+    include: ['./packages/**/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['./packages/**/tests/**/.archive'],
   },
 })

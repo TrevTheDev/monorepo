@@ -59,7 +59,7 @@ type LinkedEfn<
   RT = (input: ReturnType<F1> extends ResultError<any, infer R> ? R : never) => ReturnType<F2>,
 > = RT extends Efn ? RT : never
 
-export type FunctionChainArrayWithError<
+type FunctionChainArrayWithError<
   T extends [Efn, ...Efn[]],
   Input = any,
   First extends Efn = T extends [infer F extends Efn, ...any] ? F : never,
