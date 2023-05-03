@@ -7,5 +7,5 @@ export default defineConfig((options) => ({
   clean: true,
   format: ['esm'],
   target: ['es2022'],
-  minify: !options.watch,
+  // minify: !options.watch,
 }))
