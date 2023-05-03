@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError } from 'toolbelt'
+import type { ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'

@@ -1,6 +1,6 @@
 {
   "name": "@trevthedev/toolbelt",
-  "version": "0.0.45",
+  "version": "0.0.46",
   "description": "miscellaneous functions and utilities",
   "main": "./src/index",
   "scripts": {
@@ -36,12 +36,15 @@
     "eslint-config-prettier": "^8.8.0",
     "prettier": "2.8.8",
     "promises-aplus-tests": "^2.1.2",
+    "tsconfig": "*",
     "typescript": "^5.0.4",
-    "vitest": "^0.30.1",
-    "tsconfig": "*"
+    "vitest": "^0.30.1"
   },
   "type": "module",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@trevthedev/toolbelt": "^0.0.46"
   }
 }

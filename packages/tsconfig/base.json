@@ -15,7 +15,10 @@
     "preserveWatchOutput": true,
     "skipLibCheck": true,
     "strict": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "paths": {
+      "@trevthedev/*": ["./packages/*/"]
+    }
   },
   "exclude": ["node_modules"]
 }

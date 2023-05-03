@@ -1,7 +1,7 @@
 /* eslint-disable prefer-regex-literals */
 /* eslint-disable max-len */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable } from 'toolbelt'
+import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
 
 import { createValidationBuilder } from './base validations'
 import { createFinalBaseObject } from './base'

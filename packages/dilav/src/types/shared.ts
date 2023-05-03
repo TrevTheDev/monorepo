@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isResult } from 'toolbelt'
+import { ResultError, isResult } from '@trevthedev/toolbelt'
 
 import {
   MinimumArrayRestSchema,

@@ -1,6 +1,11 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type ResultError, type DeepWriteable, intersection, difference } from 'toolbelt'
+import {
+  type ResultError,
+  type DeepWriteable,
+  intersection,
+  difference,
+} from '@trevthedev/toolbelt'
 
 import { parseObject } from './object'
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isError } from 'toolbelt'
-import type { ResultError } from 'toolbelt'
+import { isError } from '@trevthedev/toolbelt'
+import type { ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {

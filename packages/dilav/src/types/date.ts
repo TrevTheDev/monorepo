@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { ResultError, DeepWriteable } from 'toolbelt'
+import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,

@@ -7,7 +7,7 @@ import {
   RMerge,
   ResultError,
   TupleToIntersection,
-} from 'toolbelt'
+} from '@trevthedev/toolbelt'
 
 import { DefaultErrorFn } from './errorFns'
 

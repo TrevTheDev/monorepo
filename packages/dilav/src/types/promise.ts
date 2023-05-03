@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isResult } from 'toolbelt'
-import type { ResultError } from 'toolbelt'
+import { isResult } from '@trevthedev/toolbelt'
+import type { ResultError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,

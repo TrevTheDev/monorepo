@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type ResultError, type DeepWriteable, isError } from 'toolbelt'
+import { type ResultError, type DeepWriteable, isError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumSchema,

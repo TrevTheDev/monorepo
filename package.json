@@ -1,5 +1,5 @@
 {
-  "name": "trev-the-dev-mono-repo",
+  "name": "@trevthedev/monorepo",
   "version": "0.0.0",
   "private": true,
   "workspaces": [

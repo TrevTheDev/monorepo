@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError } from 'toolbelt'
+import { ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
