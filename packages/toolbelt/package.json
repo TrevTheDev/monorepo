@@ -43,8 +43,5 @@
   "type": "module",
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {
-    "@trevthedev/toolbelt": "^0.0.46"
   }
 }

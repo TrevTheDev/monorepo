@@ -2,7 +2,7 @@ import { it } from 'vitest'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { z } from 'zod'
 
-import { times } from 'toolbelt'
+import { times } from '@trevthedev/toolbelt'
 import { v } from '../src'
 
 // it('benchmark against zod2', () => {
