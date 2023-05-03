@@ -1,6 +1,6 @@
 {
   "name": "@trevthedev/toolbelt",
-  "version": "0.0.57",
+  "version": "0.0.59",
   "description": "miscellaneous functions and utilities",
   "main": "./src/index",
   "scripts": {
@@ -23,7 +23,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TrevTheDev/monorepo.git"
+    "url": "git+https://github.com/TrevTheDev/monorepo.git",
+    "directory": "packages/toolbelt"
   },
   "private": false,
   "devDependencies": {
