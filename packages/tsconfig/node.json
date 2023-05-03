@@ -4,16 +4,12 @@
   "extends": "./base.json",
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ESNext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "incremental": true,
-    "esModuleInterop": true,
     "module": "esnext",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
+    "lib": ["ESNext"],
+    "removeComments": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
     "strict": true,
     "noImplicitAny": false,
     "strictNullChecks": true,
@@ -33,9 +29,14 @@
     "noPropertyAccessFromIndexSignature": true,
     "allowUnusedLabels": true,
     "allowUnreachableCode": true,
+
+    "allowJs": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
     "noErrorTruncation": false,
-    "moduleResolution":"nodenext"
-  },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+    "tsBuildInfoFile": ".tsbuildinfo"
+  }
 }
