@@ -5,9 +5,9 @@ export default defineConfig((options) => ({
   splitting: true,
   sourcemap: false,
   clean: true,
-  format: ['esm', 'cjs', 'iife'],
+  format: ['esm', 'cjs'],
   target: ['es2022'],
   treeshake: true,
   outDir: 'build',
-  // minify: !options.watch,
+  minify: !options.watch,
 }))
