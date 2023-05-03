@@ -1,13 +1,35 @@
 {
   "name": "dilav",
-  "version": "0.0.2",
-  "description": "runtime type validation for javascript",
-  "main": "./src/index",
+  "type": "module",
+  "version": "0.0.3",
+  "description": "A blazing fast way to transforms `unknown` types, into valid known typescript types.",
+  "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/dilav#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TrevTheDev/monorepo.git",
+    "directory": "packages/dilav"
+  },
+  "bugs": {
+    "url": "https://github.com/TrevTheDev/monorepo/issues"
+  },
+  "keywords": [
+    "typescript",
+    "schema",
+    "validation",
+    "type",
+    "inference"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "esbuild ./src/index.ts --bundle --outfile=./build/out.js",
-    "buildxx": "tsup",
+    "build": "esbuild ./src/index.ts --bundle --outfile=./dist/index.js --minify --tree-shaking=true",
+    "buildxx": "tsup ./src/index.ts",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",
@@ -15,7 +37,6 @@
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
   },
-  "keywords": [],
   "author": "TrevTheDev",
   "license": "MIT",
   "private": false,
@@ -35,7 +56,6 @@
     "vitest": "^0.30.1",
     "zod": "^3.21.4"
   },
-  "type": "module",
   "engines": {
     "node": ">=19.0.0"
   },
