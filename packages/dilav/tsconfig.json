@@ -1,9 +1,9 @@
 {
   "extends": "tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "build",
     "noErrorTruncation": true,
-    "strictFunctionTypes": true
+    "outDir": "build/cjs"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "archive", "test", "tests"]
 }

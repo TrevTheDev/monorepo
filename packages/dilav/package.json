@@ -1,6 +1,5 @@
 {
   "name": "dilav",
-  "type": "module",
   "version": "0.0.7",
   "description": "A blazing fast way to transforms `unknown` types, into valid known typescript types.",
   "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/dilav#readme",
@@ -19,27 +18,26 @@
     "type",
     "inference"
   ],
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/types/index.d.ts",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "module": "./build/index.mjs",
+  "files": [
+    "build/"
+  ],
   "exports": {
     ".": {
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.js",
+      "require": "./build/index.js",
+      "import": "./build/index.mjs",
       "types": "./index.d.ts"
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist"
-  ],
   "sideEffects": false,
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "esbuild ./src/index.ts --bundle --outfile=./dist/index.js --tree-shaking=true",
-    "build:types": "tsc -d --declarationDir dist/types --declarationMap --emitDeclarationOnly",
-    "buildxx": "tsup ./src/index.ts --format esm,cjs,iife",
+    "build": "tsup --dts",
+    "build:tsc": "tsc && tsc -p tsconfig-esm.json",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",
