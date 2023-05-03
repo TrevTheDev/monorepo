@@ -1,6 +1,6 @@
 {
   "name": "@trevthedev/toolbelt",
-  "version": "0.0.59",
+  "version": "0.0.66",
   "description": "miscellaneous functions and utilities",
   "main": "./src/index",
   "scripts": {
@@ -10,7 +10,7 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",
-    "publish": "npm version patch && git push --tags origin master",
+    "publish": "npm version patch && git push --tags origin main",
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
   },
