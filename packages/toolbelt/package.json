@@ -1,17 +1,19 @@
 {
   "name": "@trevthedev/toolbelt",
-  "version": "0.0.66",
+  "version": "0.0.67",
   "description": "miscellaneous functions and utilities",
-  "main": "./build/cjs/index.js",
-  "types": "./build/esm/index.d.ts",
-  "module": "./build/esm/index.js",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "module": "./build/index.mjs",
   "files": [
     "build/"
   ],
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "tsc && tsc -p tsconfig-esm.json",
+    "build": "tsup",
+    "build:dts": "tsup --dts",
+    "build:tsc": "tsc && tsc -p tsconfig-esm.json",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",
@@ -41,6 +43,7 @@
     "eslint-config-prettier": "^8.8.0",
     "prettier": "2.8.8",
     "promises-aplus-tests": "^2.1.2",
+    "tsup": "^6.7.0",
     "typescript": "^5.0.4",
     "vitest": "^0.30.1"
   },
