@@ -1,6 +1,6 @@
 {
   "name": "dilav",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A blazing fast way to transforms `unknown` types, into valid known typescript types.",
   "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/dilav#readme",
   "repository": {

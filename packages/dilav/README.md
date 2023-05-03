@@ -1,6 +1,6 @@
 # Introduction
 
-Dilav is a blazingly fast way to transforms `unknown` types, into valid known typescript types. Similar to how Typescript provides type assurance at compile time, Dilav provides type assurance at run-time. Dilav is a heteropalindrome of valid.
+Dilav is a blazing fast way to transforms `unknown` types, into valid known typescript types. Similar to how Typescript provides type assurance at compile time, Dilav provides type assurance at run-time. Dilav is a heteropalindrome of valid.
 
 - [Introduction](#introduction)
   - [Why I created this project](#why-i-created-this-project)
@@ -110,7 +110,7 @@ In developing Dilav, Zod's excellent public API was leveraged, mean Dilav provid
 
 Whilst the APIs are similar, Dilav includes significant changes and is therefore not a drop in replacement.
 
-Zod has ~3,950 lines of JavaScript code and Dilav has ~2,650.
+Zod has ~3,950 lines of JavaScript code and Dilav has ~2,900.
 
 The benchmarks in the test folder shows Dilav is ~240% faster on my computer for Benchmark 1 which parses objects and arrays and 890% faster for Benchmark 2 which parses only a string and 250% faster for Benchmark 3 which only parses a string. These numbers appear high to me and I haven't yet fully explored why they are so high, so they should be taken with a pinch of salt.
 
