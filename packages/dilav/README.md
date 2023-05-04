@@ -1,3 +1,7 @@
+<p align="center">
+<img src="https://user-images.githubusercontent.com/5828281/236115570-07315f34-edbe-471c-8d18-f735324b32fe.png" height="150">
+</p>
+
 # Introduction
 
 Dilav is a blazing fast way to transforms `unknown` types, into valid known typescript types. Similar to how Typescript provides type assurance at compile time, Dilav provides type assurance at run-time. Dilav is a heteropalindrome of valid.
@@ -102,31 +106,31 @@ Dilav is a blazing fast way to transforms `unknown` types, into valid known type
 
 ## Why I created this project
 
-I'm currently unemployed and to showcase my skills I developed this project. If you like it and know of someone needing similar projects created, please contact me.
+I'm currently looking for emplyment and to showcase my skills I developed this project. If you like it and know of someone needing similar projects created, please contact me.
 
 ## Relationship to Zod
 
-In developing Dilav, Zod's excellent public API was leveraged, mean Dilav provides near functional parity to Zod and it passes most of Zod's tests with minor changes. Dilav was written from scratch and shares no code with Zod, other than a few string validation `regex's`
+In developing Dilav, Zod's excellent public API was leveraged, meaning Dilav provides near functional parity to Zod and it passes most of Zod's tests with minor changes. Dilav was written from scratch and shares no code with Zod, other than a few string validation `regex's`
 
 Whilst the APIs are similar, Dilav includes significant changes and is therefore not a drop in replacement.
 
-Zod has ~3,950 lines of JavaScript code and Dilav has ~2,900.
+The benchmarks in the test folder shows Dilav is ~280% faster on my computer for Benchmark 1 which parses objects and arrays and 980% faster for Benchmark 2 which parses only a string and 300% faster for Benchmark 3 which only parses a string. These numbers appear high to me and I haven't yet fully explored why they are so high, so they should be taken with a pinch of salt.
 
-The benchmarks in the test folder shows Dilav is ~240% faster on my computer for Benchmark 1 which parses objects and arrays and 890% faster for Benchmark 2 which parses only a string and 250% faster for Benchmark 3 which only parses a string. These numbers appear high to me and I haven't yet fully explored why they are so high, so they should be taken with a pinch of salt.
+Zod has ~3,950 lines of JavaScript code and Dilav has ~2,900.
 
 **Select API changes from Zod:**
 
-- `v.Object` by default returns the original object and not a new object
-- `v.Object` by default doesn't allow unspecified properties
+- `v.object` by default returns the original object and not a new object
+- `v.object` by default doesn't allow unspecified properties
 - `z.tuple` functionality has been merged into `v.array`
 - `z.discriminatedUnion` functionality was merged into `v.union`
 - `z.nativeEnum` functionality was merged into `v.enum`
 - `safeParse` instead of returning an object, returns an array of type `ResultError`
 - most primitives do not need to be called - `v.string` vs `z.string()`
-- customisation of errors is done via functions, rather than strings
+- customisation of errors is done via functions that return strings, rather than strings, providing more flexibility
 - minor capitalisation and spelling changes to methods
 - `z.ZodType` is split across multiple types
-- `.refine` and `z.superRefine` are not replaced by `.customValidation`, `.preprocess` and `.postprocess` enable one to appropriately customise input values, validations, errors and return values
+- `.refine` and `z.superRefine` are replaced by `.customValidation`, `.preprocess` and `.postprocess` enabling customisation of input values, validations, errors and return values
 - `.describe` not implemented
 - `.brand` not implemented
 
@@ -163,7 +167,7 @@ Dilav is in it's first alpha release, to seek feedback from people who may be in
 ## npm install
 
 ```sh
-npm install Dilav       # npm
+npm install dilav       # npm
 ```
 
 ## Basic usage
@@ -359,7 +363,7 @@ v.string
   .parse('ABC')
 ```
 
-One can often provide customised validation error messages when adding a validation.
+One can often provide customised validation error messages when adding a validation:
 
 ```typescript
 v.string.max(5, (value) => `${value} is too long!`).parse('12345')
@@ -393,7 +397,7 @@ type StringValidationFn = (value: string) => ValidationError | undefined
 - `startsWith(startString: string, errorFn?: DefaultErrorFn['startsWith']): StringValidationFn`
 - `endsWith(endString: string, errorFn?: DefaultErrorFn['endsWith']): StringValidationFn`
 
-[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages with are used, and which can be customised.
 
 ### ISO datetimes
 
@@ -483,7 +487,7 @@ type NumberValidationFn = (value: number) => ValidationError | undefined
 - `finite(errorFn?: DefaultErrorFn['finite']): NumberValidationFn;`
 - `safe(errorFn?: DefaultErrorFn['safe']): NumberValidationFn;`
 
-[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages with are used, and which can be customised.
 
 ### `v.customize.number`
 
@@ -525,7 +529,7 @@ type BigIntValidationFn = (value: bigint) => ValidationError | undefined
 - `negative(errorFn?: DefaultErrorFn['bigIntNegative']): BigIntValidationFn`
 - `nonPositive(errorFn?: DefaultErrorFn['bigIntNonPositive']): BigIntValidationFn`
 
-[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages with are used, and which can be customised.
 
 ### `v.customize.bigInt`
 
@@ -642,9 +646,7 @@ fooEnumSchema.parse('Rat') // throws
 console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
 
-A second options parameter may be passed to `v.enum` of the type:
-
-`{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+A second options parameter may be passed to `v.enum` of the type: `{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
 
 The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
 
@@ -666,9 +668,7 @@ fooEnumSchema.parse('Rat') // throws
 console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
 
-A second options parameter may be passed to `v.enum` of the type:
-
-`{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+A second options parameter may be passed to `v.enum` of the type: `{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
 
 The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
 
@@ -754,7 +754,7 @@ nullishString.definition.wrappedSchema // => v.string
 
 ## Objects
 
-Dilav parses the object provided and by default returns the original object. However if a transformation method is applied to any one of the properties, then a new object is returned with the transformed value(s), and copies of all other properties.
+Dilav parses the object provided and by default returns the original object. However if a [transformation method](#transformation-methods) is applied to any one of the properties, then a new object is returned with the transformed value(s), and copies of all other properties.
 
 ```typescript
 const foo = v.object({
@@ -936,7 +936,7 @@ v.object(
 
 ## Arrays
 
-Dilav parses the array provided and by default returns the original unaltered array. However if a transformation method is applied to any one of array schemas, then a new array is returned with the transformed element(s).
+Dilav parses the array provided and by default returns the original unaltered array. However if a [transformation method](#transformation-methods) is applied to any one of array item schemas, then a new array is returned with the transformed element(s).
 
 ```typescript
 const array1 = v.array(v.string).parse([]) // string[]
@@ -982,11 +982,11 @@ type ArrayValidationFn = (value: unknown[]) => ValidationError | undefined
 - `requiredArrayLength(length: number,errorFn?: DefaultErrorFn['requiredArrayLength']): ArrayValidationFn`
 - `nonEmpty(errorFn?: DefaultErrorFn['arrayNonEmpty']): ArrayValidationFn`
 
-[DefaultErrorFn](#defaulterrorfn) contains all validation error messages.
+[DefaultErrorFn](#defaulterrorfn) contains all validation error messages with are used, and which can be customised.
 
 ### `.spread`
 
-`.spread` within an array behaves similarly to the spread `...` in Typescript. A key limitation is that whilst multiple spreads are okay, only one can have an infinite length.
+`.spread` within an array behaves similarly to the spread `...` in Typescript. A key limitation is that whilst multiple spreads are supported, only one can have an unknown length.
 
 ```typescript
 const foo = v
@@ -1733,4 +1733,4 @@ Dilav provides some useful types for working with results:
 
 #### `DefaultErrorFn`
 
-All of the global default messages than can be set are listed in the `errorFns.ts` file.
+All of the global default messages than can be set are listed in the [`errorFns.ts`](https://github.com/TrevTheDev/monorepo/blob/main/packages/dilav/src/types/errorFns.ts) file.

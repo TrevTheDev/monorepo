@@ -69,12 +69,15 @@ type DiscriminatedUnionOptions = {
   type: string
 }
 
-export type StringLiteralUnionOptions<T extends string> = {
-  stringLiteralUnion: true
-  parser?: SafeParseFn<unknown, T>
-  type?: string
-  parseStringUnion?: DefaultErrorFn['parseStringUnion']
-}
+export type StringLiteralUnionOptions<
+  T extends string,
+  RT = {
+    stringLiteralUnion: true
+    parser?: SafeParseFn<unknown, T>
+    type?: string
+    parseStringUnion?: DefaultErrorFn['parseStringUnion']
+  },
+> = RT
 
 interface PartialDiscriminatedUnionOptions {
   parser?: (
