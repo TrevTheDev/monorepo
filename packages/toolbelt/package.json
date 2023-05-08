@@ -2,19 +2,13 @@
   "name": "@trevthedev/toolbelt",
   "version": "0.0.70",
   "description": "miscellaneous functions and utilities",
-  "main": "./build/index.js",
-  "types": "./build/index.d.ts",
-  "module": "./build/index.mjs",
   "files": [
     "build/"
   ],
   "exports": {
-    ".": {
-      "require": "./build/index.js",
-      "import": "./build/index.mjs",
-      "types": "./index.d.ts"
-    },
-    "./package.json": "./package.json"
+    "require": "./build/index.js",
+    "import": "./build/index.mjs",
+    "types": "./build/index.d.ts"
   },
   "scripts": {
     "test": "vitest",

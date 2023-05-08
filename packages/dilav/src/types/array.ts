@@ -18,6 +18,7 @@ import {
   defaultErrorFnSym,
   parserObject,
   stratifiedSchemaProp,
+  MinimumInfiniteArraySchema,
 } from './types'
 import {
   isOptional,
@@ -310,7 +311,10 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
     return nextObj
   }
 
-  function finiteArray(itemSchemas: ValidArrayItemsW, options: ArrayOptions): VArrayFinite<any> {
+  function finiteArray(
+    itemSchemas: ValidArrayItemsW,
+    options: ArrayOptions,
+  ): MinimumInfiniteArraySchema {
     const startSchemas = [] as MinimumSchema[]
     let restSchema: MinimumSchema | undefined
     const endSchemas = [] as MinimumSchema[]
@@ -549,7 +553,7 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         configurable: false,
       },
     })
-    return builder as unknown as VArrayFinite<any>
+    return builder as unknown as MinimumInfiniteArraySchema
   }
 
   /** ****************************************************************************************************************************

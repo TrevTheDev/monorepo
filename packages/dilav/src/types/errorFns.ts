@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SingleArrayValidationError } from './array'
 import { MinimumObjectSchema, MinimumObjectDefinition, MinimumSchema } from './types'
 import { SingleObjectValidationError } from './object'
@@ -14,7 +13,7 @@ const JSONstringify = (unknownObject) => {
   }
 }
 
-function stringify(value) {
+function stringify(value: unknown) {
   switch (typeof value) {
     case 'string':
     case 'object':
@@ -37,8 +36,8 @@ const defaultErrorFn = {
   parseEnum: (value: unknown, enumV: object) =>
     `${stringify(value)} is not in the Enum :${stringify(enumV)}`,
   notNaN: () => 'NaN is not permitted',
-  parseLiteral: (value: unknown, literal: any) =>
-    `${stringify(value)} is not identical to ${literal}`,
+  parseLiteral: (value: unknown, literal: unknown) =>
+    `${stringify(value)} is not identical to ${stringify(literal)}`,
   parseUndefined: (value: unknown) => `${stringify(value)} is not undefined`,
   parseNull: (value: unknown) => `${stringify(value)} is not null`,
   parseNullish: (value: unknown) => `${stringify(value)} is not nullish (null or undefined)`,
@@ -162,7 +161,7 @@ const defaultErrorFn = {
     extraKeys: (string | symbol)[],
     _objectDef: MinimumObjectDefinition,
   ) => `${stringify(value)} contains the following extra properties:${stringify(extraKeys)}`,
-  missingItemInItemSchemas: (value: any[], key: PropertyKey) =>
+  missingItemInItemSchemas: (value: unknown[], key: PropertyKey) =>
     `item: ${stringify(key)} not found in ${stringify(value)}`,
   unableToSelectItemFromArray: (_value: MinimumSchema, _keys: PropertyKey[]) =>
     `unable to select items from an infinite array`,

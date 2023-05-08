@@ -742,13 +742,54 @@ export type ConcatTuple<Tuple1 extends unknown[], Tuple2 extends unknown[]> = [.
 // type Z = `${TypeToString<{ a: 1; b: 2; c: 3; 1: 2 }>}`
 
 /**
- * In [ A, B , ...] A and B are merged, with B taking precedence
+ * Returns the required keys of an object
+ * @example
+ * type U = RequiredKeys<{ a?: 'a'; b: 'b'; c: 'a' }> // "b" | "c"
+ */
+export type RequiredKeys<T extends object> = keyof {
+  [K in keyof T as T extends Record<K, T[K]> ? K : never]: K
+}
+/**
+ * Returns the optional keys of an object
+ * @example
+ * type U = OptionalPropertyOf<{ a?: 'a'; b: 'b', c?: 'a' }> // "a" | "c"
+ */
+export type OptionalKeys<T extends object> = keyof {
+  [K in keyof T as T extends Record<K, T[K]> ? never : K]: K
+}
+
+export type IfEquals<X, Y, A, B> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
+  ? A
+  : B
+
+/**
+ * Returns the writable keys of an object
+ * @example
+ * type U = WritableKeys<{ a: 'a'; readonly b: 'b', c?: 'a' }> // "a" | "c"
+ */
+export type WritableKeys<T extends object> = keyof {
+  [P in keyof T as IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, P, never>]: P
+}
+
+/**
+ * Returns the readonly keys of an object
+ * @example
+ * type U = ReadonlyKeys<{ a: 'a'; readonly b: 'b', readonly c?: 'a' }> // "b" | "c"
+ */
+export type ReadonlyKeys<T extends object> = keyof {
+  [P in keyof T as IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, never, P>]: P
+}
+
+export type ObjectArray = [object, object, ...object[]]
+
+/**
+ * In [ A, B , ...] A and B are merged, with B taking precedence: { ...A, ...B }
  * Gotcha: doesn't merge call signatures or constructors.
  * @example
  * type U = Identity<RMerge<[{ a?: 'a'; c?: 'a' }, { b: 'b'; c: 'b' }]>> // { a?: 'a'; b: 'b'; c: 'b'; }
  */
-export type ObjectArray = [object, object, ...object[]]
-
 export type RMerge<T extends ObjectArray, MergedObject = Omit<T[0], keyof T[1]> & T[1]> = [
   MergedObject,
   ...(T extends [any, any, ...infer R extends object[]] ? R : []),
@@ -756,10 +797,141 @@ export type RMerge<T extends ObjectArray, MergedObject = Omit<T[0], keyof T[1]> 
   ? RMerge<NewT>
   : MergedObject
 
-// NewT extends ObjectArray ? RMerge<NewT> : MergedObject
+/**
+ * In [ A, B , ...] A and B are merged, with B taking precedence.  Properties
+ * with objects are recursively merged as well
+ * Gotcha: doesn't merge call signatures or constructors.
+ * @example
+ * type A = {
+ *   inA: 'A'
+ *   inAB: 'AB'
+ *   inABOptionalB: 'AOB'
+ *   inABOptionalA?: 'OAB'
+ *   inAOptional?: 'OA'
+ *   Shared?: { in0?: '0'; in12: '12'; in0BOptional1: '0O1' }
+ * }
+ *
+ * type B = {
+ *   inB: 'B'
+ *   inAB: 'ABFromB'
+ *   inABOptionalB?: 'AOBFromB'
+ *   inABOptionalA: 'OABFromB'
+ *   inBOptional?: 'OB'
+ *   Shared?: { in1?: '1'; in12: '12From1'; in0BOptional1?: '0O1From1' }
+ * }
+ *
+ * type U = DeepRMerge<[A, B]> // => {
+ *   inA: 'A';
+ *   inAOptional?: 'OA';
+ *   inB: 'B';
+ *   inBOptional?: 'OB';
+ *   inAB: "ABFromB";
+ *   inABOptionalB: "AOBFromB" | undefined;
+ *   inABOptionalA: "OABFromB";
+ *   Shared?: {
+ *       in0?: '0';
+ *       in1?: '1';
+ *       in12: "12From1";
+ *       in0BOptional1: "0O1From1" | undefined;
+ *   };
+ * }
+ */
+// export type DeepRMerge<
+//   T extends ObjectArray,
+//   KeyOfT0 extends keyof T[0] = keyof T[0],
+//   KeyOfT1 extends keyof T[1] = keyof T[1],
+//   KeyOfT0AndT1 extends keyof T[0] & keyof T[1] = KeyOfT0 & KeyOfT1,
+//   OptionalKeyOfT0AndT1 extends KeyOfT0AndT1 = OptionalKeys<T[0]> &
+//     OptionalKeys<T[1]> extends KeyOfT0AndT1
+//     ? OptionalKeys<T[0]> & OptionalKeys<T[1]>
+//     : never,
+//   MergedObject = Omit<T[0], KeyOfT1> &
+//   Omit<T[1], KeyOfT0> & {
+//       [K in Exclude<KeyOfT0AndT1, OptionalKeyOfT0AndT1>]: T[0][K] extends infer T0 extends object
+//         ? T[1][K] extends infer T1 extends object
+//           ? DeepRMerge<[T0, T1]>
+//           : T[1][K]
+//         : T[1][K]
+//     } & {
+//       [K in OptionalKeyOfT0AndT1]?: Exclude<T[0][K], undefined> extends infer T0 extends object
+//         ? Exclude<T[1][K], undefined> extends infer T1 extends object
+//           ? DeepRMerge<[T0, T1]>
+//           : T[1][K]
+//         : T[1][K]
+//     },
+// > = [
+//   MergedObject,
+//   ...(T extends [any, any, ...infer R extends object[]] ? R : []),
+// ] extends infer NewT extends ObjectArray
+//   ? RMerge<NewT>
+//   : MergedObject extends infer O
+//   ? { [K in keyof O]: O[K] }
+//   : never
+
+export type DeepRMerge<T extends ObjectArray> = keyof T[0] extends infer KeyOfT0 extends keyof T[0]
+  ? keyof T[1] extends infer KeyOfT1 extends keyof T[1]
+    ? keyof T[0] & keyof T[1] extends infer KeyOfT0AndT1 extends keyof T[0] & keyof T[1]
+      ? OptionalKeys<T[0]> &
+          OptionalKeys<T[1]> extends infer OptionalKeyOfT0AndT1 extends KeyOfT0AndT1
+        ? Omit<T[0], KeyOfT1> &
+            Omit<T[1], KeyOfT0> & {
+              [K in Exclude<
+                KeyOfT0AndT1,
+                OptionalKeyOfT0AndT1
+              >]: T[0][K] extends infer T0 extends object
+                ? T[1][K] extends infer T1 extends object
+                  ? DeepRMerge<[T0, T1]>
+                  : T[1][K]
+                : T[1][K]
+            } & {
+              [K in OptionalKeyOfT0AndT1]?: Exclude<
+                T[0][K],
+                undefined
+              > extends infer T0 extends object
+                ? Exclude<T[1][K], undefined> extends infer T1 extends object
+                  ? DeepRMerge<[T0, T1]>
+                  : T[1][K]
+                : T[1][K]
+            } extends infer MergedObject extends object
+          ? ReadonlyKeys<T[0]> | ReadonlyKeys<T[1]> extends infer ROKeys extends keyof MergedObject
+            ? Readonly2<MergedObject, ROKeys> extends infer MOFinal extends object
+              ? [
+                  MOFinal,
+                  ...(T extends [any, any, ...infer R extends object[]] ? R : []),
+                ] extends infer NewT extends ObjectArray
+                ? RMerge<NewT>
+                : MOFinal
+              : never
+            : never
+          : never
+        : never
+      : never
+    : never
+  : never
+
+type Readonly2<T extends object, K extends keyof T> = Identity<Readonly<Pick<T, K>> & Omit<T, K>>
+
+// type A = {
+//   readonly inAB: 'AB'
+//   inABOptionalB: 'AOB'
+//   inABOptionalA?: 'OAB'
+//   inAOptional?: 'OA'
+//   Shared?: { in0?: '0'; in12: '12'; in0BOptional1: '0O1' }
+// }
+
+// type B = {
+//   inB: 'B'
+//   inAB: 'ABFromB'
+//   inABOptionalB?: 'AOBFromB'
+//   inABOptionalA: 'OABFromB'
+//   inBOptional?: 'OB'
+//   Shared?: { in1?: '1'; in12: '12From1'; readonly in0BOptional1?: '0O1From1' }
+// }
+
+// type U = DeepRMerge<[A, B]>
 
 /**
- * In [ A, B , ...] A and B are merged, with A taking precedence
+ * In [ A, B , ...] A and B are merged, with A taking precedence: { ...B, ...A }
  * Gotcha: doesn't merge call signatures or constructors.
  * @example
  * type U = Identity<LMerge2<[{ a?: 'a', c: 'a'}, { b: 'b', c?: 'b' }]>> // { b: 'b'; a?: 'a'; c: 'a'; }
@@ -844,7 +1016,3 @@ export type IntersectType2<T extends [object, ...object[]]> = T extends [
 ]
   ? IntersectType2<[Identity<T1 & T2>, ...R]>
   : T[0]
-
-// // A union B
-// type Union<T1 extends object,T2 extends object> = T1 | T2 extends infer O ? { [K in keyof O]: O[K] }: never
-// type UnionX1 = Union<A,B> // { a: 'a'; c: 'a'; } | { b: 'b'; c: 'b'; }
