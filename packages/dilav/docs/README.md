@@ -508,28 +508,29 @@ Dilav supports three types of enums: `string` enums, Typescript enums and `const
 ### `string` enums
 
 ```typescript
-const animalTypes1 = v.enum(['Dog', 'Cat', 'Fish'])
-// equivalent to :
-const animalTypes2 = v.union(['Dog', 'Cat', 'Fish'], { stringLiteralUnion: true })
+const animalSchema1 = v.enum(['Dog', 'Cat', 'Fish'])
+// similar to, except enum, includes an enum property :
+const animalSchema2 = v.union(['Dog', 'Cat', 'Fish'], { literalUnion: true })
 
-type AnimalTypes = v.Infer<typeof animalTypes1> // "Dog" | "Cat" | "Fish"
-animalTypes1.parse('Dog') // => 'Dog'
-expect(() => animalTypes1.parse('dog')).toThrow() // => throws
-console.log(animalTypes1.definition.unionTypes) // => ['Dog', 'Cat', 'Fish']
-console.log(animalTypes1.enum) // => {Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
-console.log(animalTypes1.enum.Dog === 'Dog') // => true
+type AnimalTypes = v.Infer<typeof animalSchema1> // "Dog" | "Cat" | "Fish"
+animalSchema1.parse('Dog') // => 'Dog'
+animalSchema1.parse('doggo') // => throws
+console.log(animalSchema1.definition.literals) // => ['Dog', 'Cat', 'Fish']
+
+console.log(animalSchema1.enum) // => {Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
+console.log(animalSchema1.enum.Dog === 'Dog') // => true
 ```
 
 Due to limitations of Typescript, Dilav enums can't correctly infer string arrays of type `string[]`, and so the `as const` modifier is required:
 
 ```typescript
 const animalTypes = ['Dog', 'Cat', 'Fish'] as const // as const is required
-const animalEnum = v.enum(animalTypes)
+const animalEnumSchema = v.enum(animalTypes)
 ```
 
 A second options parameter may be passed to `v.enum` of the type:
 
-`{ parseStringUnion?: DefaultErrorFn['parseStringUnion'] }`
+`{ parseLiteralUnion?: DefaultErrorFn['parseLiteralUnion'] }`
 
 ### Typescript enums
 
@@ -542,15 +543,15 @@ enum fooEnum {
 }
 const fooEnumSchema = v.enum(fooEnum)
 type FooEnumSchema = v.Infer<typeof fooEnumSchema> // fooEnum
-const x1 = fooEnumSchema.parse('Cat') // => 'Cat'
-const x2 = fooEnumSchema.parse(1) // => 1
+fooEnumSchema.parse('Cat') // => 'Cat'
+fooEnumSchema.parse(1) // => 1
 fooEnumSchema.parse('Rat') // throws
 console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
 
-A second options parameter may be passed to `v.enum` of the type: `{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+A second options parameter may be passed to `v.enum` of the type: `{ parseLiteralUnion?: DefaultErrorFn['parseLiteralUnion']; matchType?: 'key' | 'value' | 'either'  }`
 
-The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
+The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'value'`
 
 ### `const` enums
 
@@ -570,9 +571,9 @@ fooEnumSchema.parse('Rat') // throws
 console.log(fooEnumSchema.enum) // => the original fooEnum
 ```
 
-A second options parameter may be passed to `v.enum` of the type: `{ parseEnumError?: DefaultErrorFn['parseEnum']; matchType?: 'keyOnly' | 'valueOnly' | 'either'  }`
+A second options parameter may be passed to `v.enum` of the type: `{ parseLiteralUnion?: DefaultErrorFn['parseLiteralUnion']; matchType?: 'key' | 'value' | 'either'  }`
 
-The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'valueOnly'`
+The `matchType` option specifies whether the value should be matched on property key, or property value, or both. The default is`'value'`
 
 ## Optionals
 
@@ -944,13 +945,13 @@ const foo = v
 // => { type: "A"; data: string } | { type: "B"; result: string }
 ```
 
-### String Literal Unions
+### Literal Unions
 
-One could create a union of string literals and then parse against those, however Dilav includes a performance optimised way of parsing string only unions.
+One could create a union of literals schemas and then parse against those, however Dilav includes a performance optimised way of parsing literals only unions.
 
 ```typescript
-const fooBar = v.union(['foo', 'bar'], { stringLiteralUnion: true }).parse('foo') // => 'foo' | 'bar'
-// equivalent:
+const fooBar = v.union(['foo', 'bar'], { literalUnion: true }).parse('foo') // => 'foo' | 'bar'
+// similar too:
 const fooBar = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
 ```
 
@@ -959,18 +960,12 @@ const fooBar = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
 Intersections are similar to `&` in Typescript. In general each item in the intersection must parse without error, for the intersection to successfully parse. By default, intersection errors on the first parsing error it encounters. If one requires a complete list of errors, one can set `{ breakOnFirstError: false }` as a second option to intersection.
 
 ```typescript
-const foo1 = v.intersection([
-  v.union(['A', 'B'], { stringLiteralUnion: true }),
-  v.union(['B', 'C'], { stringLiteralUnion: true }),
-]) // => ('A'|'B') & ('B'|'C') = 'B'
-
+const foo1 = v.intersection([v.enum(['A', 'B']), v.enum(['B', 'C'])])
 // equivalent to:
-const foo2 = v
-  .union(['A', 'B'], { stringLiteralUnion: true })
-  .and(v.union(['B', 'C'], { stringLiteralUnion: true }))
+const foo2 = v.enum(['A', 'B']).and(v.enum(['B', 'C']))
 
-const b = foo2.parse('B') // 'B'
-expect(() => foo2.parse('A')).toThrow()
+foo2.parse('B') // =>'B'
+foo2.parse('A') // throws
 ```
 
 When intersecting only object schemas a new `object` schema is returned, with each property also intersected and with the `unmatchedPropertySchema` set to an intersection of all the objects `unmatchedPropertySchema`s
@@ -1372,16 +1367,13 @@ v.intersection(v.object({ name: v.string }), v.object({ age: v.number }))
 `.pipe()` - pipes the output from one schema into the input of another schema, making it possible to chain schemas together:
 
 ```typescript
-const foo = v.string.pipe(
-  v.union(['A', 'B'], { stringLiteralUnion: true }),
-  v.union(['A'], { stringLiteralUnion: true }),
-) // -> string -> 'A' | 'B' -> 'A'
+const foo = v.string.pipe(v.enum(['A', 'B']), v.enum(['A'])) // -> string -> 'A' | 'B' -> 'A'
 foo.parse('A')
-expect(() => foo.parse('B')).toThrow()
+foo.parse('B') // throws
 
 const schema = v.string.transform((str) => str.length).pipe(v.number.min(5))
-const z = schema.parse('12345')
-expect(() => schema.parse('1235')).toThrow()
+schema.parse('12345') // 5
+schema.parse('1235') // throws
 ```
 
 `.pipe()` can work around some common issues with `coerce`:
