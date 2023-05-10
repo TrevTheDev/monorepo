@@ -7,6 +7,7 @@ import {
   RMerge,
   ResultError,
   TupleToIntersection,
+  DeepRMerge,
 } from '@trevthedev/toolbelt'
 
 import { DefaultErrorFn } from './errorFns'
@@ -110,16 +111,22 @@ type ParserObject<
 > = [Definition] extends [never]
   ? {
       parserFn: SafeParseFn<Input, Output>
-      readonly validators: ValidationFn<Output>[] | any
-      readonly asyncValidators: AsyncValidationFn<Output>[] | any
+      readonly validators: ((value: any, ...otherArgs: any) => SingleValidationError)[]
+      readonly asyncValidators: ((
+        value: any,
+        ...otherArgs: any
+      ) => Promise<SingleValidationError | undefined>)[]
       readonly type: Type
       readonly baseType: BaseType
       readonly definition?: object
     }
   : {
       parserFn: SafeParseFn<Input, Output>
-      readonly validators: ValidationFn<Output>[] | any
-      readonly asyncValidators: AsyncValidationFn<Output>[] | any
+      readonly validators: ((value: any, ...otherArgs: any) => SingleValidationError)[]
+      readonly asyncValidators: ((
+        value: any,
+        ...otherArgs: any
+      ) => Promise<SingleValidationError | undefined>)[]
       readonly type: Type
       readonly baseType: BaseType
       readonly definition: Definition
@@ -182,72 +189,72 @@ export interface MinimumSchema {
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export interface BaseSchema<
-  Output,
-  Type extends string,
-  BaseType extends SafeParsableObjectTypes,
-  Input = unknown,
-  Def extends object = never,
-> extends MinimumSchema {
-  readonly [parserObject]: ParserObject<Output, Type, BaseType, Input, Def>
-  readonly definition?: Def
-  readonly type: Type
-  readonly baseType: BaseType
-  parse: ParseFn<Input, Output>
-  safeParse: SafeParseFn<Input, Output>
-  parseAsync: AsyncParseFn<Input, Output>
-  safeParseAsync: AsyncSafeParseFn<Input, Output>
+// export interface BaseSchema<
+//   Output,
+//   Type extends string,
+//   BaseType extends SafeParsableObjectTypes,
+//   Input = unknown,
+//   Def extends object = never,
+// > extends MinimumSchema {
+//   readonly [parserObject]: ParserObject<Output, Type, BaseType, Input, Def>
+//   readonly definition?: Def
+//   readonly type: Type
+//   readonly baseType: BaseType
+//   parse: ParseFn<Input, Output>
+//   safeParse: SafeParseFn<Input, Output>
+//   parseAsync: AsyncParseFn<Input, Output>
+//   safeParseAsync: AsyncSafeParseFn<Input, Output>
 
-  optional(): VOptional<this>
-  nullable(): VNullable<this>
-  nullish(): VNullish<this>
-  // // or<S extends MinimumSafeParsableObject>(schema: S): VUnion<[this, S]>
-  or<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
-    ...schemas: S
-  ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
-    ? VUnion<[this, ...S]>
-    : never
-  // and<S extends MinimumSafeParsableObject>(schema: S): VIntersectionT<[this, S]>
-  and<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
-    ...schemas: S
-  ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
-    ? VIntersectionT<[this, ...S]>
-    : never
-  // and<const S extends [MinimumSchema, ...MinimumSchema[]]>(
-  //   ...schemas: S
-  // ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
-  //   ? VIntersectionT<[this, ...S]>
-  //   : never
-  array(): VArrayInfinite<this>
-  default<S extends Output>(defaultValue: S): VDefault<this>
-  catch<S extends Output>(catchValue: S): VCatch<this>
-  preprocess<S extends (value: unknown) => unknown>(preprocessFn: S): VPreprocess<this, S>
-  postprocess<
-    S extends (value: ReturnType<this['safeParse']>) => ResultError<ValidationErrors, any>,
-  >(
-    postprocessFn: S,
-  ): VPostProcess<this, S>
-  transform<S extends (value: Output) => unknown>(
-    transformFn: S,
-  ): VPostProcess<
-    this,
-    (value: ReturnType<this['safeParse']>) => ResultError<undefined, ReturnType<S>>
-  >
-  pipe<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
-    ...schemas: S
-  ): S extends readonly [...any, infer L extends MinimumSchema]
-    ? VPostProcess<this, L['safeParse']>
-    : never
-  promise(): VPromise<this>
-  customValidation<S extends unknown[]>(
-    customValidator: ValidationFn<Output, S>,
-    ...otherArgs: S
-  ): this
-  customAsyncValidation<S extends unknown[]>(
-    customAsyncValidationFn: AsyncValidationFn<Output, S>,
-    ...otherArgs: S
-  ): this
-}
+//   optional(): VOptional<this>
+//   nullable(): VNullable<this>
+//   nullish(): VNullish<this>
+//   // // or<S extends MinimumSafeParsableObject>(schema: S): VUnion<[this, S]>
+//   or<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
+//     ...schemas: S
+//   ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
+//     ? VUnion<[this, ...S]>
+//     : never
+//   // and<S extends MinimumSafeParsableObject>(schema: S): VIntersectionT<[this, S]>
+//   and<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
+//     ...schemas: S
+//   ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
+//     ? VIntersectionT<[this, ...S]>
+//     : never
+//   // and<const S extends [MinimumSchema, ...MinimumSchema[]]>(
+//   //   ...schemas: S
+//   // ): [this, ...S] extends [MinimumSchema, MinimumSchema, ...MinimumSchema[]]
+//   //   ? VIntersectionT<[this, ...S]>
+//   //   : never
+//   array(): VArrayInfinite<this>
+//   default<S extends Output>(defaultValue: S): VDefault<this>
+//   catch<S extends Output>(catchValue: S): VCatch<this>
+//   preprocess<S extends (value: unknown) => unknown>(preprocessFn: S): VPreprocess<this, S>
+//   postprocess<
+//     S extends (value: ReturnType<this['safeParse']>) => ResultError<ValidationErrors, any>,
+//   >(
+//     postprocessFn: S,
+//   ): VPostProcess<this, S>
+//   transform<S extends (value: Output) => unknown>(
+//     transformFn: S,
+//   ): VPostProcess<
+//     this,
+//     (value: ReturnType<this['safeParse']>) => ResultError<undefined, ReturnType<S>>
+//   >
+//   pipe<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
+//     ...schemas: S
+//   ): S extends readonly [...any, infer L extends MinimumSchema]
+//     ? VPostProcess<this, L['safeParse']>
+//     : never
+//   promise(): VPromise<this>
+//   customValidation<S extends unknown[]>(
+//     customValidator: ValidationFn<Output, S>,
+//     ...otherArgs: S
+//   ): this
+//   customAsyncValidation<S extends unknown[]>(
+//     customAsyncValidationFn: AsyncValidationFn<Output, S>,
+//     ...otherArgs: S
+//   ): this
+// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -564,102 +571,105 @@ export type StratifiedSchemas = [MinimumSchema[], MinimumSchema | undefined, Min
 //   deepRequired(...keysToRequire: (PropertyKey)[]): MinimumSafeParsableArray
 // }
 
-export interface MinimumArraySchema extends MinimumSchema {
+// export interface MinimumArraySchema extends MinimumSchema {
+//   readonly definition: {
+//     readonly [stratifiedSchemaProp]: StratifiedSchemas
+//     readonly itemSchemas?: ValidArrayItemsW
+//     readonly itemSchema?: MinimumSchema
+//     readonly transformed: boolean
+//   }
+//   readonly baseType: 'infinite array' | 'finite array'
+//   readonly spread: MinimumArrayRestSchema
+//   partial(): MinimumArraySchema
+//   deepPartial(...keysToDeepPartial: any[]): MinimumArraySchema
+//   required(...keysToRequire: any[]): MinimumArraySchema
+//   deepRequired(...keysToRequire: any[]): MinimumArraySchema
+// }
+
+export interface MinimumInfiniteArraySchema extends MinimumSchema {
   readonly definition: {
     readonly [stratifiedSchemaProp]: StratifiedSchemas
-    readonly itemSchemas?: ValidArrayItemsW
-    readonly itemSchema?: MinimumSchema
+    readonly itemSchema: MinimumSchema
     readonly transformed: boolean
   }
-  readonly baseType: 'infinite array' | 'finite array'
+  readonly baseType: 'infinite array'
   readonly spread: MinimumArrayRestSchema
-  partial(): MinimumArraySchema
-  deepPartial(...keysToDeepPartial: any[]): MinimumArraySchema
-  required(...keysToRequire: any[]): MinimumArraySchema
-  deepRequired(...keysToRequire: any[]): MinimumArraySchema
+  partial(): MinimumInfiniteArraySchema
+  deepPartial(...keysToDeepPartial: any[]): MinimumInfiniteArraySchema
+  required(...keysToRequire: any[]): MinimumInfiniteArraySchema
+  deepRequired(...keysToRequire: any[]): MinimumInfiniteArraySchema
 }
 
-// type keys2 = 'optional' | 'nullable' | 'nullish' | 'or' | 'and' | 'array' | 'default'
-
-// type PMSPO = Omit<MinimumSafeParsableArray, keyof MinimumSafeParsableObject>
-// type PSPO<Output extends unknown[], Type extends string, Input> = Omit<
-//   SafeParsableObject<
-//     Output,
-//     Type,
-//     'infinite array' | 'finite array',
-//     Input,
-//     {
-//       readonly [stratifiedSchemaProp]: StratifiedSchemas
-//       readonly itemSchemas?: ValidArrayItemsW
-//       readonly itemSchema?: MinimumSafeParsableObject
-//     }
-//   >,
-//   'definition'
-// >
-
-interface ArraySchema extends MinimumArraySchema {
-  parseAsync: AsyncParseFn<any, any>
-  safeParseAsync: AsyncSafeParseFn<any, any>
-
-  optional(): MinimumSchema
-  nullable(): MinimumSchema
-  nullish(): MinimumSchema
-  or(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
-  and(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
-  array(): MinimumArraySchema
-  default(defaultValue: any): MinimumSchema
-  catch(catchValue: any): MinimumSchema
-  preprocess(preprocessFn: (value: any) => any): MinimumSchema
-  postprocess(
-    postprocessFn: (
-      value: ResultError<ValidationErrors, any>,
-    ) => ResultError<ValidationErrors, any>,
-  ): MinimumSchema
-  transform(transformFn: (value: any) => any): MinimumSchema
-  pipe(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
-  promise(): MinimumSchema
-}
-
-interface BaseArraySchema2<
-  Output extends unknown[],
-  Type extends string,
-  BaseType extends 'infinite array' | 'finite array',
-  Input,
-  Def extends {
+export interface MinimumFiniteArraySchema extends MinimumSchema {
+  readonly definition: {
     readonly [stratifiedSchemaProp]: StratifiedSchemas
-    readonly itemSchemas?: ValidArrayItemsW
-    readonly itemSchema?: MinimumSchema
+    readonly itemSchemas: ValidArrayItemsW
     readonly transformed: boolean
-  },
-> extends BaseSchema<Output, Type, BaseType, Input, Def> {
-  partial(): MinimumArraySchema
-  deepPartial(...keysToDeepPartial: any[]): MinimumArraySchema
-  required(...keysToRequire: any[]): MinimumArraySchema
-  deepRequired(...keysToRequire: any[]): MinimumArraySchema
-
-  readonly definition: Def
-  readonly spread: BaseArrayRestSchema<this>
-
-  min(length: number, errorReturnValueFn?: DefaultErrorFn['minimumArrayLength'] | undefined): this
-  max(length: number, errorReturnValueFn?: DefaultErrorFn['maximumArrayLength'] | undefined): this
-  length(
-    length: number,
-    errorReturnValueFn?: DefaultErrorFn['requiredArrayLength'] | undefined,
-  ): this
-  nonEmpty(errorReturnValueFn?: DefaultErrorFn['arrayNonEmpty'] | undefined): this
+  }
+  readonly baseType: 'finite array'
+  readonly spread: MinimumArrayRestSchema
+  partial(): MinimumFiniteArraySchema
+  deepPartial(...keysToDeepPartial: any[]): MinimumFiniteArraySchema
+  required(...keysToRequire: any[]): MinimumFiniteArraySchema
+  deepRequired(...keysToRequire: any[]): MinimumFiniteArraySchema
 }
+
+export type MinimumArraySchema2 = DeepRMerge<[MinimumInfiniteArraySchema, MinimumFiniteArraySchema]>
+
+// type X = MinimumArraySchema['definition']
+
+// interface ArraySchema extends MinimumArraySchema {
+//   parseAsync: AsyncParseFn<any, any>
+//   safeParseAsync: AsyncSafeParseFn<any, any>
+//   optional(): MinimumSchema
+//   nullable(): MinimumSchema
+//   nullish(): MinimumSchema
+//   or(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
+//   and(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
+//   array(): MinimumInfiniteArraySchema
+//   default(defaultValue: any): MinimumSchema
+//   catch(catchValue: any): MinimumSchema
+//   preprocess(preprocessFn: (value: any) => any): MinimumSchema
+//   postprocess(
+//     postprocessFn: (
+//       value: ResultError<ValidationErrors, any>,
+//     ) => ResultError<ValidationErrors, any>,
+//   ): MinimumSchema
+//   transform(transformFn: (value: any) => any): MinimumSchema
+//   pipe(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
+//   promise(): MinimumSchema
+// }
+
+// interface BaseArraySchema2<
+//   Output extends unknown[],
+//   Type extends string,
+//   BaseType extends 'infinite array' | 'finite array',
+//   Input,
+//   Def extends MinimumArraySchema['definition'],
+// > extends BaseSchema<Output, Type, BaseType, Input, Def> {
+//   partial(): MinimumArraySchema
+//   deepPartial(...keysToDeepPartial: any[]): MinimumArraySchema
+//   required(...keysToRequire: any[]): MinimumArraySchema
+//   deepRequired(...keysToRequire: any[]): MinimumArraySchema
+
+//   readonly definition: Def
+//   readonly spread: BaseArrayRestSchema<this>
+
+//   min(length: number, errorReturnValueFn?: DefaultErrorFn['minimumArrayLength'] | undefined): this
+//   max(length: number, errorReturnValueFn?: DefaultErrorFn['maximumArrayLength'] | undefined): this
+//   length(
+//     length: number,
+//     errorReturnValueFn?: DefaultErrorFn['requiredArrayLength'] | undefined,
+//   ): this
+//   nonEmpty(errorReturnValueFn?: DefaultErrorFn['arrayNonEmpty'] | undefined): this
+// }
 
 type BaseArraySchema<
   Output extends unknown[],
   Type extends string,
   BaseType extends 'infinite array' | 'finite array',
   Input,
-  Def extends {
-    readonly [stratifiedSchemaProp]: StratifiedSchemas
-    readonly itemSchemas?: ValidArrayItemsW
-    readonly itemSchema?: MinimumSchema
-    readonly transformed: boolean
-  },
+  Def extends MinimumArraySchema['definition'],
   Base extends ArraySchema = BaseArraySchema2<Output, Type, BaseType, Input, Def>,
 > = Base
 
@@ -723,22 +733,22 @@ export interface MinimumArrayRestSchema {
   readonly type: string
 }
 
-export interface BaseArrayRestSchema<T extends MinimumArraySchema> extends MinimumArrayRestSchema {
-  vArray: T
-  optional(): ReturnType<T['partial']>['spread']
-  deepPartial<S extends PropertyKey[]>(
-    ...keysToDeepPartial: S
-  ): T extends VArrayFinite<infer R, any, any, any>
-    ? VArrayFinite<DeepPartialFiniteArray<R, S[number]>>['spread']
-    : VArrayInfinite<DeepPartial<T, S[number]>>['spread']
-  required(): ReturnType<T['required']>['spread']
-  deepRequired<S extends PropertyKey[]>(
-    ...keysToDeepRequired: S
-  ): T extends VArrayFinite<infer R, any, any, any>
-    ? VArrayFinite<DeepRequiredFiniteArray<R, S[number]>>['spread']
-    : VArrayInfinite<DeepRequired<T, S[number]>>['spread']
-  // deepRequired(): ReturnType<T['deepRequired']>['spread']
-}
+// export interface BaseArrayRestSchema<T extends MinimumArraySchema> extends MinimumArrayRestSchema {
+//   vArray: T
+//   optional(): ReturnType<T['partial']>['spread']
+//   deepPartial<S extends PropertyKey[]>(
+//     ...keysToDeepPartial: S
+//   ): T extends VArrayFinite<infer R, any, any, any>
+//     ? VArrayFinite<DeepPartialFiniteArray<R, S[number]>>['spread']
+//     : VArrayInfinite<DeepPartial<T, S[number]>>['spread']
+//   required(): ReturnType<T['required']>['spread']
+//   deepRequired<S extends PropertyKey[]>(
+//     ...keysToDeepRequired: S
+//   ): T extends VArrayFinite<infer R, any, any, any>
+//     ? VArrayFinite<DeepRequiredFiniteArray<R, S[number]>>['spread']
+//     : VArrayInfinite<DeepRequired<T, S[number]>>['spread']
+//   // deepRequired(): ReturnType<T['deepRequired']>['spread']
+// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -747,33 +757,33 @@ export interface BaseArrayRestSchema<T extends MinimumArraySchema> extends Minim
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export interface VArrayInfinite<
-  T extends MinimumSchema,
-  Output extends any[] = VInfer<T>[],
-  Type extends string = string,
-  Input = unknown,
-> extends BaseArraySchema<
-    Output,
-    Type,
-    'infinite array',
-    Input,
-    {
-      readonly [stratifiedSchemaProp]: StratifiedSchemas
-      readonly itemSchema: T
-      readonly transformed: boolean
-    }
-  > {
-  partial(): VArrayInfinite<OptionalMSPO<T>>
-  required(): VArrayInfinite<RequiredMSPO<T>>
-  // deepPartial(): VArrayInfinite<UnwrappedDeepPartial<T, never>>
-  deepPartial<S extends PropertyKey[]>(
-    ...keysToDeepPartial: S
-  ): VArrayInfinite<UnwrappedDeepPartial<T, S[number]>>
-  // deepRequired(): VArrayInfinite<DeepRequired<T, never>>
-  deepRequired<S extends PropertyKey[]>(
-    ...keysToRequired: S
-  ): VArrayInfinite<DeepRequired<T, S[number]>>
-}
+// export interface VArrayInfinite<
+//   T extends MinimumSchema,
+//   Output extends any[] = VInfer<T>[],
+//   Type extends string = string,
+//   Input = unknown,
+// > extends BaseArraySchema<
+//     Output,
+//     Type,
+//     'infinite array',
+//     Input,
+//     {
+//       readonly [stratifiedSchemaProp]: StratifiedSchemas
+//       readonly itemSchema: T
+//       readonly transformed: boolean
+//     }
+//   > {
+//   partial(): VArrayInfinite<OptionalMSPO<T>>
+//   required(): VArrayInfinite<RequiredMSPO<T>>
+//   // deepPartial(): VArrayInfinite<UnwrappedDeepPartial<T, never>>
+//   deepPartial<S extends PropertyKey[]>(
+//     ...keysToDeepPartial: S
+//   ): VArrayInfinite<UnwrappedDeepPartial<T, S[number]>>
+//   // deepRequired(): VArrayInfinite<DeepRequired<T, never>>
+//   deepRequired<S extends PropertyKey[]>(
+//     ...keysToRequired: S
+//   ): VArrayInfinite<DeepRequired<T, S[number]>>
+// }
 
 // export type MergeArrays<
 //   T extends MergeableArray,
@@ -804,48 +814,48 @@ type RequiredFiniteArray<T extends ValidArrayItemsW> = T extends [
   ? [RequiredVAI<H>, ...RequiredFiniteArray<R>]
   : []
 
-export interface VArrayFinite<
-  T extends ValidArrayItemsW,
-  Output extends any[] = FiniteArrayBuilder<T>,
-  Type extends string = string,
-  Input = unknown,
-  // Validations extends ValidationArray<any[]> = ArrayValidations,
-> extends BaseArraySchema<
-    Output,
-    Type,
-    'finite array',
-    Input,
-    {
-      readonly [stratifiedSchemaProp]: StratifiedSchemas
-      readonly itemSchemas: T
-      readonly transformed: boolean
-    }
-  > {
-  partial(): VArrayFinite<PartialFiniteArray<T>>
-  required(): VArrayFinite<RequiredFiniteArray<T>>
-  deepPartial(): VArrayFinite<DeepPartialFiniteArray<T, never>>
-  deepPartial<K extends PropertyKey[]>(
-    ...keysToPartial: K
-  ): VArrayFinite<DeepPartialFiniteArray<T, K[number]>>
-  // deepRequired(): VArrayFinite<DeepRequiredFiniteArray<T, never>>
-  deepRequired<K extends PropertyKey[]>(
-    ...keysToRequired: K
-  ): VArrayFinite<DeepRequiredFiniteArray<T, K[number]>>
-  pick<S extends (keyof T & number)[]>(
-    ...keys: S
-  ): PickTuple<T, S[number]> extends ValidArrayItemsW
-    ? VArrayFinite<PickTuple<T, S[number]>>
-    : never
-  omit<S extends (keyof T & number)[]>(
-    ...keys: S
-  ): OmitTuple<T, S[number]> extends ValidArrayItemsW
-    ? VArrayFinite<OmitTuple<T, S[number]>>
-    : never
-  extends<R extends ValidArrayItemsW>(...extendedItemSchemas: R): VArrayFinite<[...T, ...R]>
-  merge<R extends VArrayFinite<any>>(
-    vArray: R,
-  ): R extends VArrayFinite<infer S extends ValidArrayItemsW> ? VArrayFinite<[...T, ...S]> : never
-}
+// export interface VArrayFinite<
+//   T extends ValidArrayItemsW,
+//   Output extends any[] = FiniteArrayBuilder<T>,
+//   Type extends string = string,
+//   Input = unknown,
+//   // Validations extends ValidationArray<any[]> = ArrayValidations,
+// > extends BaseArraySchema<
+//     Output,
+//     Type,
+//     'finite array',
+//     Input,
+//     {
+//       readonly [stratifiedSchemaProp]: StratifiedSchemas
+//       readonly itemSchemas: T
+//       readonly transformed: boolean
+//     }
+//   > {
+//   partial(): VArrayFinite<PartialFiniteArray<T>>
+//   required(): VArrayFinite<RequiredFiniteArray<T>>
+//   deepPartial(): VArrayFinite<DeepPartialFiniteArray<T, never>>
+//   deepPartial<K extends PropertyKey[]>(
+//     ...keysToPartial: K
+//   ): VArrayFinite<DeepPartialFiniteArray<T, K[number]>>
+//   // deepRequired(): VArrayFinite<DeepRequiredFiniteArray<T, never>>
+//   deepRequired<K extends PropertyKey[]>(
+//     ...keysToRequired: K
+//   ): VArrayFinite<DeepRequiredFiniteArray<T, K[number]>>
+//   pick<S extends (keyof T & number)[]>(
+//     ...keys: S
+//   ): PickTuple<T, S[number]> extends ValidArrayItemsW
+//     ? VArrayFinite<PickTuple<T, S[number]>>
+//     : never
+//   omit<S extends (keyof T & number)[]>(
+//     ...keys: S
+//   ): OmitTuple<T, S[number]> extends ValidArrayItemsW
+//     ? VArrayFinite<OmitTuple<T, S[number]>>
+//     : never
+//   extends<R extends ValidArrayItemsW>(...extendedItemSchemas: R): VArrayFinite<[...T, ...R]>
+//   merge<R extends VArrayFinite<any>>(
+//     vArray: R,
+//   ): R extends VArrayFinite<infer S extends ValidArrayItemsW> ? VArrayFinite<[...T, ...S]> : never
+// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -1131,79 +1141,79 @@ type RequiredObject<
   },
 > = RT
 
-interface VObjectBase<
-  PropertySchemas extends ObjectDefinition,
-  UnmatchedPropertySchema extends MinimumSchema,
-  Options extends { type: string },
-  T extends MinimumObjectDefinition,
-  Input,
-  Output extends object,
-> extends BaseSchema<Output, Options['type'], 'object', Input, T> {
-  readonly definition: T
+// interface VObjectBase<
+//   PropertySchemas extends ObjectDefinition,
+//   UnmatchedPropertySchema extends MinimumSchema,
+//   Options extends { type: string },
+//   T extends MinimumObjectDefinition,
+//   Input,
+//   Output extends object,
+// > extends BaseSchema<Output, Options['type'], 'object', Input, T> {
+//   readonly definition: T
 
-  merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
-    ...propertySchemas: S
-  ): [this, ...DeepWriteable<S>] extends infer S2 extends [
-    MinimumObjectSchema,
-    MinimumObjectSchema,
-    ...MinimumObjectSchema[],
-  ]
-    ? S2 extends [...any, infer L extends MinimumObjectSchema]
-      ? VObject<MergePropertySchemas<S2>, L['definition']['unmatchedPropertySchema']>
-      : never
-    : never
+//   merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
+//     ...propertySchemas: S
+//   ): [this, ...DeepWriteable<S>] extends infer S2 extends [
+//     MinimumObjectSchema,
+//     MinimumObjectSchema,
+//     ...MinimumObjectSchema[],
+//   ]
+//     ? S2 extends [...any, infer L extends MinimumObjectSchema]
+//       ? VObject<MergePropertySchemas<S2>, L['definition']['unmatchedPropertySchema']>
+//       : never
+//     : never
 
-  partial<S extends (keyof PropertySchemas)[]>(
-    ...keysToPartial: S
-  ): VObject<PartialObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
-  required<S extends (keyof PropertySchemas)[]>(
-    ...keysToRequire: S
-  ): VObject<RequiredObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
-  deepPartial<S extends PropertyKey[]>(
-    ...keysToDeepPartial: S
-  ): VObject<DeepPartialObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
-  [internalDeepPartial]<S extends (keyof PropertySchemas)[]>(
-    ...keysToDeepPartial: S
-  ): DeepPartial<this, S[number]>
+//   partial<S extends (keyof PropertySchemas)[]>(
+//     ...keysToPartial: S
+//   ): VObject<PartialObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
+//   required<S extends (keyof PropertySchemas)[]>(
+//     ...keysToRequire: S
+//   ): VObject<RequiredObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
+//   deepPartial<S extends PropertyKey[]>(
+//     ...keysToDeepPartial: S
+//   ): VObject<DeepPartialObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
+//   [internalDeepPartial]<S extends (keyof PropertySchemas)[]>(
+//     ...keysToDeepPartial: S
+//   ): DeepPartial<this, S[number]>
 
-  // deepRequired<S extends (keyof PropertySchemas)[]>(
-  //   ...keysToDeepRequired: S
-  // ): DeepRequired<this, S[number]>
+//   // deepRequired<S extends (keyof PropertySchemas)[]>(
+//   //   ...keysToDeepRequired: S
+//   // ): DeepRequired<this, S[number]>
 
-  pick<S extends (keyof PropertySchemas)[]>(
-    ...keys: S
-  ): VObject<Pick<PropertySchemas, S[number]>, UnmatchedPropertySchema>
-  omit<S extends (keyof PropertySchemas)[]>(
-    ...keys: S
-  ): VObject<Omit<PropertySchemas, S[number]>, UnmatchedPropertySchema>
-  catchAll<S extends MinimumSchema>(propertySchema: S): VObject<PropertySchemas, S>
-  passThrough(): VObject<PropertySchemas, VUnknown>
-  strict(): VObject<PropertySchemas, VNever>
-  setKey<K extends PropertyKey, S extends MinimumSchema>(
-    name: K,
-    schema: S,
-  ): VObject<RMerge<[PropertySchemas, { [P in K]: S }]>, UnmatchedPropertySchema>
-  extends<R extends ObjectDefinition>(
-    extendPropertySchemas: R,
-  ): VObject<RMerge<[PropertySchemas, R]>, UnmatchedPropertySchema>
-  extends<
-    R extends ObjectDefinition,
-    S extends MinimumSchema = UnmatchedPropertySchema,
-    O extends { type: string } = T['options'] | { type: string },
-  >(
-    extendPropertySchemas: R,
-    unmatchedPropertySchema?: S,
-    newOptions?: O,
-  ): VObject<RMerge<[PropertySchemas, R]>, S>
+//   pick<S extends (keyof PropertySchemas)[]>(
+//     ...keys: S
+//   ): VObject<Pick<PropertySchemas, S[number]>, UnmatchedPropertySchema>
+//   omit<S extends (keyof PropertySchemas)[]>(
+//     ...keys: S
+//   ): VObject<Omit<PropertySchemas, S[number]>, UnmatchedPropertySchema>
+//   catchAll<S extends MinimumSchema>(propertySchema: S): VObject<PropertySchemas, S>
+//   passThrough(): VObject<PropertySchemas, VUnknown>
+//   strict(): VObject<PropertySchemas, VNever>
+//   setKey<K extends PropertyKey, S extends MinimumSchema>(
+//     name: K,
+//     schema: S,
+//   ): VObject<RMerge<[PropertySchemas, { [P in K]: S }]>, UnmatchedPropertySchema>
+//   extends<R extends ObjectDefinition>(
+//     extendPropertySchemas: R,
+//   ): VObject<RMerge<[PropertySchemas, R]>, UnmatchedPropertySchema>
+//   extends<
+//     R extends ObjectDefinition,
+//     S extends MinimumSchema = UnmatchedPropertySchema,
+//     O extends { type: string } = T['options'] | { type: string },
+//   >(
+//     extendPropertySchemas: R,
+//     unmatchedPropertySchema?: S,
+//     newOptions?: O,
+//   ): VObject<RMerge<[PropertySchemas, R]>, S>
 
-  // keyof(): keyof T['propertyParsers'][]
+//   // keyof(): keyof T['propertyParsers'][]
 
-  // and<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
-  //   ...schemas: S
-  // ): [this, ...S] extends [MinimumObjectSchema, MinimumObjectSchema, ...MinimumObjectSchema[]]
-  //   ? VIntersectionT<[this, ...S]>
-  //   : never
-}
+//   // and<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
+//   //   ...schemas: S
+//   // ): [this, ...S] extends [MinimumObjectSchema, MinimumObjectSchema, ...MinimumObjectSchema[]]
+//   //   ? VIntersectionT<[this, ...S]>
+//   //   : never
+// }
 
 export type VObject<
   PropertySchemas extends ObjectDefinition,
