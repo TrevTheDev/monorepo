@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { difference, isError } from '@trevthedev/toolbelt'
 import type { DeepWriteable, FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 import { deepPartial, isObjectType, isOptional, isTransformed, optional, required } from './shared'
@@ -171,87 +170,6 @@ export function parseObject<T extends MinimumObjectDefinition & { transformed: b
   }
 }
 
-// export function parseObjectWithTransform<T extends MinimumObjectDefinition>(
-//   objectDefinition: T,
-//   options?: Partial<ParseObjectErrorMessageFns>,
-// ): (value: unknown) => ResultError<ValidationErrors, ObjectDefToObjectType<T>> {
-//   const errorMessageFns: ParseObjectErrorMessageFns = {
-//     invalidObjectFn: errorFns.parseObject,
-//     invalidObjectPropertiesFn: errorFns.invalidObjectPropertiesFn,
-//     missingProperty: errorFns.missingProperty,
-//     ...options,
-//   }
-//   // const definedKeys = [
-//   //   ...Object.keys(objectDefinition.propertySchemas),
-//   //   ...Object.getOwnPropertySymbols(objectDefinition.propertySchemas),
-//   // ]
-
-//   const definedKeys = allKeys(objectDefinition.propertySchemas)
-
-//   const unmatchedPropSchema = objectDefinition.unmatchedPropertySchema
-//   return function ParseObject(
-//     value: unknown,
-//   ): ResultError<ValidationErrors, ObjectDefToObjectType<T>> {
-//     if (isObjectType(value)) {
-//       const newObject = {}
-//       const errors = [] as SingleValidationError[]
-//       const propertyErrors = [] as SingleObjectValidationError[]
-
-//       const { propertySchemas } = objectDefinition
-
-//       // const allKeysToValidate = [
-//       //   ...Object.keys(propertySchemas),
-//       //   ...Object.getOwnPropertySymbols(objectDefinition.propertySchemas),
-//       // ]
-
-//       definedKeys.forEach((key) => {
-//         const schema = propertySchemas[key] as MinimumSchema
-//         if (key in value) {
-//           const result = schema.safeParse(value[key])
-//           if (isError(result)) propertyErrors.push([key, result[0].errors])
-//           else Object.defineProperty(newObject, key, { value: result[1], enumerable: true })
-//         } else if (!isOptional(schema))
-//           propertyErrors.push([key, [errorMessageFns.missingProperty(value, key)]])
-//       })
-
-//       const valueKeys = allKeys(value)
-//       const diff = difference(valueKeys, definedKeys)
-//       diff.forEach((key) => {
-//         const result = unmatchedPropSchema.safeParse(value[key])
-//         if (isError(result)) propertyErrors.push([key, result[0].errors])
-//         // eslint-disable-next-line prefer-destructuring
-//         else {
-//           Object.defineProperty(newObject, key, {
-//             value: result[1],
-//             enumerable: true,
-//           })
-//         }
-//       })
-
-//       if (propertyErrors.length !== 0) {
-//         errors.push(
-//           errorMessageFns.invalidObjectPropertiesFn(
-//             value,
-//             objectDefinition.options.type,
-//             propertyErrors,
-//           ),
-//         )
-//       }
-
-//       return errors.length === 0
-//         ? [undefined, newObject as ObjectDefToObjectType<T>]
-//         : [{ input: value, errors }, undefined]
-//     }
-//     return [
-//       {
-//         input: value,
-//         errors: [errorMessageFns.invalidObjectFn(value, objectDefinition.options.type)],
-//       },
-//       undefined,
-//     ]
-//   }
-// }
-
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -312,7 +230,7 @@ export function initVObject(baseObject: MinimumSchema): {
   function nextObject(
     propertySchemas: ObjectDefinition,
     unmatchedPropertySchema: MinimumSchema,
-    options: Partial<ObjectOptions<any>>,
+    options: Partial<ObjectOptions>,
     oldObject: MinimumObjectSchema,
   ) {
     const nextObj = vObject(propertySchemas, unmatchedPropertySchema, options)
@@ -339,7 +257,7 @@ export function initVObject(baseObject: MinimumSchema): {
       const schema = propertySchemas[key] as MinimumSchema
       typeStrings.push(
         isOptional(schema)
-          ? `${String(key)}?:${(schema as VOptional<any>).definition.wrappedSchema.type}`
+          ? `${String(key)}?:${(schema as VOptional<MinimumSchema>).definition.wrappedSchema.type}`
           : `${String(key)}:${schema.type}`,
       )
       if (isTransformed(schema)) transformed = true
@@ -349,7 +267,7 @@ export function initVObject(baseObject: MinimumSchema): {
     const t2 =
       unmatchedPropertySchema.type === 'never'
         ? t1
-        : `(${t1}&{[K in keyof Any]: ${unmatchedPropertySchema.type}}))`
+        : `${t1}&{[K in PropertyKey]: ${unmatchedPropertySchema.type}}`
     const finalOptions: FlattenedObjectOptions<ObjectDefinition> = {
       ...options,
       type: options.type ?? t2,
@@ -431,7 +349,7 @@ export function initVObject(baseObject: MinimumSchema): {
         value(
           extendPropertySchemas: ObjectDefinition,
           newUnmatchedPropertySchema: MinimumSchema = unmatchedPropertySchema,
-          newOptions: Partial<ObjectOptions<any>> = options,
+          newOptions: Partial<ObjectOptions> = options,
         ) {
           return nextObject(
             { ...propertySchemas, ...extendPropertySchemas },
@@ -521,7 +439,7 @@ export function initVObject(baseObject: MinimumSchema): {
               const [key, propertySchema] = entry
               return Object.assign(newPropertySchemasI, {
                 [key]: keys.includes(key)
-                  ? required(propertySchema as any, keysToRequire)
+                  ? required(propertySchema, keysToRequire)
                   : propertySchema,
               })
             },

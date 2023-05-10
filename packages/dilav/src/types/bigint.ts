@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
 
 import type {
@@ -123,29 +122,6 @@ export function nonPositive(
     value > 0 ? (errorReturnValueFn ?? errorFns.bigIntNonPositive)(value) : undefined
 }
 
-// // https://stackoverflow.com/questions/3966484/why-does-modulus-operator-return-fractional-number-in-javascript/31711034#31711034
-// function floatSafeRemainder(val: bigint, step: bigint) {
-//   const valDecCount = (val.toString().split('.')[1] || '').length
-//   const stepDecCount = (step.toString().split('.')[1] || '').length
-//   const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount
-//   const valInt = parseInt(val.toFixed(decCount).replace('.', ''), 10)
-//   const stepInt = parseInt(step.toFixed(decCount).replace('.', ''), 10)
-//   return (valInt % stepInt) / 10 ** decCount
-// }
-
-// export function multipleOf(
-//   bigint: bigint,
-//   errorReturnValueFn: (
-//     invalidValue: bigint,
-//     multipleOfValue: bigint,
-//   ) => SingleValidationError = defaultErrorFn.bigIntMultipleOf,
-// ) {
-//   return (value: bigint) => {
-//     const remainder = floatSafeRemainder(value, bigint)
-//     return remainder !== 0 ? errorReturnValueFn(value, bigint) : undefined
-//   }
-// }
-
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -187,7 +163,7 @@ type BigIntValidationFuncs<
   Validations extends ValidationArray<bigint> = BigIntValidations,
 > = {
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
+    ? Validations[I] extends ValidationItem<bigint>
       ? Validations[I][0]
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VBigInt<Output, Input>
@@ -224,4 +200,3 @@ export function vBigInt<Input = unknown, Output extends bigint = bigint>(
 }
 
 export const vBigIntInstance = vBigInt()
-// export const vBigIntCoerce = vBigInt({ parser: coerceBigInt })

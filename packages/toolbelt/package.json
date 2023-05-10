@@ -1,10 +1,13 @@
 {
   "name": "@trevthedev/toolbelt",
-  "version": "0.0.70",
+  "version": "0.0.71",
   "description": "miscellaneous functions and utilities",
   "files": [
     "build/"
   ],
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "module": "./build/index.mjs",
   "exports": {
     "require": "./build/index.js",
     "import": "./build/index.mjs",
@@ -15,6 +18,7 @@
     "lint": "eslint src --ext .ts",
     "build": "tsup --dts",
     "build:tsc": "tsc && tsc -p tsconfig-esm.json",
+    "watch": "tsup --dts --watch",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",

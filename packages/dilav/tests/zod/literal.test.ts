@@ -26,7 +26,7 @@ it('invalid_literal should have `received` field with data', () => {
   const data = 'shark'
   const result = literalTuna.safeParse(data)
   if (v.isError(result)) {
-    expect(result[0].errors[0]).toBe(`"shark" is not identical to tuna`)
+    expect(result[0].errors[0]).toBe(`"shark" is not identical to "tuna"`)
     expect(result[0].input).toBe(data)
   }
 })

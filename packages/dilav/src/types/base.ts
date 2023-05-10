@@ -13,11 +13,12 @@ import {
   parserObject,
   defaultErrorFnSym,
   SafeParseFn,
-  SafeParsableObjectTypes,
+  BaseTypes,
   ValidationErrors,
   AsyncValidationFn,
   SingleValidationError,
   ValidationFn,
+  BaseSchema,
 } from './types'
 import { VOptionalFn, VNullableFn, VNullishFn, VUnionFn } from './union'
 
@@ -40,6 +41,8 @@ export function initBase() {
   let vCatch: VCatchFn
   let vPromise: VPromiseFn
 
+  type BSchema = BaseSchema<unknown, string, BaseTypes>
+
   const baseObject = {
     safeParse(this: MinimumSchema, value) {
       const { validators, parserFn } = this[parserObject]
@@ -58,17 +61,17 @@ export function initBase() {
     get baseType(): string {
       return this[parserObject].baseType
     },
-    parse(this: MinimumSchema, value) {
+    parse(this: BSchema, value) {
       const result = this.safeParse(value)
       if (result[0]) throw new ValidationError(result[0])
       return result[1]
     },
-    async parseAsync(this: any, value) {
+    async parseAsync(this: BSchema, value) {
       const result = await this.safeParseAsync(value)
       if (result[0]) throw new ValidationError(result[0])
       return result[1]
     },
-    async safeParseAsync(this: MinimumSchema, value) {
+    async safeParseAsync(this: BSchema, value) {
       const { asyncValidators, validators, parserFn } = this[parserObject]
       const validationFn = validate(validators, false)
       const asyncValidationFn = asyncValidate(asyncValidators)
@@ -82,11 +85,7 @@ export function initBase() {
       if (asyncValidationErrors !== undefined) errors.push(...asyncValidationErrors)
       return errors.length !== 0 ? [{ value, errors }, undefined] : [undefined, parsedOutput[1]]
     },
-    customValidation(
-      this: MinimumSchema,
-      fn: ValidationFn<any, unknown[]>,
-      ...otherArgs: unknown[]
-    ) {
+    customValidation(this: BSchema, fn: ValidationFn<unknown, unknown[]>, ...otherArgs: unknown[]) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const oldObject = this
       return {
@@ -98,8 +97,8 @@ export function initBase() {
       }
     },
     customAsyncValidation(
-      this: MinimumSchema,
-      fn: AsyncValidationFn<any, unknown[]>,
+      this: BSchema,
+      fn: AsyncValidationFn<unknown, unknown[]>,
       ...otherArgs: unknown[]
     ) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -116,32 +115,37 @@ export function initBase() {
       }
     },
     [defaultErrorFnSym]: { ...defaultErrorFn },
-    optional(this: MinimumSchema): MinimumSchema {
+    optional(this: BSchema): MinimumSchema {
       return isOptional(this) ? this : vOptional(this)
     },
     and(this: MinimumSchema, ...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema {
       // const intersection = [this, ...schemas] as const
-      return vIntersection([this, ...schemas])
+      return (vIntersection as (...args: unknown[]) => MinimumSchema)([this, ...schemas])
     },
     or(this: MinimumSchema, ...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema {
       return vUnion([this, ...schemas])
     },
-    nullable(this: MinimumSchema): MinimumSchema {
-      return this.baseType === 'nullable' ? this : vNullable(this as any)
+    nullable(this: BSchema): MinimumSchema {
+      return this.baseType === 'nullable' ? this : vNullable(this)
     },
-    nullish(this: MinimumSchema): MinimumSchema {
-      return this.baseType === 'nullish' ? (this as any) : vNullish(this as any)
+    nullish(this: BSchema): MinimumSchema {
+      return this.baseType === 'nullish' ? this : vNullish(this)
     },
-    array(this: MinimumSchema): MinimumSchema {
+    array(this: BSchema): MinimumSchema {
       return vArray(this)
     },
-    preprocess(this: any, preprocessFn: (value: unknown) => unknown) {
+    preprocess(this: BSchema, preprocessFn: (value: unknown) => unknown) {
       return vPreprocess(preprocessFn, this)
     },
-    postprocess(this: any, postprocessFn: (value: any) => any) {
+    postprocess(
+      this: BSchema,
+      postprocessFn: (
+        value: ResultError<ValidationErrors, unknown>,
+      ) => ResultError<ValidationErrors, any>,
+    ) {
       return vPostprocess(postprocessFn, this)
     },
-    transform(this: any, transformFn: (value: any) => any) {
+    transform(this: BSchema, transformFn: any) {
       return vPostprocess((result: any): any => {
         if (isError(result)) return result
         try {
@@ -157,16 +161,16 @@ export function initBase() {
         }
       }, this)
     },
-    default(this: any, defaultValue: any): MinimumSchema {
+    default(this: BSchema, defaultValue: unknown): MinimumSchema {
       return vDefault(defaultValue, this)
     },
-    catch(this: any, catchValue: any): MinimumSchema {
+    catch(this: BSchema, catchValue: unknown): MinimumSchema {
       return vCatch(catchValue, this)
     },
-    promise(this: any): MinimumSchema {
+    promise(this: BSchema): MinimumSchema {
       return vPromise(this)
     },
-    pipe(this: any, ...schemas: [MinimumSchema, ...MinimumSchema[]]) {
+    pipe(this: BSchema, ...schemas: [MinimumSchema, ...MinimumSchema[]]) {
       const [schema, ...rest] = schemas
       const postProcess = vPostprocess((input: ResultError<ValidationErrors, unknown>) => {
         if (isError(input)) return input
@@ -213,10 +217,10 @@ export function initBase() {
 
 export function createFinalBaseObject<T extends MinimumSchema>(
   baseObject: T,
-  parserFn: SafeParseFn<any, any>,
+  parserFn: SafeParseFn<ValidationErrors, unknown>,
   type: string,
-  baseType: SafeParsableObjectTypes,
-  definition?: any,
+  baseType: BaseTypes,
+  definition?: unknown,
   freeze = false,
 ): T {
   const obj =

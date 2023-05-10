@@ -181,7 +181,7 @@ it('reported issues with nested usage', () => {
 "string": {} is not a string, 
 "obj": The object {"sub":{"lit":"b","subCatch":"24"},"midCatch":444} is not of type {sub:{lit:"a",subCatch:number},midCatch:number}.
 "sub": The object {"lit":"b","subCatch":"24"} is not of type {lit:"a",subCatch:number}.
-"lit": "b" is not identical to a, 
+"lit": "b" is not identical to "a", 
 "bool": "yes" is not a boolean`)
 
     // expect(issues.length).toEqual(3)

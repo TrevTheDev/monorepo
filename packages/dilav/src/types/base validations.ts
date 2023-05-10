@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   AsyncValidationFn,
   MinimumSchema,
@@ -42,12 +41,13 @@ export function asyncValidate<T>(
   }
 }
 
-export function createValidationBuilder<T extends MinimumSchema, S>(
-  baseObject: T,
-  validations: ValidationArray<S>,
-  coerceFn?: (...args: any) => any,
-  customFn?: (...args: any) => any,
-): T {
+export function createValidationBuilder<
+  T extends MinimumSchema,
+  S,
+  F extends (value: never) => unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  CFn extends (...args: any[]) => MinimumSchema,
+>(baseObject: T, validations: ValidationArray<S>, coerceFn?: F, customFn?: CFn): T {
   const newObject = Object.create(baseObject)
   validations.forEach(([propName, validationFn]) => {
     Object.defineProperty(newObject, propName, {

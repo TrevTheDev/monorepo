@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ResultError, type DeepWriteable, isError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
@@ -12,9 +11,10 @@ import {
   ValidationErrors,
   MinimumObjectSchema,
   ObjectDefinition,
-  SafeParsableObjectTypes,
+  BaseTypes,
   VArrayInfinite,
   parserObject,
+  groupBaseTypes,
 } from './types'
 import { VObjectFn, allKeys } from './object'
 import { VArrayFn } from './array'
@@ -121,7 +121,7 @@ export function initIntersectionType(
     return vObject(objDefinition, vIntersection(unmatchedPropSchemas as IntersectionT))
   }
 
-  function intersectInfiniteArray(arraySchemas: VArrayInfinite<any>[]) {
+  function intersectInfiniteArray(arraySchemas: VArrayInfinite<MinimumSchema>[]) {
     const itemSchemas: MinimumSchema[] = []
     for (const arraySchema of arraySchemas)
       itemSchemas.push(arraySchema[parserObject].definition.itemSchema)
@@ -133,24 +133,31 @@ export function initIntersectionType(
     schemasToIntersect: IntersectionT,
     options: IntersectionOptions<IntersectionT> = {},
   ): MinimumSchema {
-    const typeStrings = [] as string[]
-    let baseSchemaType: SafeParsableObjectTypes | 'mixed' | undefined
+    let typeString = ''
+    let baseSchemaType: BaseTypes | 'mixed' | undefined
     for (const schema of schemasToIntersect) {
       if (isTransformed(schema)) throw new Error('transformed schemas cannot be intersected')
       if (baseSchemaType === undefined) baseSchemaType = schema.baseType
       else if (baseSchemaType !== schema.baseType) baseSchemaType = 'mixed'
       // finalSchemas.push(isObjectSchema(schema) ? schema.passThrough() : schema)
-      typeStrings.push(schema.type)
+      // typeStrings.push(groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type)
+      typeString = `${typeString}${
+        groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type
+      }&`
     }
+    typeString = typeString.slice(0, -1)
     if (baseSchemaType === 'object')
       return intersectObjects(schemasToIntersect as unknown as MinimumObjectSchema[])
-    if (baseSchemaType === 'infinite array')
-      return intersectInfiniteArray(schemasToIntersect as unknown as VArrayInfinite<any>[])
+    if (baseSchemaType === 'infinite array') {
+      return intersectInfiniteArray(
+        schemasToIntersect as unknown as VArrayInfinite<MinimumSchema>[],
+      )
+    }
 
     const obj = createFinalBaseObject(
       baseIntersectionObject,
       options.parser ?? parseIntersection(schemasToIntersect, options.breakOnFirstError ?? true),
-      typeStrings.join('&'),
+      typeString,
       'intersection',
     ) as MinimumSchema
     return baseSchemaType === 'optional' ? vOptional(obj) : obj

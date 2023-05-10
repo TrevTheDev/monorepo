@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { isError } from '@trevthedev/toolbelt'
-import type { ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -18,7 +17,7 @@ import { vStringInstance } from './string'
 import { DefaultErrorFn } from './errorFns'
 import { isObjectType } from './shared'
 
-const errorFns = baseObject[defaultErrorFnSym]
+const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -61,8 +60,9 @@ type RecordOptions<T extends RecordDef> = (
 
 export function parseRecord<T extends RecordDef>(
   recordDef: T,
-  options: RecordOptions<any>,
+  options: RecordOptions<T>,
 ): (value: unknown) => ResultError<ValidationErrors, RecordDefToRecordType<T>> {
+  type Opts = FlattenObjectUnion<RecordOptions<T>>
   const [keySchema, valueSchema] = recordDef
   return (value: unknown): ResultError<ValidationErrors, RecordDefToRecordType<T>> => {
     const errors = [] as SingleValidationError[]
@@ -89,7 +89,7 @@ export function parseRecord<T extends RecordDef>(
       ]
     }
     return [
-      { input: value, errors: [((options as any).parseRecord ?? errorFns.parseRecord)(value)] },
+      { input: value, errors: [((options as Opts).parseRecord ?? errorFns.parseRecord)(value)] },
       undefined,
     ]
   }
@@ -131,20 +131,21 @@ export function vRecord<
 export function vRecord(
   valueOrKeySchema: MinimumSafeParsableKey | MinimumSchema,
   valueSchema?: MinimumSchema,
-  options: RecordOptions<any> = {},
-): any {
+  options: RecordOptions<RecordDef> = {},
+): VRecord<RecordDef> {
+  type Opts = FlattenObjectUnion<RecordOptions<RecordDef>>
   const kSchema: MinimumSafeParsableKey =
     valueSchema === undefined
       ? (vStringInstance as MinimumSafeParsableKey)
       : (valueOrKeySchema as MinimumSafeParsableKey)
   const rSchema: MinimumSchema = valueSchema === undefined ? valueOrKeySchema : valueSchema
-  const fOptions: RecordOptions<any> = {
+  const fOptions: RecordOptions<RecordDef> = {
     breakOnFirstError: true,
     ...options,
   }
   return createFinalBaseObject(
     baseRecordObject,
-    (options as any).parser ?? parseRecord([kSchema, rSchema], fOptions),
+    (options as Opts).parser ?? parseRecord([kSchema, rSchema], fOptions),
     `Record<${kSchema.type},${rSchema.type}>`,
     'record',
     { keySchema: kSchema, valueSchema: rSchema },

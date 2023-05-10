@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-types */
 import { ResultError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
@@ -106,6 +106,8 @@ interface FunctionDefToFunction<
   fn: Func
 }
 
+// type X = ((a: string) => void) extends ((...args: never[]) => unknown) ? true : false
+
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -122,21 +124,21 @@ function vFunctionWrapperB<
   returns: R,
   implementation: (
     ...args: P extends MinimumArraySchema
-      ? VInfer<P> extends any[]
+      ? VInfer<P> extends unknown[]
         ? VInfer<P>
         : unknown[]
       : unknown[]
   ) => R extends MinimumSchema ? VInfer<R> : unknown,
 ): (
   ...args: P extends MinimumArraySchema
-    ? VInfer<P> extends any[]
+    ? VInfer<P> extends unknown[]
       ? VInfer<P>
       : unknown[]
     : unknown[]
 ) => R extends MinimumSchema ? VInfer<R> : unknown {
   return function VFunctionWrapperB(...args): R extends MinimumSchema ? VInfer<R> : unknown {
     const params = (parameters ? parameters.parse(args) : args) as P extends MinimumArraySchema
-      ? VInfer<P> extends any[]
+      ? VInfer<P> extends unknown[]
         ? VInfer<P>
         : unknown[]
       : unknown[]
@@ -154,24 +156,24 @@ export function vFunctionWrapper<
 >(
   functionDefinition: FunctionDefinitionType1<PW, R> & {
     implementation(
-      ...args: VInfer<VArrayFinite<PW>> extends any[] ? VInfer<VArrayFinite<PW>> : unknown[]
+      ...args: VInfer<VArrayFinite<PW>> extends unknown[] ? VInfer<VArrayFinite<PW>> : unknown[]
     ): [R] extends [never] ? any : VInfer<R>
   },
 ): (
-  ...args: VInfer<VArrayFinite<PW>> extends any[] ? VInfer<VArrayFinite<PW>> : unknown[]
+  ...args: VInfer<VArrayFinite<PW>> extends unknown[] ? VInfer<VArrayFinite<PW>> : unknown[]
 ) => [R] extends [never] ? any : VInfer<R>
 export function vFunctionWrapper<P extends MinimumArraySchema, R extends MinimumSchema>(
   functionDefinition: FunctionDefinitionType2<P, R> & {
     implementation(
-      ...args: VInfer<P> extends any[] ? VInfer<P> : unknown[]
+      ...args: VInfer<P> extends unknown[] ? VInfer<P> : unknown[]
     ): [R] extends [never] ? any : VInfer<R>
   },
 ): (
-  ...args: VInfer<P> extends any[] ? VInfer<P> : unknown[]
+  ...args: VInfer<P> extends unknown[] ? VInfer<P> : unknown[]
 ) => [R] extends [never] ? any : VInfer<R>
 export function vFunctionWrapper(
   functionDefinition: (FunctionDefinitionType1 | FunctionDefinitionType2) & {
-    implementation(...args: any[]): any
+    implementation(...args: unknown[]): any
   },
 ): (...args: unknown[]) => unknown {
   let paramSchema: MinimumArraySchema | undefined = (functionDefinition as any).parameters
@@ -204,7 +206,7 @@ export function parseFunction<
       ? (value: RT) => value
       : (value: RT) => vFunctionWrapperB(parameters, returns, value)
   return (value: unknown): ResultError<ValidationErrors, RT> => {
-    if (typeof value === 'function') return [undefined, rFn(value as any) as RT]
+    if (typeof value === 'function') return [undefined, rFn(value as RT) as RT]
     return [
       {
         input: value,
@@ -299,20 +301,17 @@ export function vFunction<
 
   const obj = createFinalBaseObject(
     baseFunctionObject,
-    (options as any).parser ?? parseFunction(effectiveFuncDef, options.parseFunctionError),
-    `Function<(...args: ${
-      funcDef.parameters !== undefined ? funcDef.parameters.type : 'unknown[]'
-    })=>${funcDef.returns !== undefined ? funcDef.returns.type : 'unknown'}>`,
+    options.parser ?? parseFunction(effectiveFuncDef, options.parseFunctionError),
+    `(...args:${funcDef.parameters !== undefined ? funcDef.parameters.type : 'unknown[]'})=>${
+      funcDef.returns !== undefined ? funcDef.returns.type : 'unknown'
+    }`,
     'function',
     funcDef,
   ) as VFunction<T2>
   Object.defineProperties(obj, {
     args: {
       value(...params: ValidArrayItems): MinimumSchema {
-        return (vFunction as any)(
-          { returns: funcDef.returns, args: params },
-          options,
-        ) as MinimumSchema
+        return vFunction({ returns: funcDef.returns, args: params }, options) as MinimumSchema
       },
       enumerable: true,
       configurable: false,
@@ -328,7 +327,7 @@ export function vFunction<
     },
     returns: {
       value(returns: MinimumSchema): MinimumSchema {
-        return vFunction({ ...(functionDefinition as any), returns }, options) as MinimumSchema
+        return vFunction({ ...functionDefinition, returns }, options) as MinimumSchema
       },
       enumerable: true,
       configurable: false,

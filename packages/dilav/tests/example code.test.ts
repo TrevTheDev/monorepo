@@ -292,21 +292,22 @@ it('coercion of date', () => {
 // })
 
 it('enums', () => {
-  const animalTypes1 = v.enum(['Dog', 'Cat', 'Fish'])
-  // equivalent to :
-  const animalTypes2 = v.union(['Dog', 'Cat', 'Fish'], { stringLiteralUnion: true })
+  const animalSchema1 = v.enum(['Dog', 'Cat', 'Fish'])
+  // similar to, except enum, includes an enum property :
+  const animalSchema2 = v.union(['Dog', 'Cat', 'Fish'], { literalUnion: true })
 
-  type AnimalTypes = v.Infer<typeof animalTypes1> // "Dog" | "Cat" | "Fish"
-  animalTypes1.parse('Dog') // => 'Dog'
-  expect(() => animalTypes1.parse('dog')).toThrow() // => throws
-  console.log(animalTypes1.definition.unionTypes) // => ['Dog', 'Cat', 'Fish']
-  console.log(animalTypes1.enum) // => {Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
-  console.log(animalTypes1.enum.Dog === 'Dog') // => true
+  type AnimalTypes = v.Infer<typeof animalSchema1> // "Dog" | "Cat" | "Fish"
+  animalSchema1.parse('Dog') // => 'Dog'
+  expect(() => animalSchema1.parse('doggo')).toThrow() // => throws
+  console.log(animalSchema1.definition.literals) // => ['Dog', 'Cat', 'Fish']
+
+  console.log(animalSchema1.enum) // => {Dog: 'Dog', Cat: 'Cat', Fish: 'Fish'}
+  console.log(animalSchema1.enum.Dog === 'Dog') // => true
 
   // due to typescript's requirements, as const is required to correctly type
   // enums:
-  const animalTypes = ['Dog', 'Cat', 'Fish'] as const
-  const animalEnum3 = v.enum(animalTypes)
+  const animalTypes = ['Dog', 'Cat', 'Fish'] as const // as const is required
+  const animalEnumSchema = v.enum(animalTypes)
 })
 
 it('typescript enums', () => {
@@ -319,8 +320,8 @@ it('typescript enums', () => {
   type FooEnumSchema = v.Infer<typeof fooEnumSchema> // fooEnum
   const x1 = fooEnumSchema.parse('Cat') // => 'Cat'
   const x2 = fooEnumSchema.parse(1) // => 1
-  expect(() => fooEnumSchema.parse('Rat')).toThrow()
-  console.log(fooEnumSchema.enum)
+  expect(() => fooEnumSchema.parse('Rat')).toThrow() // throws
+  console.log(fooEnumSchema.enum) // => the original fooEnum
 })
 
 it('const enums', () => {
@@ -596,8 +597,10 @@ it('discriminated union', () => {
   // => { type: "A"; data: string } | { type: "B"; result: string }
 })
 
-it('string only union', () => {
-  const fooBar = v.union(['foo', 'bar'], { stringLiteralUnion: true }).parse('foo') // => 'foo' | 'bar'
+it('literal union', () => {
+  const fooBar = v.union(['foo', 'bar'], { literalUnion: true }).parse('foo') // => 'foo' | 'bar'
+  // similar too:
+  const fooBar2 = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
 })
 
 it('records', () => {
@@ -657,17 +660,12 @@ it('Sets2', () => {
 })
 
 it('Intersections', () => {
-  const foo1 = v.intersection([
-    v.union(['A', 'B'], { stringLiteralUnion: true }),
-    v.union(['B', 'C'], { stringLiteralUnion: true }),
-  ])
+  const foo1 = v.intersection([v.enum(['A', 'B']), v.enum(['B', 'C'])])
   // equivalent to:
-  const foo2 = v
-    .union(['A', 'B'], { stringLiteralUnion: true })
-    .and(v.union(['B', 'C'], { stringLiteralUnion: true }))
+  const foo2 = v.enum(['A', 'B']).and(v.enum(['B', 'C']))
 
   const b = foo2.parse('B') // =>'B'
-  expect(() => foo2.parse('A')).toThrow()
+  expect(() => foo2.parse('A')).toThrow() // throws
 })
 
 it('Intersections2', () => {
@@ -940,16 +938,13 @@ it('and', () => {
 })
 
 it('pipe', () => {
-  const foo = v.string.pipe(
-    v.union(['A', 'B'], { stringLiteralUnion: true }),
-    v.union(['A'], { stringLiteralUnion: true }),
-  ) // -> string -> 'A' | 'B' -> 'A'
+  const foo = v.string.pipe(v.enum(['A', 'B']), v.enum(['A'])) // -> string -> 'A' | 'B' -> 'A'
   foo.parse('A')
-  expect(() => foo.parse('B')).toThrow()
+  expect(() => foo.parse('B')).toThrow() // throws
 
   const schema = v.string.transform((str) => str.length).pipe(v.number.min(5))
-  const z = schema.parse('12345')
-  expect(() => schema.parse('1235')).toThrow()
+  const z = schema.parse('12345') // 5
+  expect(() => schema.parse('1235')).toThrow() // throws
 })
 
 it('pipe2', () => {

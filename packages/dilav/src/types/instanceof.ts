@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
@@ -42,7 +41,7 @@ export function parseInstanceOf<T extends InstanceOfType>(
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 abstract class Class {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function, no-useless-constructor
+  // eslint-disable-next-line @typescript-eslint/no-empty-function, no-useless-constructor, @typescript-eslint/no-explicit-any
   constructor(..._: any[]) {}
 }
 
@@ -61,7 +60,7 @@ type InstanceOfOptions<T extends InstanceOfType> =
   | {
       parser: SafeParseFn<unknown, T>
     }
-  | Record<string, never>
+  | {}
 
 // type InstanceOfOptions<T extends InstanceOfType> = {
 //   parser: SafeParseFn<unknown, InstanceType<T>>
@@ -74,9 +73,10 @@ export function vInstanceOf<T extends InstanceOfType>(
   instanceOfItem: T,
   options: Partial<InstanceOfOptions<T>> = {},
 ): VInstanceOf<T> {
+  type Opts = FlattenObjectUnion<InstanceOfOptions<T>>
   return createFinalBaseObject(
     baseInstanceOfObject,
-    (options as any).parser ?? parseInstanceOf(instanceOfItem, (options as any).parseInstanceOf),
+    (options as Opts).parser ?? parseInstanceOf(instanceOfItem, (options as Opts).parseInstanceOf),
     instanceOfItem.name,
     'instanceof',
     { instanceOfItem },

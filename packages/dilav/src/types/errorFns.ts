@@ -33,8 +33,8 @@ const defaultErrorFn = {
   parseDate: (value: unknown) => `${stringify(value)} is not a Date`,
   // parseEnum: (value: unknown, enums: unknown[]) =>
   //   `${stringify(value)} is not in the Enum :${stringify(enums)}`,
-  parseEnum: (value: unknown, enumV: object) =>
-    `${stringify(value)} is not in the Enum :${stringify(enumV)}`,
+  // parseEnum: (value: unknown, enumV: object) =>
+  //   `${stringify(value)} is not in the Enum :${stringify(enumV)}`,
   notNaN: () => 'NaN is not permitted',
   parseLiteral: (value: unknown, literal: unknown) =>
     `${stringify(value)} is not identical to ${stringify(literal)}`,
@@ -180,8 +180,8 @@ const defaultErrorFn = {
   discriminatedUnionValueIsNotAnObject: (value: unknown) =>
     `value ${stringify(value)} is not of type object`,
 
-  parseStringUnion: (value: unknown, stringUnionDef: readonly string[]) =>
-    `value ${stringify(value)} not found in string union definition: ${stringify(stringUnionDef)}`,
+  parseLiteralUnion: (value: unknown, literalUnionDef: readonly unknown[]) =>
+    `value ${stringify(value)} not found in: ${stringify(literalUnionDef)}`,
   parseMap: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
   minimumMapLength: (value: Map<unknown, unknown>, minLength: number) =>
     `${value.size} is less elements than the minimum of ${minLength}`,

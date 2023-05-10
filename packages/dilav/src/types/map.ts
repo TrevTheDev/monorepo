@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isError } from '@trevthedev/toolbelt'
+import { FlattenObjectUnion, ResultError, isError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -35,9 +35,10 @@ type MapDefToMapType<
 
 export function parseMap<T extends readonly [MinimumSchema, MinimumSchema]>(
   mapDef: T,
-  options: MapOptions<any>,
+  options: MapOptions<T>,
 ): (value: unknown) => ResultError<ValidationErrors, MapDefToMapType<T>> {
   const [keyParser, valueParser] = mapDef
+  type Opts = FlattenObjectUnion<MapOptions<T>>
   return (value: unknown): ResultError<ValidationErrors, MapDefToMapType<T>> => {
     const errors = [] as SingleValidationError[]
     if (value instanceof Map) {
@@ -63,7 +64,7 @@ export function parseMap<T extends readonly [MinimumSchema, MinimumSchema]>(
       ]
     }
     return [
-      { input: value, errors: [((options as any).parseMap ?? errorFns.parseMap)(value)] },
+      { input: value, errors: [((options as Opts).parseMap ?? errorFns.parseMap)(value)] },
       undefined,
     ]
   }
@@ -148,7 +149,7 @@ export type VMap<
   Output extends Map<any, any> = MapDefToMapType<T>,
   Input = unknown,
   Validations extends MapValidations<Output> = MapValidations<Output>,
-> = BaseSchema<Output, 'Map', 'map', Input> & {
+> = BaseSchema<Output, string, 'map', Input> & {
   // default validations
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
     ? Validations[I] extends ValidationItem<any>
@@ -180,10 +181,10 @@ export function vMap<const T extends readonly [MinimumSchema, MinimumSchema]>(
     breakOnFirstError: true,
     ...options,
   }
-
+  type Opts = FlattenObjectUnion<MapOptions<T>>
   return createFinalBaseObject(
     baseMapObject,
-    (options as any).parser ?? parseMap(mapDefinitionParsers, fOptions),
+    (options as Opts).parser ?? parseMap(mapDefinitionParsers, fOptions),
     `Map<${mapDefinitionParsers[0].type},${mapDefinitionParsers[1].type}>`,
     'map',
     { mapDefinitionParsers },

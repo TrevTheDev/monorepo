@@ -37,7 +37,7 @@ it('readonly enum', () => {
 })
 
 it('error params', () => {
-  const result = v.enum(['test'], { parseStringUnion: () => 'REQUIRED' }).safeParse(undefined)
+  const result = v.enum(['test'], { parseLiteralUnion: () => 'REQUIRED' }).safeParse(undefined)
   expect(v.isResult(result)).toEqual(false)
   if (v.isError(result)) expect(result[0].errors[0]).toEqual('REQUIRED')
 })
@@ -45,8 +45,8 @@ it('error params', () => {
 it('extract/exclude', () => {
   const foods = ['Pasta', 'Pizza', 'Tacos', 'Burgers', 'Salad'] as const
   const FoodEnum = v.enum(foods)
-  const ItalianEnum = FoodEnum.extract(['Pasta', 'Pizza'])
-  const UnhealthyEnum = FoodEnum.exclude(['Salad'])
+  const ItalianEnum = FoodEnum.extract('Pasta', 'Pizza')
+  const UnhealthyEnum = FoodEnum.exclude('Salad')
   // const EmptyFoodEnum = FoodEnum.exclude(foods)
 
   assertEqual<v.Infer<typeof ItalianEnum>, 'Pasta' | 'Pizza'>(true)

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResultError, isError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
@@ -27,10 +26,14 @@ export function parsePreprocessed<S extends (value: unknown) => unknown, T exten
 }
 
 export function parsePostProcessed<
-  T extends MinimumSchema,
-  S extends (value: ReturnType<T['safeParse']>) => unknown,
->(postprocessFn: S, schema: T) {
-  return (value: unknown) => postprocessFn(schema.safeParse(value) as ReturnType<T['safeParse']>)
+  Input extends MinimumSchema,
+  Output,
+  Process extends (
+    value: ResultError<ValidationErrors, VInfer<Input>>,
+  ) => ResultError<ValidationErrors, Output>,
+>(postprocessFn: Process, schema: Input) {
+  return (value: unknown): ResultError<ValidationErrors, Output> =>
+    postprocessFn(schema.safeParse(value))
 }
 
 /** ****************************************************************************************************************************
@@ -41,18 +44,17 @@ export function parsePostProcessed<
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export type VPreprocessFn = <T extends MinimumSchema, S extends (value: unknown) => unknown>(
-  preprocessFn: S,
+export type VPreprocessFn = <T extends MinimumSchema>(
+  preprocessFn: (value: unknown) => VInfer<T> | unknown,
   safeParsableObject: T,
-) => VPreprocess<T, S>
+) => VPreprocess<T>
 
-export type VPostprocessFn = <
-  T extends MinimumSchema,
-  S extends (value: ReturnType<T['safeParse']>) => ResultError<ValidationErrors, any>,
->(
-  postprocessFn: S,
-  safeParsableObject: T,
-) => VPostProcess<T, S>
+export type VPostprocessFn = <Input extends MinimumSchema, Output>(
+  postprocessFn: (
+    value: ResultError<ValidationErrors, VInfer<Input>>,
+  ) => ResultError<ValidationErrors, Output>,
+  safeParsableObject: Input,
+) => VPostProcess<Input, Output>
 
 export type VDefaultFn = <T extends MinimumSchema, S extends VInfer<T>>(
   defaultValue: S,
@@ -71,45 +73,49 @@ export function initDefault(baseObject: MinimumSchema): {
   vCatch: VCatchFn
 } {
   const baseDefaultObject = Object.create(baseObject)
-  function vPreprocess<T extends MinimumSchema, S extends (value: unknown) => unknown>(
-    preprocessFn: S,
+  function vPreprocess<T extends MinimumSchema>(
+    preprocessFn: (value: unknown) => VInfer<T> | unknown,
     schema: T,
-  ): VPreprocess<T, S> {
+  ): VPreprocess<T> {
     return createFinalBaseObject(
       baseDefaultObject,
       parsePreprocessed(preprocessFn, schema),
       schema.type,
       'preprocess',
       { baseSchema: schema, preprocessFn, transformed: true },
-    ) as VPreprocess<T, S>
+    ) as VPreprocess<T>
   }
-  function vPostprocess<
-    T extends MinimumSchema,
-    S extends (value: ReturnType<T['safeParse']>) => ResultError<ValidationErrors, any>,
-  >(postprocessFn: S, schema: T): VPostProcess<T, S> {
+  function vPostprocess<Input extends MinimumSchema, Output>(
+    postprocessFn: (
+      value: ResultError<ValidationErrors, VInfer<Input>>,
+    ) => ResultError<ValidationErrors, Output>,
+    schema: Input,
+  ): VPostProcess<Input, Output> {
     return createFinalBaseObject(
       baseDefaultObject,
-      parsePostProcessed<T, S>(postprocessFn, schema) as any,
+      parsePostProcessed(postprocessFn, schema),
       schema.type,
       'postprocess',
-      { baseSchema: schema, postprocessFn, transformed: true },
-    ) as VPostProcess<T, S>
+      {
+        baseSchema: schema,
+        postprocessFn,
+        transformed: true,
+      },
+    ) as VPostProcess<Input, Output>
   }
-  function vDefault<T extends MinimumSchema, S extends VInfer<T>>(
-    defaultValue: S,
-    schema: T,
-  ): VPreprocess<T, (value: unknown) => unknown> {
+  function vDefault<T extends MinimumSchema>(defaultValue: VInfer<T>, schema: T): VPreprocess<T> {
     return vPreprocess((value) => value ?? defaultValue, schema)
   }
-  function vCatch<T extends MinimumSchema, S extends VInfer<T>>(
-    catchValue: S,
+  function vCatch<T extends MinimumSchema>(
+    catchValue: VInfer<T>,
     schema: T,
-  ): VPostProcess<T, (value: ReturnType<T['safeParse']>) => ReturnType<T['safeParse']>> {
-    return vPostprocess(
-      (value: ReturnType<T['safeParse']>) =>
-        isError(value) ? ([undefined, catchValue] as ReturnType<T['safeParse']>) : value,
+  ): VPostProcess<T, VInfer<T>> {
+    const x = vPostprocess(
+      (value: ResultError<ValidationErrors, VInfer<T>>): ResultError<ValidationErrors, VInfer<T>> =>
+        isError(value) ? [undefined, catchValue] : value,
       schema,
     )
+    return x
   }
   return { vPreprocess, vPostprocess, vDefault, vCatch }
 }

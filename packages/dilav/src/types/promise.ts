@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { isResult } from '@trevthedev/toolbelt'
-import type { ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -42,6 +41,7 @@ export function parsePromise<T extends MinimumSchema>(
   resultParser: T,
   options: PromiseOptions<VInfer<T>> = {},
 ): SafeParseFn<unknown, ValidatedPromise<VInfer<T>>> {
+  type Opts = FlattenObjectUnion<PromiseOptions<VInfer<T>>>
   return (value: unknown): ResultError<ValidationErrors, ValidatedPromise<VInfer<T>>> => {
     if (
       value instanceof Object &&
@@ -64,12 +64,12 @@ export function parsePromise<T extends MinimumSchema>(
             | undefined
             | null,
           errorResolver:
-            | ((reason: any) => ValidationErrors | PromiseLike<ValidationErrors>)
+            | ((reason: unknown) => ValidationErrors | PromiseLike<ValidationErrors>)
             | undefined
             | null,
         ): Promise<VInfer<T> | ValidationErrors> {
           if (!alreadyRan) {
-            ;(value as any).then(
+            ;(value as Promise<unknown>).then(
               (result) => {
                 const res = resultParser.safeParse(result) as ResultError<
                   ValidationErrors,
@@ -95,7 +95,7 @@ export function parsePromise<T extends MinimumSchema>(
       return [undefined, newP]
     }
     return [
-      { input: value, errors: [((options as any).parsePromise ?? errorFns.parsePromise)(value)] },
+      { input: value, errors: [((options as Opts).parsePromise ?? errorFns.parsePromise)(value)] },
       undefined,
     ]
   }
@@ -123,9 +123,10 @@ export function initPromise(baseObject: MinimumSchema): VPromiseFn {
     resultSchema: T,
     options: PromiseOptions<VInfer<T>> = {},
   ): VPromise<T> {
+    type Opts = FlattenObjectUnion<PromiseOptions<VInfer<T>>>
     const newP = createFinalBaseObject(
       basePromiseObject,
-      (options as any).parser ?? parsePromise(resultSchema, options),
+      (options as Opts).parser ?? parsePromise(resultSchema, options),
       `ValidatedPromise<${resultSchema.type}>`,
       'promise',
       { resultSchema },

@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -201,7 +200,7 @@ type NumberValidationFuncs<
   Validations extends ValidationArray<number> = NumberValidations,
 > = {
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
+    ? Validations[I] extends ValidationItem<number>
       ? Validations[I][0]
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VNumber<Output, Input>
@@ -221,7 +220,8 @@ type NumberOptions =
   | {
       parser: SafeParseFn<unknown, number>
     }
-  | Record<string, never>
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
 
 const baseNumberObject = createValidationBuilder(
   baseObject,
@@ -231,9 +231,10 @@ const baseNumberObject = createValidationBuilder(
 )
 
 export function vNumber(options: NumberOptions = {}): VNumber {
+  type Opts = FlattenObjectUnion<NumberOptions>
   return createFinalBaseObject(
     baseNumberObject,
-    (options as any).parser ?? parseNumber((options as any).parseNumberError),
+    (options as Opts).parser ?? parseNumber((options as Opts).parseNumberError),
     'number',
     'number',
   ) as VNumber

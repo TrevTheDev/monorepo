@@ -111,7 +111,7 @@ it('valid discriminator value, invalid data', () => {
     throw new Error()
   } catch (e: any) {
     expect(e.errors[0])
-      .toEqual(`The object {"type":"a","b":"abc"} is not of type {type:"a",a:string}|{type:"b",b:string}.
+      .toEqual(`The object {"type":"a","b":"abc"} is not of type ({type:"a",a:string})|({type:"b",b:string}).
 "a": property: "a" not found in {"type":"a","b":"abc"}, 
 "b": "abc" doesn't match 'never'`)
   }

@@ -1,56 +1,44 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { FlattenObjectUnion, Identity, ResultError } from '@trevthedev/toolbelt'
+import type { Identity } from '@trevthedev/toolbelt'
 
-import { createFinalBaseObject } from './base'
-import {
-  BaseSchema,
-  SafeParseFn,
-  VUnionStringLiterals,
-  ValidationErrors,
-  defaultErrorFnSym,
-} from './types'
+import { VUnionLiterals } from './types'
 
-import { baseObject, vUnion } from './init'
-import { DefaultErrorFn } from './errorFns'
-import { StringLiteralUnionOptions } from './union'
+import { vUnion } from './init'
+import { LiteralUnionOptions, LiteralUnionType } from './union'
 
-const errorFns = baseObject[defaultErrorFnSym]
+// const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
-type MatchTypes = 'keyOnly' | 'valueOnly' | 'either'
+type MatchTypes = 'key' | 'value' | 'either'
 
-type EnumOptions<T> = (
-  | {
-      parseEnumError: DefaultErrorFn['parseEnum']
-    }
-  | {
-      parser: SafeParseFn<unknown, T>
-    }
-) & { matchType?: MatchTypes }
+type LiteralEnumOptions<T> = Identity<
+  Omit<LiteralUnionOptions<T>, 'literalUnion' | 'baseType' | 'definitionObject' | 'type'>
+>
 
-export function parseEnum<T extends object>(
-  enumV: T,
-  options: FlattenObjectUnion<EnumOptions<T>> = {},
-): SafeParseFn<unknown, T> {
-  const values = Object.values(enumV)
-  const keys = Object.keys(enumV)
-  const matchOnKey = (value) => keys.includes(value)
-  const matchOnValue = (value) => values.includes(value)
-  const matchBoth = (value) => matchOnValue(value) || matchOnValue(value)
-  const matchType: MatchTypes = options.matchType ?? 'valueOnly'
-  const matchFn =
-    // eslint-disable-next-line no-nested-ternary
-    matchType === 'keyOnly' ? matchOnKey : matchType === 'valueOnly' ? matchOnValue : matchBoth
-  return (value: unknown): ResultError<ValidationErrors, T> =>
-    !matchFn(value)
-      ? [
-          {
-            input: value,
-            errors: [(options.parseEnumError ?? errorFns.parseEnum)(String(value), enumV)],
-          },
-          undefined,
-        ]
-      : [undefined, value as T]
-}
+type EnumOptions<T> = LiteralEnumOptions<T> & { matchType?: MatchTypes }
+
+// function parseEnum<T extends object>(
+//   enumV: T,
+//   options: FlattenObjectUnion<EnumOptions<T>> = {},
+// ): SafeParseFn<unknown, T> {
+//   const values = Object.values(enumV)
+//   const keys = Object.keys(enumV)
+//   const matchOnKey = (value) => keys.includes(value)
+//   const matchOnValue = (value) => values.includes(value)
+//   const matchBoth = (value) => matchOnValue(value) || matchOnValue(value)
+//   const matchType: MatchTypes = options.matchType ?? 'value'
+//   const matchFn =
+//     // eslint-disable-next-line no-nested-ternary
+//     matchType === 'key' ? matchOnKey : matchType === 'value' ? matchOnValue : matchBoth
+//   return (value: unknown): ResultError<ValidationErrors, T> =>
+//     !matchFn(value)
+//       ? [
+//           {
+//             input: value,
+//             errors: [(options.parseEnumError ?? errorFns.parseEnum)(String(value), enumV)],
+//           },
+//           undefined,
+//         ]
+//       : [undefined, value as T]
+// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -62,48 +50,91 @@ export function parseEnum<T extends object>(
 
 export interface VEnum<
   T extends object,
-  Output = T[keyof T],
+  MatchType extends MatchTypes,
+  Output = { either: T[keyof T] | keyof T; key: keyof T; value: T[keyof T] }[MatchType],
   Input = unknown,
   // Validations extends ValidationArray<Output> = EnumValidations<Output>,
-> extends BaseSchema<
+> extends VUnionLiterals<
     Output,
     string,
-    'enum',
     Input,
-    { readonly enum: T; readonly transformed?: boolean }
+    { readonly literals: Output; readonly enum: T },
+    'enum'
   > {
-  readonly definition: { readonly enum: T; readonly transformed?: boolean }
   readonly enum: T
 }
 
-type StringEnumOptions<T extends string> = Identity<
-  Omit<StringLiteralUnionOptions<T>, 'stringLiteralUnion'>
+// const baseEnumObject = Object.create(baseObject)
+
+export function vEnum<const T extends readonly [PropertyKey, ...PropertyKey[]]>(
+  literalEnumArray: T,
+  options?: LiteralEnumOptions<T[number]>,
+): VEnum<
+  {
+    [I in keyof T as I extends Exclude<I, keyof unknown[]>
+      ? T[I] extends PropertyKey
+        ? T[I]
+        : never
+      : never]: T[I]
+  },
+  'key'
 >
-
-const baseEnumObject = Object.create(baseObject)
-
-export function vEnum<const T extends readonly [string, ...string[]]>(
-  stringEnums: T,
-  options?: StringEnumOptions<T[number]>,
-): VUnionStringLiterals<T[number]>
-export function vEnum<T extends object>(nativeEnum: T, options?: EnumOptions<T[keyof T]>): VEnum<T>
-export function vEnum(
-  enumDef: object | [string, ...string[]],
-  options: EnumOptions<any> | StringEnumOptions<any> = {},
-): VEnum<any> | VUnionStringLiterals<string> {
-  if (Array.isArray(enumDef))
-    return vUnion(enumDef as [string, ...string[]], { ...options, stringLiteralUnion: true })
-  const typeString = Object.values(enumDef).join('|')
+export function vEnum<
+  const T extends Record<PropertyKey, unknown>,
+  O extends EnumOptions<T[keyof T]>,
+>(
+  nativeEnum: T,
+  options?: O,
+): VEnum<T, O extends { matchType: infer M extends MatchTypes } ? M : 'value'>
+export function vEnum<T extends object, O extends EnumOptions<T[keyof T]>>(
+  nativeEnumOrLiteral: T | Readonly<LiteralUnionType> | readonly [PropertyKey, ...PropertyKey[]],
+  options: O | LiteralEnumOptions<unknown> = {},
+):
+  | VEnum<T, O extends { matchType: infer M extends MatchTypes } ? M : 'value'>
+  | VUnionLiterals<unknown> {
+  let enumD: object
+  let literals: LiteralUnionType
+  if (Array.isArray(nativeEnumOrLiteral)) {
+    enumD = nativeEnumOrLiteral.reduce(
+      (obj, type) =>
+        Object.defineProperty(obj, type, {
+          value: type,
+          enumerable: true,
+          configurable: false,
+          writable: false,
+        }),
+      {},
+    )
+    literals = nativeEnumOrLiteral as LiteralUnionType
+  } else {
+    enumD = nativeEnumOrLiteral
+    literals = [] as unknown as LiteralUnionType
+    const mT: MatchTypes = 'matchType' in options ? options.matchType : 'value'
+    if (['value', 'either'].includes(mT)) literals.push(...Object.values(nativeEnumOrLiteral))
+    if (['key', 'either'].includes(mT)) literals.push(...Object.keys(nativeEnumOrLiteral))
+  }
+  if (literals.length === 0) throw new Error('no items found to add to enum')
 
   return Object.defineProperty(
-    createFinalBaseObject(
-      baseEnumObject,
-      (options as any).parser ?? parseEnum(enumDef, (options as any).parseEnumError),
-      typeString,
-      'enum',
-      { enum: enumDef },
-    ) as VEnum<any>,
+    vUnion(literals, {
+      ...options,
+      literalUnion: true,
+      baseType: 'enum',
+      definitionObject: { enum: enumD, literals },
+    }),
     'enum',
-    { value: enumDef, enumerable: false, writable: false, configurable: false },
-  ) as VEnum<any>
+    { value: enumD, enumerable: false, writable: false, configurable: false },
+  )
+
+  // return Object.defineProperty(
+  //   createFinalBaseObject(
+  //     baseEnumObject,
+  //     (options as Opts).parser ?? parseEnum(enumDef, options as EnumOptions<T>),
+  //     typeString,
+  //     'enum',
+  //     { enum: enumDef },
+  //   ) as VEnum<T>,
+  // 'enum',
+  // { value: enumDef, enumerable: false, writable: false, configurable: false },
+  // ) as VEnum<T>
 }

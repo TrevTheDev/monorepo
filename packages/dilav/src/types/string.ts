@@ -1,7 +1,5 @@
-/* eslint-disable prefer-regex-literals */
 /* eslint-disable max-len */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
 
 import { createValidationBuilder } from './base validations'
 import { createFinalBaseObject } from './base'
@@ -165,17 +163,13 @@ function datetimeRegex(args: { precision: number | null; offset: boolean }) {
     return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{${args.precision}}Z$`)
   }
   if (args.precision === 0) {
-    if (args.offset)
-      return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(([+-]\\d{2}(:?\\d{2})?)|Z)$`)
+    if (args.offset) return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(([+-]\d{2}(:?\d{2})?)|Z)$/
 
-    return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$`)
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/
   }
-  if (args.offset) {
-    return new RegExp(
-      `^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(([+-]\\d{2}(:?\\d{2})?)|Z)$`,
-    )
-  }
-  return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$`)
+  if (args.offset) return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(([+-]\d{2}(:?\d{2})?)|Z)$/
+
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/
 }
 
 export function validDateTime(
@@ -274,7 +268,7 @@ type StringValidationFuncs<
   Validations extends ValidationArray<string> = StringValidations,
 > = {
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
+    ? Validations[I] extends ValidationItem<string>
       ? Validations[I][0]
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VString<Output, Input>
@@ -326,7 +320,8 @@ type StringOptions =
   | {
       parser: SafeParseFn<unknown, string>
     }
-  | Record<string, never>
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
 
 const baseStringObject = createValidationBuilder(
   baseObject,
@@ -336,9 +331,10 @@ const baseStringObject = createValidationBuilder(
 )
 
 export function vString(options: StringOptions = {}): VString {
+  type Opts = FlattenObjectUnion<StringOptions>
   return createFinalBaseObject(
     baseStringObject,
-    (options as any).parser ?? parseString((options as any).parseStringError),
+    (options as Opts).parser ?? parseString((options as Opts).parseStringError),
     'string',
     'string',
   ) as VString

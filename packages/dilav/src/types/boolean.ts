@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
   BaseSchema,
   defaultErrorFnSym,
-  SingleValidationError,
   ValidationArray,
   ValidationErrors,
   ValidationItem,
@@ -16,7 +14,7 @@ import { baseObject } from './init'
 import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
-const errorFns = baseObject[defaultErrorFnSym]
+const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
 // function saneBooleanParser(
 //   unmatchedValue: true | false | undefined,
@@ -70,11 +68,11 @@ const errorFns = baseObject[defaultErrorFnSym]
 // const safeSaneBooleanParser = defaultSaneBooleanParser(false)
 
 export function parseBoolean(
-  invalidBooleanFn: (invalidValue: unknown) => SingleValidationError = errorFns.parseBoolean,
+  invalidBooleanFn?: DefaultErrorFn['parseBoolean'],
 ): SafeParseFn<unknown, boolean> {
   return (value: unknown): ResultError<ValidationErrors, boolean> =>
     typeof value !== 'boolean'
-      ? [{ input: value, errors: [invalidBooleanFn(value)] }, undefined]
+      ? [{ input: value, errors: [(invalidBooleanFn ?? errorFns.parseBoolean)(value)] }, undefined]
       : [undefined, value]
 }
 
@@ -115,7 +113,10 @@ export function beFalse(errorReturnValueFn: () => string = errorFns.beFalse) {
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-type BooleanValidations = DeepWriteable<typeof booleanValidations_>
+type BooleanValidations = DeepWriteable<typeof booleanValidations_> extends ValidationArray<boolean>
+  ? DeepWriteable<typeof booleanValidations_>
+  : never
+
 const booleanValidations_ = [
   ['beTrue', beTrue],
   ['beFalse', beFalse],
@@ -136,7 +137,7 @@ type BooleanValidationFuncs<
   Validations extends ValidationArray<boolean> = BooleanValidations,
 > = {
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
+    ? Validations[I] extends ValidationItem<boolean>
       ? Validations[I][0]
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VBoolean<Output, Input>
@@ -155,12 +156,8 @@ type BooleanOptions =
   | {
       parser: SafeParseFn<unknown, boolean>
     }
-  | Record<string, never>
-
-// const baseBooleanObject = createValidationBuilder(
-//   baseObject,
-//   booleanValidations,
-// ) as unknown as VBoolean
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {} // | Record<string, never>
 
 const baseBooleanObject = createValidationBuilder(
   baseObject,
@@ -169,23 +166,14 @@ const baseBooleanObject = createValidationBuilder(
   vBoolean,
 )
 export function vBoolean(options: BooleanOptions = {}): VBoolean {
+  type Opts = FlattenObjectUnion<BooleanOptions>
   return createFinalBaseObject(
     baseBooleanObject,
-    (options as any).parser ?? parseBoolean((options as any).parseBooleanError),
+    (options as Opts).parser ?? parseBoolean((options as Opts).parseBooleanError),
     'boolean',
     'boolean',
   ) as VBoolean
 }
-//  =>
-//   createBaseValidationBuilder(
-//     options.parser
-//       ? options.parser
-//       : parseBoolean(
-//           options.parseBooleanError ? options.parseBooleanError : errorFns.parseBoolean,
-//         ),
-//     booleanValidations,
-//     'boolean',
-//   ) as unknown as VBoolean
 
 export const vBooleanInstance = vBoolean()
 // export const vBooleanCoerce = vBoolean({ parser: coerceBoolean })

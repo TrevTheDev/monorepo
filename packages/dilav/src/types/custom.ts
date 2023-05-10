@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError } from '@trevthedev/toolbelt'
+import { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -59,10 +58,11 @@ export function vCustom<Output, Type extends string = string>(
   parser: (value: unknown) => boolean,
   options: CustomOptions<Output, Type> = {},
 ): VCustom<Output> {
+  type Opts = FlattenObjectUnion<CustomOptions<Output, Type>>
   return createFinalBaseObject(
     baseCustomObject,
-    (options as any).parser ?? parseCustom(parser, (options as any).invalidValueFn),
-    options.type ?? 'custom type',
+    (options as Opts).parser ?? parseCustom(parser, (options as Opts).invalidValueFn),
+    options.type ?? 'custom',
     'custom',
   ) as VCustom<Output>
 }

@@ -23,8 +23,6 @@ const vNeverInstance = vNever()
 const vNullishInstance = vNullishL()
 const vVoidInstance = vVoid()
 
-// export type VNever = typeof vNeverInstance
-
 const { vUnion, vOptional, vNullable, vNullish, setUnionInstances } = initUnionTypes(baseObject)
 
 const { vObject, setObjectInstances } = initVObject(baseObject)

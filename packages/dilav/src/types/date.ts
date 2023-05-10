@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -16,11 +14,9 @@ import { baseObject } from './init'
 import { createValidationBuilder } from './base validations'
 import { DefaultErrorFn } from './errorFns'
 
-const errorFns = baseObject[defaultErrorFnSym]
+const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
-export function parseDate(
-  invalidDateFn?: (invalidValue: string) => SingleValidationError,
-): SafeParseFn<unknown, Date> {
+export function parseDate(invalidDateFn?: DefaultErrorFn['parseDate']): SafeParseFn<unknown, Date> {
   return (value: unknown): ResultError<ValidationErrors, Date> =>
     value instanceof Date && value.toString() !== 'Invalid Date'
       ? [undefined, value as Date]
@@ -69,11 +65,15 @@ export function before(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-type DateValidations = DeepWriteable<typeof dateValidations_>
+type DateValidations = DeepWriteable<typeof dateValidations_> extends ValidationArray<Date>
+  ? DeepWriteable<typeof dateValidations_>
+  : never
+
 const dateValidations_ = [
   ['min', after],
   ['max', before],
 ] as const
+
 const dateValidations = dateValidations_ as DateValidations
 
 /** ****************************************************************************************************************************
@@ -89,7 +89,7 @@ type DateValidationFuncs<
   Validations extends ValidationArray<Date> = DateValidations,
 > = {
   [I in keyof Validations as I extends Exclude<I, keyof unknown[]>
-    ? Validations[I] extends ValidationItem<any>
+    ? Validations[I] extends ValidationItem<Date>
       ? Validations[I][0]
       : never
     : never]: (...args: Parameters<Validations[I][1]>) => VDate<Output, Input>
@@ -109,24 +109,21 @@ type DateOptions<Input = unknown, Output extends Date = Date> =
   | {
       parser: SafeParseFn<Input, Output>
     }
-  | Record<string, never>
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {} //  Record<string, never>
 
-const baseDateObject = createValidationBuilder(
-  baseObject,
-  dateValidations,
-  coerceDate,
-  vDate,
-) as unknown as any
+const baseDateObject = createValidationBuilder(baseObject, dateValidations, coerceDate, vDate)
 
 export function vDate<Input = unknown, Output extends Date = Date>(
   options: DateOptions<Input, Output> = {},
 ): VDate<Output, Input> {
-  return createFinalBaseObject(
-    baseDateObject,
-    (options as any).parser ?? parseDate((options as any).parseDateError),
+  type Opts = FlattenObjectUnion<DateOptions<unknown, Output>>
+  return createFinalBaseObject<VDate<Output, Input>>(
+    baseDateObject as VDate<Output, Input>,
+    (options as Opts).parser ?? parseDate((options as Opts).parseDateError),
     'Date',
     'date',
-  ) as unknown as VDate<Output, Input>
+  )
 }
 
 export const vDateInstance = vDate()

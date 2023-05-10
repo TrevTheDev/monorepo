@@ -18,7 +18,7 @@ import {
   VNever,
 } from './types'
 
-import defaultErrorFn from './errorFns'
+import defaultErrorFn, { DefaultErrorFn } from './errorFns'
 
 let errorFns = defaultErrorFn
 
@@ -31,7 +31,7 @@ let errorFns = defaultErrorFn
  ***************************************************************************************************************************** */
 export function parseLiteral<T>(
   literal: T,
-  invalidLiteralFn?: (typeof errorFns)['parseLiteral'],
+  invalidLiteralFn?: DefaultErrorFn['parseLiteral'],
 ): SafeParseFn<unknown, T> {
   return (value: unknown): ResultError<ValidationErrors, T> =>
     literal !== value
@@ -74,6 +74,7 @@ function convertLiteralToString(literal: any) {
 }
 
 type VLiteralFn = {
+  // <T extends object>(literal: T): VLiteral<T>
   <const T>(literal: T): VLiteral<T>
   <T, Type extends string>(literal: T, options: LiteralOptions<T, Type>): VLiteral<T, Type>
 }
@@ -91,7 +92,9 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
   ): VLiteral<T, Type> {
     return createFinalBaseObject(
       baseLiteralObject,
-      'parser' in options ? options.parser : parseLiteral(literal, options.invalidValueFn),
+      'parser' in options
+        ? options.parser
+        : parseLiteral(literal, options.invalidValueFn as DefaultErrorFn['parseLiteral']),
       options.type === undefined ? convertLiteralToString(literal) : options.type,
       'literal',
       { literal },

@@ -33,7 +33,8 @@
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "buildxx": "tsup --dts",
+    "buildx": "echo 'WIP'",
+    "build": "tsup --dts",
     "build:tsc": "tsc && tsc -p tsconfig-esm.json",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",

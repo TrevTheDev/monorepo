@@ -1,13 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFinalBaseObject } from './base'
-import { BaseSchema, MinimumSchema, SafeParsableObjectTypes } from './types'
+import { BaseSchema, MinimumSchema, BaseTypes } from './types'
 import { baseObject } from './init'
 
 export type VLazy<Output, Type extends string = string, Input = unknown> = BaseSchema<
   Output,
   Type,
-  SafeParsableObjectTypes,
+  BaseTypes,
   Input,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any
 >
 

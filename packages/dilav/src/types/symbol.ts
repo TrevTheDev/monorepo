@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
@@ -35,7 +34,7 @@ export function parseSymbol(
  ***************************************************************************************************************************** */
 export type VSymbol<Output extends symbol = symbol, Input = unknown> = BaseSchema<
   Output,
-  string,
+  'symbol',
   'symbol',
   Input
 >
@@ -47,14 +46,16 @@ type SymbolOptions =
   | {
       parser: SafeParseFn<unknown, symbol>
     }
-  | Record<string, never>
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | {}
 
 const baseSymbolObject = Object.create(baseObject)
 
 export function vSymbol(options: SymbolOptions = {}): VSymbol {
+  type Opts = FlattenObjectUnion<SymbolOptions>
   return createFinalBaseObject(
     baseSymbolObject,
-    (options as any).parser ?? parseSymbol((options as any).parseSymbolError),
+    (options as Opts).parser ?? parseSymbol((options as Opts).parseSymbolError),
     `symbol`,
     'symbol',
   ) as VSymbol

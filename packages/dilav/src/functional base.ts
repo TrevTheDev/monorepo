@@ -35,8 +35,6 @@ import {
 
 import { parseDate, after, before, coerceDate } from './types/date'
 
-import { parseEnum } from './types/enum'
-
 import { parseInstanceOf } from './types/instanceof'
 
 import { parseIntersection } from './types/intersection'
@@ -108,7 +106,7 @@ import {
   endsWith,
 } from './types/string'
 
-import { parseUnion, parseDiscriminatedUnion, parseStringUnion } from './types/union'
+import { parseUnion, parseDiscriminatedUnion, parseLiteralUnion } from './types/union'
 
 // export { parseUnion, parseDiscriminatedUnion, parseStringUnion }
 
@@ -213,10 +211,6 @@ export default {
     parsers: { parseRecord },
     validations: {},
   },
-  enum: {
-    parsers: { parseEnum },
-    validations: {},
-  },
   instanceOf: {
     parsers: { parseInstanceOf },
     validations: {},
@@ -230,7 +224,7 @@ export default {
     validations: {},
   },
   union: {
-    parsers: { parseUnion, parseDiscriminatedUnion, parseStringUnion },
+    parsers: { parseUnion, parseDiscriminatedUnion, parseStringUnion: parseLiteralUnion },
     validations: {},
   },
   map: {

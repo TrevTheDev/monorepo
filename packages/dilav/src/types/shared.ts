@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResultError, isResult } from '@trevthedev/toolbelt'
 
 import {
@@ -10,22 +9,27 @@ import {
   parserObject,
 } from './types'
 
-function typeOfItem(val: any): string {
+/**
+ *
+ * @param item
+ * @returns a string of the type of a variable
+ */
+function typeOfItem(item: unknown): string {
   // eslint-disable-next-line no-nested-ternary
-  return val === null
+  return item === null
     ? 'Null'
-    : val === undefined
+    : item === undefined
     ? 'Undefined'
-    : Object.prototype.toString.call(val).slice(8, -1)
+    : Object.prototype.toString.call(item).slice(8, -1)
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function isObjectType(val: any): val is {} {
+export function isObjectType(val: unknown): val is {} {
   return typeOfItem(val) === 'Object'
 }
 
 export function errorFromResultError(
-  resultError: ResultError<ValidationErrors, any>,
+  resultError: ResultError<ValidationErrors, unknown>,
 ): ValidationErrors {
   if (isResult(resultError)) throw new Error('was an result, so no error found!')
   return resultError[0]
@@ -40,7 +44,7 @@ export function firstError(validationErrors: ValidationErrors) {
   return validationErrors.errors[0]
 }
 
-export function firstErrorFromResultError(resultError: ResultError<ValidationErrors, any>) {
+export function firstErrorFromResultError(resultError: ResultError<ValidationErrors, unknown>) {
   return firstError(errorFromResultError(resultError))
 }
 
@@ -64,38 +68,46 @@ export function isSpread(schema: ValidArrayItem): schema is MinimumArrayRestSche
 export function optional(mspObj: MinimumSchema): MinimumSchema
 export function optional(mspObj: ValidArrayItem): ValidArrayItem
 export function optional(mspObj: ValidArrayItem): ValidArrayItem {
-  return 'optional' in mspObj ? (mspObj as any).optional() : mspObj
+  return 'optional' in mspObj ? (mspObj as { optional(): ValidArrayItem }).optional() : mspObj
 }
 
 // export function required(mspObj: MinimumSafeParsableRestArray): MinimumSafeParsableRestArray
-export function required(mspObj: MinimumSchema, keysToRequire?: PropertyKey[]): MinimumSchema
-export function required(mspObj: ValidArrayItem, keysToRequire?: PropertyKey[]): ValidArrayItem
-export function required(
-  mspObj: ValidArrayItem,
-  keysToRequire: PropertyKey[] = [],
-): ValidArrayItem {
-  return 'required' in mspObj ? (mspObj as any).required(...keysToRequire) : mspObj
+export function required(mspObj: MinimumSchema, keysToRequire: PropertyKey[]): MinimumSchema
+export function required(mspObj: ValidArrayItem, keysToRequire: PropertyKey[]): ValidArrayItem
+export function required(mspObj: ValidArrayItem, keysToRequire: PropertyKey[]): ValidArrayItem {
+  return 'required' in mspObj
+    ? (mspObj as { required(...args: PropertyKey[]): ValidArrayItem }).required(...keysToRequire)
+    : mspObj
 }
 
-export function deepPartial(mspObj: MinimumSchema, keysToDeepPartial?: PropertyKey[]): MinimumSchema
+export function deepPartial(mspObj: MinimumSchema, keysToDeepPartial: PropertyKey[]): MinimumSchema
 export function deepPartial(
   mspObj: ValidArrayItem,
-  keysToDeepPartial: PropertyKey[] = [],
+  keysToDeepPartial: PropertyKey[],
 ): ValidArrayItem {
   return optional(
-    'deepPartial' in mspObj ? (mspObj as any).deepPartial(...keysToDeepPartial) : mspObj,
+    'deepPartial' in mspObj
+      ? (mspObj as { deepPartial(...args: PropertyKey[]): ValidArrayItem }).deepPartial(
+          ...keysToDeepPartial,
+        )
+      : mspObj,
   )
 }
-
 export function unWrappedDeepPartial(
   mspObj: MinimumSchema,
-  keysToDeepPartial?: PropertyKey[],
+  keysToDeepPartial: PropertyKey[],
 ): MinimumSchema
 export function unWrappedDeepPartial(
-  mspObj: ValidArrayItem,
-  keysToDeepPartial: PropertyKey[] = [],
-): ValidArrayItem {
+  mspObj: MinimumSchema | MinimumArrayRestSchema,
+  keysToDeepPartial: PropertyKey[],
+): MinimumSchema | MinimumArrayRestSchema
+export function unWrappedDeepPartial(
+  mspObj: MinimumSchema | MinimumArrayRestSchema,
+  keysToDeepPartial: PropertyKey[],
+): MinimumSchema | MinimumArrayRestSchema {
   return 'deepPartial' in mspObj
-    ? (mspObj as any).deepPartial(...keysToDeepPartial)
+    ? (
+        mspObj as { deepPartial(...args: PropertyKey[]): MinimumSchema | MinimumArrayRestSchema }
+      ).deepPartial(...keysToDeepPartial)
     : optional(mspObj)
 }

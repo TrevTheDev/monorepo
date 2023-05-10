@@ -880,7 +880,11 @@ export type DeepRMerge<T extends ObjectArray> = keyof T[0] extends infer KeyOfT0
                 OptionalKeyOfT0AndT1
               >]: T[0][K] extends infer T0 extends object
                 ? T[1][K] extends infer T1 extends object
-                  ? DeepRMerge<[T0, T1]>
+                  ? T0 extends any[]
+                    ? T[1][K]
+                    : T1 extends any[]
+                    ? T[1][K]
+                    : DeepRMerge<[T0, T1]>
                   : T[1][K]
                 : T[1][K]
             } & {
@@ -889,7 +893,11 @@ export type DeepRMerge<T extends ObjectArray> = keyof T[0] extends infer KeyOfT0
                 undefined
               > extends infer T0 extends object
                 ? Exclude<T[1][K], undefined> extends infer T1 extends object
-                  ? DeepRMerge<[T0, T1]>
+                  ? T0 extends any[]
+                    ? T[1][K]
+                    : T1 extends any[]
+                    ? T[1][K]
+                    : DeepRMerge<[T0, T1]>
                   : T[1][K]
                 : T[1][K]
             } extends infer MergedObject extends object

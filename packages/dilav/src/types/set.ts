@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isError } from '@trevthedev/toolbelt'
-import type { ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -25,15 +25,16 @@ import { createValidationBuilder } from './base validations'
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-const errorFns = baseObject[defaultErrorFnSym]
+const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
 type SetDef = MinimumSchema
 type SetDefToSetType<T extends SetDef, RT = Set<VInfer<T>>> = RT
 
 export function parseSet<T extends SetDef>(
   valueSchema: T,
-  options: SetOptions<any>,
+  options: SetOptions<T>,
 ): SafeParseFn<unknown, SetDefToSetType<T>> {
+  type Opts = FlattenObjectUnion<SetOptions<T>>
   return (value: unknown): ResultError<ValidationErrors, SetDefToSetType<T>> => {
     const errors = [] as SingleValidationError[]
     if (value instanceof Set) {
@@ -54,7 +55,7 @@ export function parseSet<T extends SetDef>(
       ]
     }
     return [
-      { input: value, errors: [((options as any).parseSet ?? errorFns.parseSet)(value)] },
+      { input: value, errors: [((options as Opts).parseSet ?? errorFns.parseSet)(value)] },
       undefined,
     ]
   }
@@ -117,14 +118,14 @@ type SetValidations<T extends Set<unknown>> = [
   ['nonempty', typeof nonEmpty<T>],
 ]
 
-const setValidations = [
+const setValidations_ = [
   ['min', minimumSetLength],
   ['max', maximumSetLength],
   ['size', requiredSetLength],
   ['nonempty', nonEmpty],
 ] as const
 
-// export const setValidations = instanceOfValidations_ as InstanceOfValidations
+const setValidations = setValidations_ as SetValidations<Set<unknown>>
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -161,12 +162,13 @@ type SetOptions<T extends SetDef> = (
   breakOnFirstError?: boolean
 }
 
-const baseSetObject = createValidationBuilder(baseObject, setValidations as any)
+const baseSetObject = createValidationBuilder(baseObject, setValidations)
 
 export function vSet<T extends SetDef>(
   setDefinitionSchema: T,
   options: SetOptions<T> = {},
 ): VSet<T> {
+  type Opts = FlattenObjectUnion<SetOptions<T>>
   const fOptions: SetOptions<T> = {
     breakOnFirstError: true,
     ...options,
@@ -174,7 +176,7 @@ export function vSet<T extends SetDef>(
 
   return createFinalBaseObject(
     baseSetObject,
-    (options as any).parser ?? parseSet(setDefinitionSchema, fOptions),
+    (options as Opts).parser ?? parseSet(setDefinitionSchema, fOptions),
     `Set<${setDefinitionSchema.type}>`,
     'set',
     { setDefinitionSchema },

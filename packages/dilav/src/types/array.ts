@@ -65,7 +65,9 @@ export type VArrayFn = {
   <const T extends ValidArrayItems>(itemSchemas: T, options?: ArrayOptions): VArrayFinite<
     ValidArrayItemsT<T>
   >
-  (itemSchemas: ValidArrayItem, options: ArrayOptions): VArrayInfinite<any> | VArrayFinite<any>
+  (itemSchemas: ValidArrayItem, options: ArrayOptions):
+    | VArrayInfinite<MinimumSchema>
+    | VArrayFinite<ValidArrayItemsW>
 }
 
 /** ****************************************************************************************************************************
@@ -282,7 +284,7 @@ function restArrayObject(parent: MinimumArraySchema, typeString: string): Minimu
       return parent.deepPartial(...keys).spread
     },
     deepRequired(...keys) {
-      return parent.deepRequired(...keys).spread
+      return (parent as any).deepRequired(...keys).spread
     },
     stratifiedSchemas: parent.definition[stratifiedSchemaProp],
     type: `...${typeString}`,
@@ -486,8 +488,8 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         writable: false,
       },
       merge: {
-        value(vArr: VArrayFinite<any>) {
-          return (this as VArrayFinite<any>).extends(...vArr.definition.itemSchemas)
+        value(vArr: VArrayFinite<ValidArrayItemsW>) {
+          return (this as VArrayFinite<ValidArrayItemsW>).extends(...vArr.definition.itemSchemas)
         },
         enumerable: true,
         configurable: false,
@@ -506,9 +508,9 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         writable: false,
       },
       deepPartial: {
-        value(...keys) {
-          const newItemSchemas = itemSchemas.reduce((newPropertySchemasI, itemSchema: any) => {
-            newPropertySchemasI.push(unWrappedDeepPartial(itemSchema, ...keys))
+        value(...keysToPartial: PropertyKey[]) {
+          const newItemSchemas = itemSchemas.reduce((newPropertySchemasI, itemSchema) => {
+            newPropertySchemasI.push(unWrappedDeepPartial(itemSchema, keysToPartial))
             return newPropertySchemasI
           }, [] as ValidArrayItemsW)
           return nextFiniteArray(newItemSchemas as ValidArrayItemsW, options, this)
@@ -518,9 +520,9 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         writable: false,
       },
       required: {
-        value() {
+        value(...keysToRequire: PropertyKey[]) {
           const newItemSchemas = itemSchemas.reduce((newPropertySchemasI, itemSchema) => {
-            newPropertySchemasI.push(required(itemSchema))
+            newPropertySchemasI.push(required(itemSchema, keysToRequire))
             return newPropertySchemasI
           }, [] as ValidArrayItemsW)
           return nextFiniteArray(newItemSchemas as ValidArrayItemsW, options, this)
@@ -530,12 +532,12 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         writable: false,
       },
       deepRequired: {
-        value() {
+        value(...keysToRequire: PropertyKey[]) {
           const newItemSchemas = itemSchemas.reduce((newPropertySchemasI, itemSchema) => {
             newPropertySchemasI.push(
               'deepRequired' in itemSchema
-                ? (itemSchema as any).deepRequired()
-                : required(itemSchema),
+                ? (itemSchema as any).deepRequired(...keysToRequire)
+                : required(itemSchema, keysToRequire),
             )
             return newPropertySchemasI
           }, [] as ValidArrayItemsW)
@@ -585,7 +587,7 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
       [stratifiedSchemaProp]: stratifiedSchemas,
       itemSchema,
       transformed,
-    }) as unknown as VArrayInfinite<any>
+    }) as unknown as VArrayInfinite<MinimumSchema>
 
     Object.defineProperties(builder, {
       partial: {
@@ -597,27 +599,27 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
         writable: false,
       },
       deepPartial: {
-        value() {
-          return nextInfiniteArray(unWrappedDeepPartial(itemSchema), options, this)
+        value(...keysToPartial: PropertyKey[]) {
+          return nextInfiniteArray(unWrappedDeepPartial(itemSchema, keysToPartial), options, this)
         },
         enumerable: true,
         configurable: false,
         writable: false,
       },
       required: {
-        value() {
-          return nextInfiniteArray(required(itemSchema), options, this)
+        value(...keysToRequire: PropertyKey[]) {
+          return nextInfiniteArray(required(itemSchema, keysToRequire), options, this)
         },
         enumerable: true,
         configurable: false,
         writable: false,
       },
       deepRequired: {
-        value() {
+        value(...keysToRequire: PropertyKey[]) {
           return nextInfiniteArray(
             'deepRequired' in itemSchema
-              ? (itemSchema as any).deepRequired()
-              : required(itemSchema),
+              ? (itemSchema as any).deepRequired(...keysToRequire)
+              : required(itemSchema, keysToRequire),
             options,
             this,
           )
@@ -640,10 +642,12 @@ export function initArray(baseObject: MinimumSchema): VArrayFn {
   function vArray(
     itemSchemas: ValidArrayItemsW | MinimumSchema,
     options: ArrayOptions = {},
-  ): VArrayInfinite<any> | VArrayFinite<any> {
+  ): VArrayInfinite<MinimumSchema> | VArrayFinite<ValidArrayItemsW> {
     return (Array.isArray(itemSchemas)
       ? finiteArray(itemSchemas, options)
-      : infiniteArray(itemSchemas, options)) as unknown as VArrayInfinite<any> | VArrayFinite<any>
+      : infiniteArray(itemSchemas, options)) as unknown as
+      | VArrayInfinite<MinimumSchema>
+      | VArrayFinite<ValidArrayItemsW>
   }
   return vArray as VArrayFn
 }
