@@ -5,6 +5,7 @@ import { Message } from '../objects/question'
 import createReader, { AwaitedReader, Reader } from './reader'
 import createWriter, { Writer } from './writer'
 
+// eslint-disable-next-line no-shadow
 export enum ServerResponseCode {
   ok = 200,
   badRequest = 400,
@@ -81,13 +82,13 @@ export default function serverStream(
     ? requestHeaders['http2-duplex-id']
     : undefined
 
-  let idx = uid === undefined ? undefined : validateIdx(uid, requestHeaders['http2-duplex-idx'])
+  const idx = uid === undefined ? undefined : validateIdx(uid, requestHeaders['http2-duplex-idx'])
 
   const serverStream = {
-    stream: stream,
-    requestHeaders: requestHeaders,
+    stream,
+    requestHeaders,
     method: requestHeaders[':method'],
-    idx: idx,
+    idx,
     endRequested: requestHeaders['http2-duplex-end'] === 'true',
     session: stream.session as unknown as ServerHttp2Stream,
 

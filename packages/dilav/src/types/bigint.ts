@@ -1,4 +1,4 @@
-import type { ResultError, DeepWriteable } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable } from '../toolbelt'
 
 import type {
   SafeParseFn,

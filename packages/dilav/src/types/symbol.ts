@@ -1,4 +1,4 @@
-import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
+import type { FlattenObjectUnion, ResultError } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'

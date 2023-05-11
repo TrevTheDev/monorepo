@@ -1,4 +1,4 @@
-import { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
+import { FlattenObjectUnion, ResultError } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {

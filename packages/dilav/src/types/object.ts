@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax */
-import { difference, isError } from '@trevthedev/toolbelt'
-import type { DeepWriteable, FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
+import { difference, isError } from '../toolbelt'
+import type { DeepWriteable, FlattenObjectUnion, ResultError } from '../toolbelt'
 import { deepPartial, isObjectType, isOptional, isTransformed, optional, required } from './shared'
 import { createFinalBaseObject } from './base'
 import {

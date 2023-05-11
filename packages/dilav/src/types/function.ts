@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { ResultError } from '@trevthedev/toolbelt'
+import { ResultError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumArraySchema,

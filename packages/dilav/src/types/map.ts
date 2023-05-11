@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FlattenObjectUnion, ResultError, isError } from '@trevthedev/toolbelt'
+import { FlattenObjectUnion, ResultError, isError } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {

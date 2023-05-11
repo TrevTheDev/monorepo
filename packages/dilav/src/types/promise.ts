@@ -1,5 +1,5 @@
-import { isResult } from '@trevthedev/toolbelt'
-import type { FlattenObjectUnion, ResultError } from '@trevthedev/toolbelt'
+import { isResult } from '../toolbelt'
+import type { FlattenObjectUnion, ResultError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,

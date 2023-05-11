@@ -1,4 +1,4 @@
-import { ResultError, isError } from '@trevthedev/toolbelt'
+import { ResultError, isError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumSchema,

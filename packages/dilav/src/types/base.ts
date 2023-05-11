@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isError } from '@trevthedev/toolbelt'
+import { ResultError, isError } from '../toolbelt'
 import { asyncValidate, validate } from './base validations'
 import { isOptional } from './shared'
 import ValidationError from './Validation error'

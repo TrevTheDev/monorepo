@@ -1,4 +1,4 @@
-import { isError, isResult } from '@trevthedev/toolbelt'
+import { isError, isResult } from './toolbelt'
 import { setGlobalErrorMessages } from './types/init'
 
 /** ****************************************************************************************************************************

@@ -1,10 +1,5 @@
 /* eslint-disable no-restricted-syntax */
-import {
-  type ResultError,
-  type DeepWriteable,
-  intersection,
-  difference,
-} from '@trevthedev/toolbelt'
+import { type ResultError, type DeepWriteable, intersection, difference } from '../toolbelt'
 
 import { parseObject } from './object'
 

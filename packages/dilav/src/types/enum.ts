@@ -1,4 +1,4 @@
-import type { Identity } from '@trevthedev/toolbelt'
+import type { Identity } from '../toolbelt'
 
 import { VUnionLiterals } from './types'
 

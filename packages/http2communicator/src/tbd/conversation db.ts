@@ -6,25 +6,26 @@ import {
   resultError,
   ResultError,
 } from '@trevthedev/toolbelt'
-import { Message, QuestionId } from './objects/question'
+
 import readerQueue from './readers to objects/reader queue'
 import HttpError from './stream/http error'
 import { Reader } from './stream/reader'
 import { ServerResponseCode, ServerStream } from './stream/server stream'
 import { Writer } from './stream/writer'
+import { Message, MessageId } from './types'
 
 export type ConversationId = string
 
 export type Conversations = ReturnType<typeof conversationDb>
 
 export type Conversation = {
-  readonly messageHandlers: EnhancedMap<(msg: Message) => void, QuestionId>
+  readonly messageHandlers: EnhancedMap<(msg: Message) => void, MessageId>
   readonly startStream: ServerStream
   readonly writer: Writer
   readonly state: 'error' | 'ended' | 'init' | 'underway'
   readonly isEnded: boolean
   addStream(stream: ServerStream & { idx: number }): DidError<HttpError, boolean>
-  await: (nextObjectCb: (object: unknown) => void, noDataCb?: (() => void) | undefined) => void
+  await: (nextObjectCb: (message: Message) => void, noDataCb?: (() => void) | undefined) => void
   error(error: HttpError): void
   end(): void
 }

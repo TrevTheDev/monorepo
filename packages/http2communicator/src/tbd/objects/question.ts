@@ -2,7 +2,7 @@
 import { EnhancedMap } from '@trevthedev/toolbelt'
 import { createUid } from '../../other/shared functions.js'
 import { Writer } from '../stream/writer.js'
-import { Message, MessagePayload, QuestionId } from '../types.js'
+import { Message, MessagePayload, MessageId } from '../types.js'
 
 // | 'question' /** new question */
 // | 'reply' /** reply to a question */
@@ -13,8 +13,8 @@ import { Message, MessagePayload, QuestionId } from '../types.js'
 // | 'questionReceived'
 // | 'replyReceived'
 
-export type MessageHandlers = EnhancedMap<(msg: Message) => void, QuestionId>
-export type QuestionMessageHandlers = EnhancedMap<(msg: PossibleMessage) => void, QuestionId>
+export type MessageHandlers = EnhancedMap<(msg: Message) => void, MessageId>
+export type QuestionMessageHandlers = EnhancedMap<(msg: PossibleMessage) => void, MessageId>
 
 export type CancelQuestion = () => void
 

@@ -1,4 +1,4 @@
-import { ResultError, isResult } from '@trevthedev/toolbelt'
+import { ResultError, isResult } from '../toolbelt'
 
 import {
   MinimumArrayRestSchema,

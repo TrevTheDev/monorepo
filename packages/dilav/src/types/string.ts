@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '../toolbelt'
 
 import { createValidationBuilder } from './base validations'
 import { createFinalBaseObject } from './base'

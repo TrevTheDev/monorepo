@@ -118,7 +118,7 @@ export type { SingleObjectValidationError } from './types/object'
 
 export type { VLazy as Lazy } from './types/lazy'
 
-export type { ResultError } from '@trevthedev/toolbelt'
+export type { ResultError } from './toolbelt'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -171,7 +171,7 @@ export {
   errorFromResultError,
 } from './types/shared'
 
-export { isError, isResult } from '@trevthedev/toolbelt'
+export { isError, isResult } from './toolbelt'
 // import { DefaultErrorFn } from './types/errorFns'
 
 // export { parseSymbol, vSymbol, vSymbolInstance }

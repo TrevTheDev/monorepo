@@ -1,4 +1,4 @@
-import type { ResultError, DeepWriteable, FlattenObjectUnion } from '@trevthedev/toolbelt'
+import type { ResultError, DeepWriteable, FlattenObjectUnion } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,

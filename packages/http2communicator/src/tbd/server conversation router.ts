@@ -1,4 +1,4 @@
-import { DidError, EnhancedMap, enhancedMap, ResultError } from '@trevthedev/toolbelt'
+import { DidError, EnhancedMap, enhancedMap, isError, ResultError } from '@trevthedev/toolbelt'
 import type { IncomingHttpHeaders, OutgoingHttpHeaders, ServerHttp2Stream } from 'http2'
 import HttpError from './stream/http error'
 import type { Message, QuestionId } from './objects/question'
@@ -11,16 +11,13 @@ import serverStream, {
   ServerStream,
   StartServerStream,
 } from './stream/server stream'
+import { messageSchema } from './types'
 import { v } from 'dilav'
 
 function isPossibleNewConversationStream(
   eStream: ServerStream | StartServerStream,
 ): eStream is StartServerStream {
   return eStream.idx === 0
-}
-
-function isMessage(obj: object): obj is Message {
-  return 'responseId' in obj && typeof obj.responseId === 'string'
 }
 
 function addStreamToConversation(
@@ -40,32 +37,23 @@ function addStreamToConversation(
 }
 
 function objectRouter(questionHandler: QuestionHandler, chat: Conversation) {
-  const getNextObject = () => {
-    chat.await((obj) => {
-      const isObject = v.object({
-        
-      })
-      if (chat.isEnded) return
-
-      if ('responseId' in obj && typeof obj.responseId === 'string') {
-        const messageHandler = chat.messageHandlers.get(obj['responseId'])
-        if (!messageHandler) {
-          return chat.error(
-            new HttpError(ServerResponseCode.badRequest, 'no messageHandlers found'),
-          )
-        }
-        messageHandler(obj as Message)
+  function getNextObject() {
+    chat.await((object) => {
+      const parseResult = messageSchema.safeParse(object)
+      if (isError(parseResult)) return chat.error(parseResult[0])
+      const message = parseResult[1]
+      if (message.type === 'question') {
+        const createResponseResult = response(chat, message)
+        if (isError(createResponseResult)) return chat.error(createResponseResult[0])
+        questionHandler(createResponseResult[1])
         return getNextObject()
       }
 
-      if (obj['type'] === 'question') {
-        const res = response(chat, obj as Message, chat.end)
-        if (res.isError()) chat.error((res as ResultError<Response, HttpError, 'error'>).error)
-        const x = (res as ResultError<Response, HttpError, 'result'>).result
-        questionHandler(x)
-        return getNextObject()
-      }
-      chat.error(new HttpError(ServerResponseCode.badRequest, 'unrecognised object'))
+      const createMessageHandlerResult = chat.messageHandlers.get(message.id)
+      if (isError(createMessageHandlerResult))
+        return chat.error(new HttpError(ServerResponseCode.badRequest, 'no messageHandlers found'))
+      messageHandler(createMessageHandlerResult[1])
+      return getNextObject()
     })
   }
   getNextObject()
@@ -76,26 +64,22 @@ function startConversation(
   startConversationFn: Conversations['startConversation'],
   eStream: ServerStream & { idx: 0 },
 ) {
-  const output = startConversationFn(eStream)
-  if (output.isError())
-    eStream.respondError((output as ResultError<Conversation, HttpError, 'error'>).error)
-  else {
-    const chat = (output as ResultError<Conversation, HttpError, 'result'>).result
-    objectRouter(questionHandler, chat)
-  }
+  const startConversationResult = startConversationFn(eStream)
+  if (isError(startConversationResult)) return eStream.respondError(startConversationResult[0])
+  return objectRouter(questionHandler, startConversationResult[0])
 }
 
-export function serverConversationRouter(
+export default function serverConversationRouter(
   defaultResponseHeaders: OutgoingHttpHeaders,
   questionHandler: QuestionHandler,
 ) {
   const conversations = conversationDb()
-  return (
+  return function ServerStreamReceiverFn (
     stream: ServerHttp2Stream,
     headers: IncomingHttpHeaders,
     _flags: number,
     _rawHeaders: Array<unknown>,
-  ) => {
+  ) {
     const eStream: ServerStream = serverStream(
       stream,
       headers,
@@ -105,7 +89,7 @@ export function serverConversationRouter(
     )
 
     if (eStream.uid)
-      addStreamToConversation(conversations.get, eStream as ServerStream & { uid: string })
+      addStreamToConversation(conversations.get, eStream)
     else if (!isPossibleNewConversationStream(eStream))
       eStream.respondError(new HttpError(ServerResponseCode.badRequest, 'bad index'))
     else startConversation(questionHandler, conversations.startConversation, eStream)

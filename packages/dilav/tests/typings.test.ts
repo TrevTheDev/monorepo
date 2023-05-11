@@ -214,4 +214,62 @@ it('typing tests', () => {
   assertEqual<v.Infer<typeof vStringOptional>, string | undefined>(true)
   expect(vStringOptional.type).toBe(`string|undefined`)
   assertEqual<typeof vStringOptional.type, string>(true)
+
+  // const A1 = v.object({
+  //   _type: v.literal('A'),
+  //   delay: v.number,
+  //   flag: v.boolean.beTrue(),
+  //   technique: v.literal('X'),
+  //   time: v.number,
+  // })
+
+  // const A2 = v.object({
+  //   _type: v.literal('A'),
+  //   delay: v.number,
+  //   flag: v.boolean.beTrue(),
+  //   technique: v.literal('X'),
+  //   time: v.array([v.number, v.number]),
+  // })
+
+  // const A3 = v.object({
+  //   _type: v.literal('A'),
+  //   delay: v.number,
+  //   flag: v.boolean.beFalse(),
+  // })
+
+  // const B = v.object({
+  //   _type: v.literal('B'),
+  //   duration: v.number,
+  //   delay: v.number,
+  // })
+
+  // const union = v.union([A1, A2, A3, B])
+  // const typer = union.parse({})
+  // type B = v.Infer<typeof B>
+
+  // type X =
+  //   | {
+  //       _type: 'A'
+  //       delay: number
+  //       flag: boolean
+  //       technique: 'X'
+  //       time: number
+  //     }
+  //   | {
+  //       _type: 'A'
+  //       delay: number
+  //       flag: boolean
+  //       technique: 'X'
+  //       time: [number, number]
+  //     }
+  //   | {
+  //       _type: 'A'
+  //       delay: number
+  //       flag: boolean
+  //     }
+  //   | {
+  //       _type: 'B'
+  //       duration: number
+  //       delay: number
+  //     }
 })
