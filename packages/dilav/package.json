@@ -36,6 +36,8 @@
     "buildx": "echo 'WIP'",
     "build": "tsup --dts",
     "build:tsc": "tsc && tsc -p tsconfig-esm.json",
+    "build:no": "tsc --noEmit",
+    "dev": "tsup --dts --watch",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
     "preversion": "npm run lint",

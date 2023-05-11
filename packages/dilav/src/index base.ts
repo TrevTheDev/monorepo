@@ -67,6 +67,7 @@ export type {
   MinimumObjectDefinition,
   MinimumObjectSchema,
   VObject as Object,
+  // VObjectBase as ObjectBase,
   VPreprocess as Preprocess,
   VPostProcess as PostProcess,
   VDefault as Default,

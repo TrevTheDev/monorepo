@@ -758,6 +758,17 @@ export type OptionalKeys<T extends object> = keyof {
   [K in keyof T as T extends Record<K, T[K]> ? never : K]: K
 }
 
+/**
+ * Makes specified properties of an object required
+ * @example
+ * type U = RequireKeys<{ a: 'a'; b?: 'b'; c?: 'c'; d?: 'd' }, 'b' | 'd'> // { a: 'a'; b: 'b'; c?: 'c'; d: 'd'; }
+ */
+export type RequireKeys<T extends object, K extends keyof T> = Identity<
+  T & {
+    [P in K]-?: T[P]
+  }
+>
+
 export type IfEquals<X, Y, A, B> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
   ? 1
   : 2

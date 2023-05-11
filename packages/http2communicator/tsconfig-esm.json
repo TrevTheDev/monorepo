@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "module": "NodeNext",
+    "outDir": "./build/esm"
+  },
+  "exclude": ["tests", "src/archive"]
+}

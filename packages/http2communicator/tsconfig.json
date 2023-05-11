@@ -1,0 +1,9 @@
+{
+  "extends": "tsconfig/node.json",
+  "compilerOptions": {
+    "noErrorTruncation": true,
+    "outDir": "build/cjs"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "archive", "test", "tests"]
+}

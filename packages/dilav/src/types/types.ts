@@ -1009,16 +1009,20 @@ type RequiredObject<
   },
 > = RT
 
-interface VObjectBase<
+export interface VObject<
   PropertySchemas extends ObjectDefinition,
-  UnmatchedPropertySchema extends MinimumSchema,
-  Options extends { type: string },
-  T extends MinimumObjectDefinition,
-  Input,
-  Output extends object,
+  UnmatchedPropertySchema extends MinimumSchema = VNever,
+  Options extends { type: string } = { type: string },
+  T extends MinimumObjectDefinition = {
+    propertySchemas: PropertySchemas
+    unmatchedPropertySchema: UnmatchedPropertySchema
+    options: Options
+    transformed: boolean
+  },
+  Input = unknown,
+  Output extends object = ObjectDefToObjectType<PropertySchemas, UnmatchedPropertySchema>,
 > extends BaseSchema<Output, Options['type'], 'object', Input, T> {
   readonly definition: T
-
   merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
     ...propertySchemas: S
   ): [this, ...DeepWriteable<S>] extends infer S2 extends [
@@ -1030,7 +1034,6 @@ interface VObjectBase<
       ? VObject<MergePropertySchemas<S2>, L['definition']['unmatchedPropertySchema']>
       : never
     : never
-
   partial<S extends (keyof PropertySchemas)[]>(
     ...keysToPartial: S
   ): VObject<PartialObject<PropertySchemas, S[number]>, UnmatchedPropertySchema>
@@ -1076,42 +1079,6 @@ interface VObjectBase<
 
   // keyof(): keyof T['propertyParsers'][]
 }
-
-export type VObject<
-  PropertySchemas extends ObjectDefinition,
-  UnmatchedPropertySchema extends MinimumSchema = VNever,
-  Options extends { type: string } = { type: string },
-  T extends MinimumObjectDefinition = {
-    propertySchemas: PropertySchemas
-    unmatchedPropertySchema: UnmatchedPropertySchema
-    options: Options
-    transformed: boolean
-  },
-  Input = unknown,
-  // Output extends object = ObjectDefToObjectType<PropertySchemas, UnmatchedPropertySchema>,
-  // Base extends MinimumObjectSchema = VObjectBase<
-  //   PropertySchemas,
-  //   UnmatchedPropertySchema,
-  //   Options,
-  //   T,
-  //   Input,
-  //   Output
-  // >,
-> = ObjectDefToObjectType<
-  PropertySchemas,
-  UnmatchedPropertySchema
-> extends infer Output extends object
-  ? VObjectBase<
-      PropertySchemas,
-      UnmatchedPropertySchema,
-      Options,
-      T,
-      Input,
-      Output
-    > extends infer Base extends MinimumObjectSchema
-    ? Base
-    : never
-  : never
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************

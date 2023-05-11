@@ -1,7 +1,7 @@
 {
-  "name": "@trevthedev/toolbelt",
-  "version": "0.0.71",
-  "description": "miscellaneous functions and utilities",
+  "name": "@trevthedev/http2communicator",
+  "version": "0.0.5",
+  "description": "communicate JSON and other information using http2",
   "files": [
     "build/"
   ],
@@ -16,7 +16,7 @@
   "scripts": {
     "test": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "tsup --dts",
+    "build": "echo 'tsup --dts'",
     "build:tsc": "tsc && tsc -p tsconfig-esm.json",
     "dev": "tsup --dts --watch",
     "prepare": "npm run build",
@@ -24,19 +24,27 @@
     "preversion": "npm run lint",
     "publish": "npm version patch && git push --tags origin main",
     "version": "git add -A src",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push && git push --tags",
+    "certs": "rm -r 'dev-certificates' && mkdir -p 'dev-certificates' && openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=192.168.1.70' -keyout ./dev-certificates/localhost-privkey.pem -out ./dev-certificates/localhost-cert.pem"
   },
-  "keywords": [],
+  "keywords": [
+    "node",
+    "http2",
+    "json",
+    "communications",
+    "server",
+    "messaging"
+  ],
   "author": "TrevTheDev",
   "license": "MIT",
-  "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/toolbelt#readme",
+  "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/http2communicator#readme",
   "bugs": {
     "url": "https://github.com/TrevTheDev/monorepo/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/TrevTheDev/monorepo.git",
-    "directory": "packages/toolbelt"
+    "directory": "packages/http2communicator"
   },
   "private": false,
   "devDependencies": {
@@ -48,7 +56,6 @@
     "eslint-config-custom": "*",
     "eslint-config-prettier": "^8.8.0",
     "prettier": "2.8.8",
-    "promises-aplus-tests": "^2.1.2",
     "tsconfig": "*",
     "tsup": "^6.7.0",
     "typescript": "^5.0.4",
@@ -56,5 +63,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@trevthedev/toolbelt": "*",
+    "dilav": "*"
   }
 }
