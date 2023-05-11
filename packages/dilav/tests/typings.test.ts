@@ -215,6 +215,10 @@ it('typing tests', () => {
   expect(vStringOptional.type).toBe(`string|undefined`)
   assertEqual<typeof vStringOptional.type, string>(true)
 
+  const obj1 = v.object({ a: v.never, b: v.literal('B') }, v.unknown)
+  obj1.parse({ b: 'B', c: 'C' })
+  expect(() => obj1.parse({ b: 'b', a: 'C' })).toThrow()
+  const res = obj1.safeParse({ b: 'b', a: 'C' })
   // const A1 = v.object({
   //   _type: v.literal('A'),
   //   delay: v.number,

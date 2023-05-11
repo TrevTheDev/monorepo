@@ -120,7 +120,7 @@ export function parseObject<T extends MinimumObjectDefinition & { transformed: b
               writable: false,
             })
           }
-        } else if (!isOptional(schema))
+        } else if (!isOptional(schema) && schema.baseType !== 'never')
           propertyErrors.push([key, [errorMessageFns.missingProperty(value, key)]])
       }
 

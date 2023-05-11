@@ -85,6 +85,7 @@ export const baseTypes = [
   'preprocess',
   'postprocess',
   'custom',
+  'never',
 ] as const
 
 export const groupBaseTypes = [

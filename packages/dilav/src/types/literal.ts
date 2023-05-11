@@ -16,6 +16,7 @@ import {
   VAny,
   VUnknown,
   VNever,
+  BaseTypes,
 } from './types'
 
 import defaultErrorFn, { DefaultErrorFn } from './errorFns'
@@ -56,7 +57,7 @@ export function parseLiteral<T>(
 type LiteralOptions<T, Type extends string> = (
   | { parser: SafeParseFn<unknown, T> }
   | { invalidValueFn?: (invalidValue: unknown, literalValue: T) => SingleValidationError }
-) & { type?: Type }
+) & { type?: Type; baseType?: BaseTypes }
 
 function convertLiteralToString(literal: any) {
   switch (typeof literal) {
@@ -96,7 +97,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
         ? options.parser
         : parseLiteral(literal, options.invalidValueFn as DefaultErrorFn['parseLiteral']),
       options.type === undefined ? convertLiteralToString(literal) : options.type,
-      'literal',
+      options.baseType ?? 'literal',
       { literal },
     ) as unknown as VLiteral<T, Type>
   } as unknown as VLiteralFn
@@ -238,6 +239,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
         undefined,
       ],
       type: 'never' as const,
+      baseType: 'never',
     }) as VNever
   }
 
