@@ -179,7 +179,7 @@ function matchFnOnKey<T extends ObjectUnionSchemas>(
     const matchedSchemas = [] as MinimumObjectSchema[]
     if (!isObjectType(value)) return matchedSchemas
     for (const schema of schemas) {
-      const result = schema.definition.propertySchemas[key]!.safeParse(value[key])
+      const result = (schema.definition.propertySchemas[key] as MinimumSchema).safeParse(value[key])
       if (isResult(result)) {
         matchedSchemas.push(schema)
         if (options.oneMatchOnly ?? false) return matchedSchemas
@@ -359,7 +359,15 @@ export function initUnionTypes(baseObject: MinimumSchema): {
       options.parser ?? parseUnionKey(key, schemas, options),
       options.type ?? schemasToTypeString(schemas),
       options.baseType ?? 'discriminated union',
-      options.definitionObject ?? { key, schemas },
+      options.definitionObject ?? {
+        key,
+        schemas,
+        get transformed() {
+          for (const schema of schemas) if (isTransformed(schema)) return true
+
+          return false
+        },
+      },
     ) as VUnionKey<ObjectUnionSchemas>
   }
 
@@ -373,7 +381,15 @@ export function initUnionTypes(baseObject: MinimumSchema): {
       options.parser ?? parseUnionAdvanced(matches, schemas, options.noMatchFoundInUnion),
       options.type ?? schemasToTypeString(schemas),
       options.baseType ?? 'discriminated union',
-      options.definitionObject ?? { matches, schemas },
+      options.definitionObject ?? {
+        matches,
+        schemas,
+        get transformed() {
+          for (const schema of schemas) if (isTransformed(schema)) return true
+
+          return false
+        },
+      },
     ) as VUnionAdvanced<UnionSchemas>
   }
 
@@ -383,7 +399,14 @@ export function initUnionTypes(baseObject: MinimumSchema): {
       options.parser ?? parseUnion(schemas, options.noMatchFoundInUnion),
       options.type ?? schemasToTypeString(schemas),
       options.baseType ?? 'union',
-      options.definitionObject ?? { schemas },
+      options.definitionObject ?? {
+        schemas,
+        get transformed() {
+          for (const schema of schemas) if (isTransformed(schema)) return true
+
+          return false
+        },
+      },
     ) as VUnion<UnionSchemas>
   }
 
