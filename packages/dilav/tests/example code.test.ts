@@ -187,7 +187,7 @@ it('ISO datetimes 2', () => {
 // v.customize.string(
 //   options?: {
 //     parseStringError? : (value: unknown) => string,  // function that returns string on parsing error
-//     parser?: (Input: unknown) => ResultError<ValidationErrors, string>  // custom string parser function
+//     parser?: (Input: unknown) => SafeParseOutput<string>  // custom string parser function
 //   })
 // })
 
@@ -222,7 +222,7 @@ it('numbers', () => {
 // v.customize.number(
 //   options?: {
 //     parseNumberError? : (value: unknown) => string,  // function that returns string on parsing error
-//     parser?: (Input: unknown) => ResultError<ValidationErrors, number>  // custom parser function
+//     parser?: (Input: unknown) => SafeParseOutput<number>  // custom parser function
 //   }) // => v.Number
 // })
 
@@ -242,7 +242,7 @@ it('bigint', () => {
 // v.customize.bigInt(
 //   options?: {
 //     parseBigIntError? : (value: unknown) => string,  // function that returns string on parsing error
-//     parser?: (Input: unknown) => ResultError<ValidationErrors, bigint>  // custom parser function
+//     parser?: (Input: unknown) => SafeParseOutput<bigint>  // custom parser function
 //   }) // => v.BigInt
 // })
 
@@ -256,7 +256,7 @@ it('boolean', () => {
 // v.customize.boolean(
 //   options?: {
 //     parseBooleanError? : (value: unknown) => string,  // function that returns string on parsing error
-//     parser?: (Input: unknown) => ResultError<ValidationErrors, boolean>  // custom parser function
+//     parser?: (Input: unknown) => SafeParseOutput<boolean>  // custom parser function
 //   }) // => v.Boolean
 // })
 
@@ -287,14 +287,14 @@ it('coercion of date', () => {
 // v.customize.date(
 //   options?: {
 //     parseDateError? : (value: unknown) => string,  // function that returns string on parsing error
-//     parser?: (Input: unknown) => ResultError<ValidationErrors, Date>  // custom parser function
+//     parser?: (Input: unknown) => SafeParseOutput<Date>  // custom parser function
 //   }) // => v.Date
 // })
 
 it('enums', () => {
   const animalSchema1 = v.enum(['Dog', 'Cat', 'Fish'])
   // similar to, except enum, includes an enum property :
-  const animalSchema2 = v.union(['Dog', 'Cat', 'Fish'], { literalUnion: true })
+  const animalSchema2 = v.union.literals(['Dog', 'Cat', 'Fish'])
 
   type AnimalTypes = v.Infer<typeof animalSchema1> // "Dog" | "Cat" | "Fish"
   animalSchema1.parse('Dog') // => 'Dog'
@@ -524,7 +524,7 @@ it('catchall', () => {
 //     missingProperty?: typeof errorFns.missingProperty
 //     missingPropertyInDef?: typeof errorFns.missingPropertyInDef
 //     type?: string // custom object.type value
-//     parser?: (input: unknown) => ResultError<ValidationErrors, object>  // custom parser function
+//     parser?: (input: unknown) => SafeParseOutput<object>  // custom parser function
 //   }) // => v.Object
 // })
 
@@ -570,7 +570,7 @@ it('spread', () => {
 //   optionalElementCantFollowRest?: typeof errorFns.optionalElementCantFollowRest
 //   missingItemInItemSchemas?: typeof errorFns.missingItemInItemSchemas
 //   unableToSelectItemFromArray?: typeof errorFns.unableToSelectItemFromArray
-//   parser?: (input: unknown) => ResultError<ValidationErrors, any[]>  // custom parser function
+//   parser?: (input: unknown) => SafeParseOutput<any[]>  // custom parser function
 // }
 // v.array(itemSchema: MinimumSchema, options?: ArrayOptions) // => v.ArrayInfinite
 // v.array(
@@ -579,28 +579,49 @@ it('spread', () => {
 // ) // => v.ArrayFinite
 // })
 it('union', () => {
-  const stringOrBool1 = v.union([v.string, v.boolean]).parse('foo') // => string | boolean
+  const stringOrBoolSchema1 = v.union([v.string, v.boolean])
   // identical to:
-  const stringOrBool2 = v.string.or(v.boolean).parse(true) // => string | boolean
-})
+  const stringOrBoolSchema2 = v.string.or(v.boolean) // => string | boolean
 
-it('discriminated union', () => {
-  const foo = v
-    .union(
-      [
-        v.object({ type: v.literal('A'), data: v.string }),
-        v.object({ type: v.literal('B'), result: v.string }),
-      ],
-      { discriminatedUnionKey: 'type' },
-    )
-    .parse({ type: 'A', data: 'A TYPE' })
-  // => { type: "A"; data: string } | { type: "B"; result: string }
+  stringOrBoolSchema1.parse('foo') // => string | boolean
+  stringOrBoolSchema1.definition.schemas // = > [v.string, v.boolean]
 })
 
 it('literal union', () => {
-  const fooBar = v.union(['foo', 'bar'], { literalUnion: true }).parse('foo') // => 'foo' | 'bar'
+  const fooBarSchema1 = v.union.literals(['foo', 'bar'])
   // similar too:
-  const fooBar2 = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
+  const fooBarSchema2 = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
+
+  fooBarSchema1.parse('foo') // => 'foo' | 'bar'
+  fooBarSchema1.definition.literals // = > ['foo', 'bar']
+})
+
+it('discriminated union', () => {
+  const fooSchema = v.union.key('type', [
+    v.object({ type: v.literal('A'), data: v.string }),
+    v.object({ type: v.literal('B'), result: v.string }),
+  ])
+  fooSchema.parse({ type: 'A', data: 'A TYPE' })
+  // => { type: "A"; data: string } | { type: "B"; result: string }
+
+  fooSchema.definition.schemas // => [ ... the schemas ]
+  fooSchema.definition.key // => 'type'
+})
+
+it('advanced discriminated union', () => {
+  const fooSchema = v.union.advanced({ type: v.union.literals(['A', 'B']) }, [
+    v.union.advanced({ subType: v.union.literals(['S1', 'S2']) }, [
+      v.object({ type: v.literal('A'), subType: v.literal('S1') }),
+      v.object({ type: v.literal('B'), subType: v.literal('S2') }),
+    ]),
+  ])
+  fooSchema.parse({ type: 'A', subType: 'S1' })
+  fooSchema.parse({ type: 'B', subType: 'S2' })
+  expect(() => fooSchema.parse({ type: 'A', subType: 'S2' })).toThrow() // throws
+  // => { type: "A"; data: string } | { type: "B"; result: string }
+
+  fooSchema.definition.schemas // => [ ... the schemas ]
+  fooSchema.definition.matches // => the object used to match schemas
 })
 
 it('records', () => {
