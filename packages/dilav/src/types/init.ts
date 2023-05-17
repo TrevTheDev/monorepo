@@ -48,7 +48,7 @@ setBaseChildren(
   vPromise,
 )
 setObjectInstances(vNeverInstance, vUnknownInstance)
-setUnionInstances(vUndefinedInstance, vNullInstance, vNeverInstance)
+setUnionInstances(vUndefinedInstance, vNullInstance)
 
 export { vLiteral, vNaN, vUndefined, vNull, vAny, vUnknown, vNever, vNullishL, vVoid }
 export { vUnion, vOptional, vNullable, vNullish }

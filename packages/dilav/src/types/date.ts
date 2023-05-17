@@ -1,4 +1,4 @@
-import type { ResultError, DeepWriteable, FlattenObjectUnion } from '../toolbelt'
+import type { DeepWriteable, FlattenObjectUnion } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -6,8 +6,8 @@ import {
   defaultErrorFnSym,
   SingleValidationError,
   ValidationArray,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -16,8 +16,8 @@ import { DefaultErrorFn } from './errorFns'
 
 const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
-export function parseDate(invalidDateFn?: DefaultErrorFn['parseDate']): SafeParseFn<unknown, Date> {
-  return (value: unknown): ResultError<ValidationErrors, Date> =>
+export function parseDate(invalidDateFn?: DefaultErrorFn['parseDate']): SafeParseFn<Date> {
+  return (value: unknown): SafeParseOutput<Date> =>
     value instanceof Date && value.toString() !== 'Invalid Date'
       ? [undefined, value as Date]
       : [
@@ -26,7 +26,7 @@ export function parseDate(invalidDateFn?: DefaultErrorFn['parseDate']): SafePars
         ]
 }
 
-export function coerceDate(value: string | number | Date): ResultError<ValidationErrors, Date> {
+export function coerceDate(value: string | number | Date): SafeParseOutput<Date> {
   return parseDate()(new Date(value))
 }
 
@@ -107,7 +107,7 @@ type DateOptions<Input = unknown, Output extends Date = Date> =
       parseDateError: DefaultErrorFn['parseDate']
     }
   | {
-      parser: SafeParseFn<Input, Output>
+      parser: SafeParseFn<Output, Input>
     }
   // eslint-disable-next-line @typescript-eslint/ban-types
   | {} //  Record<string, never>

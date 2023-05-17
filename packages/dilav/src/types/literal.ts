@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ResultError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
   defaultErrorFnSym,
   MinimumSchema,
-  ValidationErrors,
   SingleValidationError,
   VLiteral,
   VNaN,
@@ -17,6 +15,7 @@ import {
   VUnknown,
   VNever,
   BaseTypes,
+  SafeParseOutput,
 } from './types'
 
 import defaultErrorFn, { DefaultErrorFn } from './errorFns'
@@ -33,8 +32,8 @@ let errorFns = defaultErrorFn
 export function parseLiteral<T>(
   literal: T,
   invalidLiteralFn?: DefaultErrorFn['parseLiteral'],
-): SafeParseFn<unknown, T> {
-  return (value: unknown): ResultError<ValidationErrors, T> =>
+): SafeParseFn<T> {
+  return (value: unknown): SafeParseOutput<T> =>
     literal !== value
       ? [
           {
@@ -55,7 +54,7 @@ export function parseLiteral<T>(
  ***************************************************************************************************************************** */
 
 type LiteralOptions<T, Type extends string> = (
-  | { parser: SafeParseFn<unknown, T> }
+  | { parser: SafeParseFn<T> }
   | { invalidValueFn?: (invalidValue: unknown, literalValue: T) => SingleValidationError }
 ) & { type?: Type; baseType?: BaseTypes }
 
@@ -103,7 +102,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
   } as unknown as VLiteralFn
 
   type NaNOptions =
-    | { parser: SafeParseFn<unknown, number> }
+    | { parser: SafeParseFn<number> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   /** ****************************************************************************************************************************
@@ -111,7 +110,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    ***************************************************************************************************************************** */
   function vNaN(options: Partial<NaNOptions> = {}): VNaN {
     const vOptions = {
-      parser: (value: unknown): ResultError<ValidationErrors, number> =>
+      parser: (value: unknown): SafeParseOutput<number> =>
         !Number.isNaN(value)
           ? [
               {
@@ -131,7 +130,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    * vUndefined
    ***************************************************************************************************************************** */
   type UndefinedOptions =
-    | { parser: SafeParseFn<unknown, undefined> }
+    | { parser: SafeParseFn<undefined> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   const vUndefined = (
@@ -146,7 +145,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    * vVoid
    ***************************************************************************************************************************** */
   type VoidOptions =
-    | { parser: SafeParseFn<unknown, void> }
+    | { parser: SafeParseFn<void> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   const vVoid = (
@@ -161,7 +160,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    * vNull
    ***************************************************************************************************************************** */
   type NullOptions =
-    | { parser: SafeParseFn<unknown, null> }
+    | { parser: SafeParseFn<null> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
 
   const vNull = (
@@ -172,7 +171,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    * vNullishL
    ***************************************************************************************************************************** */
   type NullishOptions =
-    | { parser: SafeParseFn<unknown, null | undefined> }
+    | { parser: SafeParseFn<null | undefined> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
     | Record<string, never>
 
@@ -182,7 +181,7 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
       {
         parser:
           (options as any).parser ??
-          ((value: unknown): ResultError<ValidationErrors, null | undefined> =>
+          ((value: unknown): SafeParseOutput<null | undefined> =>
             value !== null && value !== undefined
               ? [
                   {
@@ -200,11 +199,10 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
   /** ****************************************************************************************************************************
    * vAny
    ***************************************************************************************************************************** */
-  function vAny(options: { parser?: SafeParseFn<unknown, any> } = {}): VAny {
+  function vAny(options: { parser?: SafeParseFn<any> } = {}): VAny {
     return vLiteral<any, 'any'>('any', {
       parser:
-        options.parser ??
-        ((value: unknown): ResultError<ValidationErrors, any> => [undefined, value as any]),
+        options.parser ?? ((value: unknown): SafeParseOutput<any> => [undefined, value as any]),
       type: 'any' as const,
     }) as VAny
   }
@@ -212,11 +210,10 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
   /** ****************************************************************************************************************************
    * vUnknown
    ***************************************************************************************************************************** */
-  function vUnknown(options: { parser?: SafeParseFn<unknown, unknown> } = {}): VUnknown {
+  function vUnknown(options: { parser?: SafeParseFn<unknown> } = {}): VUnknown {
     return vLiteral<unknown, 'unknown'>('unknown', {
       parser:
-        options.parser ??
-        ((value: unknown): ResultError<ValidationErrors, any> => [undefined, value as unknown]),
+        options.parser ?? ((value: unknown): SafeParseOutput<any> => [undefined, value as unknown]),
       type: 'unknown' as const,
     }) as VUnknown
   }
@@ -225,13 +222,13 @@ export function initLiteralTypes(baseObject: MinimumSchema) {
    * vNever
    ***************************************************************************************************************************** */
   type NeverOptions =
-    | { parser: SafeParseFn<unknown, never> }
+    | { parser: SafeParseFn<never> }
     | { invalidValueFn: (invalidValue: unknown) => SingleValidationError }
     | Record<string, never>
 
   function vNever(options: NeverOptions = {}): VNever {
     return vLiteral<never, 'never'>('never' as never, {
-      parser: (value: unknown): ResultError<ValidationErrors, never> => [
+      parser: (value: unknown): SafeParseOutput<never> => [
         {
           input: value,
           errors: [((options as any).invalidValueFn ?? errorFns.parseNever)(value)],

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, isError } from '../toolbelt'
+import { isError } from '../toolbelt'
 import { asyncValidate, validate } from './base validations'
 import { isOptional } from './shared'
 import ValidationError from './Validation error'
@@ -14,11 +14,11 @@ import {
   defaultErrorFnSym,
   SafeParseFn,
   BaseTypes,
-  ValidationErrors,
   AsyncValidationFn,
   SingleValidationError,
   ValidationFn,
   BaseSchema,
+  SafeParseOutput,
 } from './types'
 import { VOptionalFn, VNullableFn, VNullishFn, VUnionFn } from './union'
 
@@ -139,9 +139,7 @@ export function initBase() {
     },
     postprocess(
       this: BSchema,
-      postprocessFn: (
-        value: ResultError<ValidationErrors, unknown>,
-      ) => ResultError<ValidationErrors, any>,
+      postprocessFn: (value: SafeParseOutput<unknown>) => SafeParseOutput<any>,
     ) {
       return vPostprocess(postprocessFn, this)
     },
@@ -172,7 +170,7 @@ export function initBase() {
     },
     pipe(this: BSchema, ...schemas: [MinimumSchema, ...MinimumSchema[]]) {
       const [schema, ...rest] = schemas
-      const postProcess = vPostprocess((input: ResultError<ValidationErrors, unknown>) => {
+      const postProcess = vPostprocess((input: SafeParseOutput<unknown>) => {
         if (isError(input)) return input
         return schema.safeParse(input[1])
       }, this)
@@ -217,7 +215,7 @@ export function initBase() {
 
 export function createFinalBaseObject<T extends MinimumSchema>(
   baseObject: T,
-  parserFn: SafeParseFn<ValidationErrors, unknown>,
+  parserFn: SafeParseFn<unknown>,
   type: string,
   baseType: BaseTypes,
   definition?: unknown,

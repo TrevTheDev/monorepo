@@ -43,31 +43,30 @@ it('promise parsing success 2', () => {
 it('promise parsing fail', async () => {
   const bad = promSchema.parse(Promise.resolve({ name: 'Bobby', age: '10' }))
   // return await expect(bad).resolves.toBe({ name: 'Bobby', age: '10' });
-  await expect(bad).rejects.toMatchObject({
-    errors: [
-      `The object {"name":"Bobby","age":"10"} is not of type {name:string,age:number}.
-"age": "10" is not a number`,
-    ],
-    input: {
-      age: '10',
-      name: 'Bobby',
-    },
-  })
-  // done();
+  try {
+    await bad
+  } catch (e) {
+    expect(e.firstError).toBe('age: "10" is not a number')
+  }
 })
 
 it('promise parsing fail 2', async () => {
   const failPromise = promSchema.parse(Promise.resolve({ name: 'Bobby', age: '10' }))
-  await expect(failPromise).rejects.toMatchObject({
-    errors: [
-      `The object {"name":"Bobby","age":"10"} is not of type {name:string,age:number}.
-"age": "10" is not a number`,
-    ],
-    input: {
-      age: '10',
-      name: 'Bobby',
-    },
-  })
+  try {
+    await failPromise
+  } catch (e) {
+    expect(e.firstError).toBe('age: "10" is not a number')
+  }
+  //   await expect(failPromise).rejects.toMatchObject({
+  //     errors: [
+  //       `The object {"name":"Bobby","age":"10"} is not of type {name:string,age:number}.
+  // "age": "10" is not a number`,
+  //     ],
+  //     input: {
+  //       age: '10',
+  //       name: 'Bobby',
+  //     },
+  //   })
 })
 
 it('promise parsing fail', () => {

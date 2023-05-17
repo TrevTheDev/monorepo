@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FlattenObjectUnion, ResultError, isError } from '../toolbelt'
+import { FlattenObjectUnion, isError } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -9,8 +9,8 @@ import {
   VInfer,
   defaultErrorFnSym,
   SingleValidationError,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -36,10 +36,10 @@ type MapDefToMapType<
 export function parseMap<T extends readonly [MinimumSchema, MinimumSchema]>(
   mapDef: T,
   options: MapOptions<T>,
-): (value: unknown) => ResultError<ValidationErrors, MapDefToMapType<T>> {
+): (value: unknown) => SafeParseOutput<MapDefToMapType<T>> {
   const [keyParser, valueParser] = mapDef
   type Opts = FlattenObjectUnion<MapOptions<T>>
-  return (value: unknown): ResultError<ValidationErrors, MapDefToMapType<T>> => {
+  return (value: unknown): SafeParseOutput<MapDefToMapType<T>> => {
     const errors = [] as SingleValidationError[]
     if (value instanceof Map) {
       // eslint-disable-next-line no-restricted-syntax
@@ -160,7 +160,7 @@ export type VMap<
 
 type MapOptions<T extends readonly [MinimumSchema, MinimumSchema]> = (
   | {
-      parser: SafeParseFn<unknown, MapDefToMapType<T>>
+      parser: SafeParseFn<MapDefToMapType<T>>
     }
   | {
       parseMap: DefaultErrorFn['parseMap']

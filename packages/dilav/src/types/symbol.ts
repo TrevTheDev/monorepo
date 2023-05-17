@@ -1,7 +1,7 @@
-import type { FlattenObjectUnion, ResultError } from '../toolbelt'
+import type { FlattenObjectUnion } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
-import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
+import { SafeParseFn, BaseSchema, defaultErrorFnSym, SafeParseOutput } from './types'
 
 import { baseObject } from './init'
 import { DefaultErrorFn } from './errorFns'
@@ -18,8 +18,8 @@ const errorFns = baseObject[defaultErrorFnSym]
 
 export function parseSymbol(
   invalidSymbolFn?: DefaultErrorFn['parseSymbol'],
-): (value: unknown) => ResultError<ValidationErrors, symbol> {
-  return (value: unknown): ResultError<ValidationErrors, symbol> =>
+): (value: unknown) => SafeParseOutput<symbol> {
+  return (value: unknown): SafeParseOutput<symbol> =>
     typeof value !== 'symbol'
       ? [{ input: value, errors: [(invalidSymbolFn ?? errorFns.parseSymbol)(value)] }, undefined]
       : [undefined, value]
@@ -44,7 +44,7 @@ type SymbolOptions =
       parseSymbolError: DefaultErrorFn['parseSymbol']
     }
   | {
-      parser: SafeParseFn<unknown, symbol>
+      parser: SafeParseFn<symbol>
     }
   // eslint-disable-next-line @typescript-eslint/ban-types
   | {}

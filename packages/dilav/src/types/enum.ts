@@ -3,14 +3,14 @@ import type { Identity } from '../toolbelt'
 import { VUnionLiterals } from './types'
 
 import { vUnion } from './init'
-import { LiteralUnionOptions, LiteralUnionType } from './union'
+import { LiteralUnionType, VLiteralOptions } from './union'
 
 // const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
 type MatchTypes = 'key' | 'value' | 'either'
 
 type LiteralEnumOptions<T> = Identity<
-  Omit<LiteralUnionOptions<T>, 'literalUnion' | 'baseType' | 'definitionObject' | 'type'>
+  Omit<VLiteralOptions<T>, 'baseType' | 'definitionObject' | 'type'>
 >
 
 type EnumOptions<T> = LiteralEnumOptions<T> & { matchType?: MatchTypes }
@@ -28,7 +28,7 @@ type EnumOptions<T> = LiteralEnumOptions<T> & { matchType?: MatchTypes }
 //   const matchFn =
 //     // eslint-disable-next-line no-nested-ternary
 //     matchType === 'key' ? matchOnKey : matchType === 'value' ? matchOnValue : matchBoth
-//   return (value: unknown): ResultError<ValidationErrors, T> =>
+//   return (value: unknown): SafeParseOutput<T> =>
 //     !matchFn(value)
 //       ? [
 //           {
@@ -116,9 +116,9 @@ export function vEnum<T extends object, O extends EnumOptions<T[keyof T]>>(
   if (literals.length === 0) throw new Error('no items found to add to enum')
 
   return Object.defineProperty(
-    vUnion(literals, {
+    vUnion.literals(literals, {
       ...options,
-      literalUnion: true,
+      // literalUnion: true,
       baseType: 'enum',
       definitionObject: { enum: enumD, literals },
     }),

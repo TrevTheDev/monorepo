@@ -77,8 +77,8 @@ const defaultErrorFn = {
     `'${value}' doesn't start with '${startString}'`,
   endsWith: (value: string, endString: string) => `'${value}' doesn't end with '${endString}'`,
   validateAgainstRegex: (value: string) => `'${value}' doesn't pass the regex test`,
-  beTrue: () => `value must be true`,
-  beFalse: () => `value must be false`,
+  beTrue: (_value: boolean) => `value must be true`,
+  beFalse: (_value: boolean) => `value must be false`,
   greaterThan: (value: number, greaterThanValue: number) =>
     `${value} is not greater than ${greaterThanValue}`,
   greaterThanOrEqualTo: (value: number, greaterThanOrEqualToValue: number) =>
@@ -165,22 +165,24 @@ const defaultErrorFn = {
     `item: ${stringify(key)} not found in ${stringify(value)}`,
   unableToSelectItemFromArray: (_value: MinimumSchema, _keys: PropertyKey[]) =>
     `unable to select items from an infinite array`,
-  keyNotFoundInDiscriminatedUnionDef: (property: string, unionDefType: string) =>
-    `property '${property}' not found in object definition: ${unionDefType}`,
-  keyNotFoundInDiscriminatedUnion: (property: string, value: object) =>
-    `property '${property}' not found in object: ${stringify(value)}`,
+  keyNotFoundInDiscriminatedUnionDef: (key: PropertyKey, unionDefType: string) =>
+    `property '${String(key)}' not found in object definition: ${unionDefType}`,
+  // keyNotFoundInDiscriminatedUnion: (property: string, value: object) =>
+  //   `property '${property}' not found in object: ${stringify(value)}`,
   noKeyMatchFoundInDiscriminatedUnion: (
     value: object,
-    property: string,
+    keys: string[],
     _schemas: MinimumObjectSchema[],
-  ) =>
-    `the discriminatedUnionKey '${property}' found no matches for the value: ${stringify(value)}`,
-  schemaIsNotOfTypeObject: (schema: MinimumSchema) =>
-    `the schema ${stringify(schema)} is not of type object`,
-  discriminatedUnionValueIsNotAnObject: (value: unknown) =>
-    `value ${stringify(value)} is not of type object`,
+  ) => `no key matches for the discriminatedUnionKey(s): ${keys} found in: ${stringify(value)}`,
+  noMatchFoundInUnion: (value: unknown, _schemas: MinimumSchema[]) =>
+    `no schemas matched: ${stringify(value)}`,
 
-  parseLiteralUnion: (value: unknown, literalUnionDef: readonly unknown[]) =>
+  // schemaIsNotObjectSchema: (schema: MinimumSchema) =>
+  //   `${stringify(schema)} is not an object schema`,
+  // discriminatedUnionValueIsNotAnObject: (value: unknown) =>
+  //   `value ${stringify(value)} is not of type object`,
+
+  noMatchFoundInLiteralUnion: (value: unknown, literalUnionDef: readonly unknown[]) =>
     `value ${stringify(value)} not found in: ${stringify(literalUnionDef)}`,
   parseMap: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
   minimumMapLength: (value: Map<unknown, unknown>, minLength: number) =>

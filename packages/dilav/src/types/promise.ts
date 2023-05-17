@@ -1,5 +1,5 @@
 import { isResult } from '../toolbelt'
-import type { FlattenObjectUnion, ResultError } from '../toolbelt'
+import type { FlattenObjectUnion } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -8,9 +8,10 @@ import {
   defaultErrorFnSym,
   VPromise,
   ValidatedPromise,
-  ValidationErrors,
   parserObject,
   SingleValidationError,
+  SafeParseOutput,
+  ValidationErrors,
 } from './types'
 
 import { asyncValidate, validate } from './base validations'
@@ -29,7 +30,7 @@ let errorFns: DefaultErrorFn = defaultErrorFn
 
 type PromiseOptions<T> =
   | {
-      parser: SafeParseFn<unknown, ValidatedPromise<T>>
+      parser: SafeParseFn<ValidatedPromise<T>>
     }
   | {
       parsePromise: DefaultErrorFn['parsePromise']
@@ -40,9 +41,9 @@ type PromiseOptions<T> =
 export function parsePromise<T extends MinimumSchema>(
   resultParser: T,
   options: PromiseOptions<VInfer<T>> = {},
-): SafeParseFn<unknown, ValidatedPromise<VInfer<T>>> {
+): SafeParseFn<ValidatedPromise<VInfer<T>>> {
   type Opts = FlattenObjectUnion<PromiseOptions<VInfer<T>>>
-  return (value: unknown): ResultError<ValidationErrors, ValidatedPromise<VInfer<T>>> => {
+  return (value: unknown): SafeParseOutput<ValidatedPromise<VInfer<T>>> => {
     if (
       value instanceof Object &&
       'then' in value &&
@@ -71,10 +72,7 @@ export function parsePromise<T extends MinimumSchema>(
           if (!alreadyRan) {
             ;(value as Promise<unknown>).then(
               (result) => {
-                const res = resultParser.safeParse(result) as ResultError<
-                  ValidationErrors,
-                  VInfer<T>
-                >
+                const res = resultParser.safeParse(result) as SafeParseOutput<VInfer<T>>
                 if (!isResult(res)) return rejectorS(new ValidationError(res[0]))
                 return resolverS(res[1])
               },

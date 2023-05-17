@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isError } from '../toolbelt'
-import type { FlattenObjectUnion, ResultError } from '../toolbelt'
+import type { FlattenObjectUnion } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -10,8 +10,8 @@ import {
   VInfer,
   defaultErrorFnSym,
   SingleValidationError,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -33,9 +33,9 @@ type SetDefToSetType<T extends SetDef, RT = Set<VInfer<T>>> = RT
 export function parseSet<T extends SetDef>(
   valueSchema: T,
   options: SetOptions<T>,
-): SafeParseFn<unknown, SetDefToSetType<T>> {
+): SafeParseFn<SetDefToSetType<T>> {
   type Opts = FlattenObjectUnion<SetOptions<T>>
-  return (value: unknown): ResultError<ValidationErrors, SetDefToSetType<T>> => {
+  return (value: unknown): SafeParseOutput<SetDefToSetType<T>> => {
     const errors = [] as SingleValidationError[]
     if (value instanceof Set) {
       // eslint-disable-next-line no-restricted-syntax
@@ -151,7 +151,7 @@ export type VSet<
 
 type SetOptions<T extends SetDef> = (
   | {
-      parser: SafeParseFn<unknown, SetDefToSetType<T>>
+      parser: SafeParseFn<SetDefToSetType<T>>
     }
   | {
       parseSet: DefaultErrorFn['parseSet']

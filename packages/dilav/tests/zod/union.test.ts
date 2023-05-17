@@ -36,10 +36,11 @@ it('return dirty result over aborted', () => {
 
 it('options getter', async () => {
   const union = v.union([v.string, v.number])
-  union.definition.unionTypes[0].parse('asdf')
-  union.definition.unionTypes[1].parse(1234)
-  await union.definition.unionTypes[0].parseAsync('asdf')
-  await union.definition.unionTypes[1].parseAsync(1234)
+  union.definition.schemas[0].parse('asdf')
+  union.definition.schemas[1].parse(1234)
+  const x2 = union.definition.schemas[0].baseType
+  await union.definition.schemas[0].parseAsync('asdf')
+  await union.definition.schemas[1].parseAsync(1234)
 })
 
 it('readonly union', async () => {

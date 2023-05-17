@@ -1,4 +1,4 @@
-import { FlattenObjectUnion, ResultError } from '../toolbelt'
+import { FlattenObjectUnion } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -6,7 +6,7 @@ import {
   BaseSchema,
   defaultErrorFnSym,
   SingleValidationError,
-  ValidationErrors,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -25,8 +25,8 @@ const errorFns = baseObject[defaultErrorFnSym]
 export function parseCustom<Output, T extends (value: unknown) => boolean>(
   parser: T,
   parseCustomFn?: DefaultErrorFn['parseCustom'],
-): SafeParseFn<unknown, Output> {
-  return (value: unknown): ResultError<ValidationErrors, Output> =>
+): SafeParseFn<Output> {
+  return (value: unknown): SafeParseOutput<Output> =>
     parser(value) === true
       ? [undefined, value as Output]
       : [{ input: value, errors: [(parseCustomFn ?? errorFns.parseCustom)(value)] }, undefined]
@@ -50,7 +50,7 @@ export type VCustom<Output, Type extends string = string, Input = unknown> = Bas
 const baseCustomObject = Object.create(baseObject)
 
 type CustomOptions<Output, Type extends string = string> = (
-  | { parser: SafeParseFn<unknown, Output> }
+  | { parser: SafeParseFn<Output> }
   | { invalidValueFn?: (invalidValue: unknown) => SingleValidationError }
 ) & { type?: Type }
 

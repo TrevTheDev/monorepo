@@ -28,6 +28,9 @@ Dilav is a blazing fast way to transforms `unknown` types, into valid known type
     - [Never](#never)
     - [Void](#void)
     - [Undefined](#undefined)
+    - [True](#true)
+    - [False](#false)
+  - [](#)
   - [Strings](#strings)
     - [ISO datetimes](#iso-datetimes)
     - [`v.customize.string`](#vcustomizestring)
@@ -64,8 +67,9 @@ Dilav is a blazing fast way to transforms `unknown` types, into valid known type
     - [`.spread`](#spread)
     - [`v.array`](#varray)
   - [Unions](#unions)
-    - [Discriminated Unions](#discriminated-unions)
     - [Literal Unions](#literal-unions)
+    - [Discriminated Unions - Key](#discriminated-unions---key)
+    - [Discriminated Unions - Advanced](#discriminated-unions---advanced)
   - [Intersections](#intersections)
   - [Promises](#promises)
   - [InstanceOfs](#instanceofs)
@@ -318,6 +322,22 @@ v.customize.void({ invalidValueFn: (value) => `${value} is not void` }).parse(1)
 v.undefined.parse(undefined)
 v.customize.undefined({ invalidValueFn: (value) => `${value} is not undefined` }).parse(1) // throws
 ```
+
+### True
+
+```typescript
+v.true.parse(true)
+v.customize.true((value) => `${value} is not true`).parse(false) // throws
+```
+
+### False
+
+```typescript
+v.false.parse(false)
+v.customize.false((value) => `${value} is not false`).parse(true) // throws
+```
+
+##
 
 ## Strings
 
@@ -608,7 +628,7 @@ Dilav supports three types of enums: `string` enums, Typescript enums and `const
 ```typescript
 const animalSchema1 = v.enum(['Dog', 'Cat', 'Fish'])
 // similar to, except enum, includes an enum property :
-const animalSchema2 = v.union(['Dog', 'Cat', 'Fish'], { literalUnion: true })
+const animalSchema2 = v.union.literals(['Dog', 'Cat', 'Fish'])
 
 type AnimalTypes = v.Infer<typeof animalSchema1> // "Dog" | "Cat" | "Fish"
 animalSchema1.parse('Dog') // => 'Dog'
@@ -1021,26 +1041,12 @@ v.array(
 Unions work similar to the `|` in typescript. Each schema in the union tries to parse the value, and if one succeeds, the union parses, otherwise it will error.
 
 ```typescript
-const stringOrBool1 = v.union([v.string, v.boolean]).parse('foo') // => string | boolean
+const stringOrBoolSchema1 = v.union([v.string, v.boolean])
 // identical to:
-const stringOrBool2 = v.string.or(v.boolean).parse(true) // => string | boolean
-```
+const stringOrBoolSchema2 = v.string.or(v.boolean) // => string | boolean
 
-### Discriminated Unions
-
-Unions for objects can be computationally expensive as each property of the object must be parsed for conformance. In situations where each object has a unique discriminating key, the parser can first test for a match on only that key, and only if a match occurs will the rest of the properties be parsed for conformance.
-
-```typescript
-const foo = v
-  .union(
-    [
-      v.object({ type: v.literal('A'), data: v.string }),
-      v.object({ type: v.literal('B'), result: v.string }),
-    ],
-    { discriminatedUnionKey: 'type' },
-  )
-  .parse({ type: 'A', data: 'A TYPE' })
-// => { type: "A"; data: string } | { type: "B"; result: string }
+const stringOrBool = stringOrBoolSchema1.parse('foo') // => string | boolean
+stringOrBoolSchema1.definition.schemas // = > [v.string, v.boolean]
 ```
 
 ### Literal Unions
@@ -1048,9 +1054,68 @@ const foo = v
 One could create a union of literals schemas and then parse against those, however Dilav includes a performance optimised way of parsing literals only unions.
 
 ```typescript
-const fooBar = v.union(['foo', 'bar'], { literalUnion: true }).parse('foo') // => 'foo' | 'bar'
+const fooBarSchema1 = v.union.literals(['foo', 'bar'])
 // similar too:
-const fooBar = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
+const fooBarSchema2 = v.enum(['foo', 'bar']).parse('foo') // => 'foo' | 'bar'
+
+fooBarSchema1.parse('foo') // => 'foo' | 'bar'
+fooBarSchema1.definition.literals // = > ['foo', 'bar']
+```
+
+### Discriminated Unions - Key
+
+Unions for objects can be computationally expensive as each property of the object must be parsed for conformance. In situations where each object has a unique discriminating key(s), the parser can first test for a match on only that key, and only if a match occurs will the rest of the properties be parsed for conformance.
+
+```typescript
+const fooSchema = v.union.key('type', [
+  v.object({ type: v.literal('A'), data: v.string }),
+  v.object({ type: v.literal('B'), result: v.string }),
+])
+fooSchema.parse({ type: 'A', data: 'A TYPE' })
+// => { type: "A"; data: string } | { type: "B"; result: string }
+
+fooSchema.definition.schemas // => [ ... the schemas ]
+fooSchema.definition.key // => 'type'
+```
+
+A second options object can be passed to the function:
+
+```typescript
+{
+  keyNotFoundInDiscriminatedUnionDef?: DefaultErrorFn['keyNotFoundInDiscriminatedUnionDef']
+  // if true, then this tell dilav that the key is unique and so will parse only
+  // the first key matched schema.  This will result in better performance if the key is unique.
+  // the default is false.
+  oneMatchOnly?: boolean
+}
+```
+
+### Discriminated Unions - Advanced
+
+Advance discriminated unions provide more control over how unions are parsed. They parse against the match criteria, and if matched, they then parse the value against any provided schemas. This enables one to finely control what is parsed and can be used to eliminate any wasteful property parsing.
+
+```typescript
+const fooSchema = v.union.advanced({ type: v.union.literals(['A', 'B']) }, [
+  v.union.advanced({ subType: v.union.literals(['S1', 'S2']) }, [
+    v.object({ type: v.literal('A'), subType: v.literal('S1') }),
+    v.object({ type: v.literal('B'), subType: v.literal('S2') }),
+  ]),
+])
+fooSchema.parse({ type: 'A', subType: 'S1' })
+fooSchema.parse({ type: 'B', subType: 'S2' })
+expect(() => fooSchema.parse({ type: 'A', subType: 'S2' })).toThrow() // throws
+// => { type: "A"; data: string } | { type: "B"; result: string }
+
+fooSchema.definition.schemas // => [ ... the schemas ]
+fooSchema.definition.matches // => the object used to match schemas
+```
+
+A third options object can be passed to the function:
+
+```typescript
+{
+  noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion']
+}
 ```
 
 ## Intersections

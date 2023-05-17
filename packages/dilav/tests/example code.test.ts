@@ -122,6 +122,16 @@ it('undefined', () => {
   ).toThrow()
 })
 
+it('true', () => {
+  v.true.parse(true)
+  expect(() => v.customize.true((value) => `${value} is not true`).parse(false)).toThrow() // throws
+})
+
+it('false', () => {
+  v.false.parse(false)
+  expect(() => v.customize.false((value) => `${value} is not false`).parse(true)).toThrow() // throws
+})
+
 it('strings0', () => {
   v.string.email().parse('a@a.com') // => 'a@a.com'
 

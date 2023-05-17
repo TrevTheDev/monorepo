@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { ResultError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumArraySchema,
@@ -14,8 +13,8 @@ import {
   ValidArrayItems,
   ValidArrayItemsT,
   ValidArrayItemsW,
-  ValidationErrors,
   defaultErrorFnSym,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject, vArray, vNeverInstance } from './init'
@@ -34,7 +33,7 @@ type Fn = (...args: any) => any
 
 type FunctionOptions<Output extends Fn> = {
   parseFunctionError?: DefaultErrorFn['parseFunction']
-  parser?: SafeParseFn<unknown, Output>
+  parser?: SafeParseFn<Output>
   returnedFunction?: 'inputValidated' | 'outputValidated' | 'validated' | 'original'
 }
 
@@ -196,16 +195,13 @@ export function vFunctionWrapper(
 export function parseFunction<
   T extends FunctionDefinition,
   RT extends Fn = FunctionDefToFunction<PartialToFuncDef<T>>['fn'],
->(
-  functionDefinition: T,
-  parseFunctionError?: DefaultErrorFn['parseFunction'],
-): SafeParseFn<unknown, RT> {
+>(functionDefinition: T, parseFunctionError?: DefaultErrorFn['parseFunction']): SafeParseFn<RT> {
   const { parameters, returns } = functionDefinition
   const rFn =
     parameters === undefined && returns === undefined
       ? (value: RT) => value
       : (value: RT) => vFunctionWrapperB(parameters, returns, value)
-  return (value: unknown): ResultError<ValidationErrors, RT> => {
+  return (value: unknown): SafeParseOutput<RT> => {
     if (typeof value === 'function') return [undefined, rFn(value as RT) as RT]
     return [
       {

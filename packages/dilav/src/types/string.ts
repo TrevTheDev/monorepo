@@ -9,8 +9,8 @@ import {
   defaultErrorFnSym,
   SingleValidationError,
   ValidationArray,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 import { baseObject } from './init'
 import { DefaultErrorFn } from './errorFns'
@@ -25,10 +25,8 @@ const errorFns = baseObject[defaultErrorFnSym]
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export function parseString(
-  invalidStringFn?: DefaultErrorFn['parseString'],
-): SafeParseFn<unknown, string> {
-  return (value: unknown): ResultError<ValidationErrors, string> =>
+export function parseString(invalidStringFn?: DefaultErrorFn['parseString']): SafeParseFn<string> {
+  return (value: unknown): SafeParseOutput<string> =>
     typeof value !== 'string'
       ? [
           {
@@ -318,7 +316,7 @@ type StringOptions =
       parseStringError: DefaultErrorFn['parseString']
     }
   | {
-      parser: SafeParseFn<unknown, string>
+      parser: SafeParseFn<string>
     }
   // eslint-disable-next-line @typescript-eslint/ban-types
   | {}

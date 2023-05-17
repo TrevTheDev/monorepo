@@ -176,29 +176,20 @@ it('reported issues with nested usage', () => {
       bool: 'yes',
     })
   } catch (error) {
-    expect(error.errors[0])
-      .toEqual(`The object {"string":{},"obj":{"sub":{"lit":"b","subCatch":"24"},"midCatch":444},"number":"","bool":"yes"} is not of type {string:string,obj:{sub:{lit:"a",subCatch:number},midCatch:number},number:number,bool:boolean}.
-"string": {} is not a string, 
-"obj": The object {"sub":{"lit":"b","subCatch":"24"},"midCatch":444} is not of type {sub:{lit:"a",subCatch:number},midCatch:number}.
-"sub": The object {"lit":"b","subCatch":"24"} is not of type {lit:"a",subCatch:number}.
-"lit": "b" is not identical to "a", 
-"bool": "yes" is not a boolean`)
-
-    // expect(issues.length).toEqual(3)
-    // expect(issues[0].message).toMatch('string')
-    // expect(issues[1].message).toMatch('literal')
-    // expect(issues[2].message).toMatch('boolean')
+    expect(error.errors.length).toEqual(3)
+    expect(error.errors[0]).toMatch('string: {} is not a string')
+    expect(error.errors[1]).toMatch('obj: sub: lit: "b" is not identical to "a"')
+    expect(error.errors[2]).toMatch('bool: "yes" is not a boolean')
   }
 })
 
 it('catch error', () => {
-  let catchError: any
+  let catchError: v.ResultError<v.ValidationErrors, string>
 
   const schema = v.object({
     age: v.number,
     name: v.string.postprocess((ctx) => {
       catchError = ctx
-
       return [undefined, 'John Doe']
     }),
   })
@@ -212,9 +203,9 @@ it('catch error', () => {
   expect(v.isError(result) && result[0].errors.length).toEqual(1)
   expect(v.isError(result) && result[0].errors[0]).toMatch('number')
 
-  expect(v.isError(catchError)).toBe(true)
-  expect(catchError !== undefined && catchError[0].errors.length).toEqual(1)
-  expect(catchError !== undefined && catchError[0].errors[0]).toMatch('string')
+  expect(v.isError(catchError!)).toBe(true)
+  expect(catchError! !== undefined && catchError[0]!.errors.length).toEqual(1)
+  expect(catchError! !== undefined && catchError[0]!.errors[0]).toMatch('string')
 })
 
 it('ctx.input', () => {

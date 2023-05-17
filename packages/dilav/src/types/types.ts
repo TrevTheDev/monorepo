@@ -39,6 +39,8 @@ export type ValidationItem<T> = [
 ]
 export type ValidationArray<T> = ValidationItem<T>[]
 
+export type SafeParseOutput<T> = ResultError<ValidationErrors, T>
+
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -110,12 +112,10 @@ export type BaseTypes = (typeof baseTypes)[number]
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export type ParseFn<Input, Output> = (input: Input) => Output
-export type SafeParseFn<Input, Output> = (input: Input) => ResultError<ValidationErrors, Output>
-type AsyncParseFn<Input, Output> = (input: Input) => Promise<Output>
-type AsyncSafeParseFn<Input, Output> = (
-  input: Input,
-) => Promise<ResultError<ValidationErrors, Output>>
+export type ParseFn<Output, Input = unknown> = (input: Input) => Output
+export type SafeParseFn<Output, Input = unknown> = (input: Input) => SafeParseOutput<Output>
+type AsyncParseFn<Output, Input = unknown> = (input: Input) => Promise<Output>
+type AsyncSafeParseFn<Output, Input = unknown> = (input: Input) => Promise<SafeParseOutput<Output>>
 
 type ParserObject<
   Output = any,
@@ -125,7 +125,7 @@ type ParserObject<
   Definition extends object = never,
 > = [Definition] extends [never]
   ? {
-      parserFn: SafeParseFn<Input, Output>
+      parserFn: SafeParseFn<Output, Input>
       readonly validators:
         | ((value: any, ...otherArgs: any) => SingleValidationError | undefined)[]
         | any
@@ -137,7 +137,7 @@ type ParserObject<
       readonly definition?: object
     }
   : {
-      parserFn: SafeParseFn<Input, Output>
+      parserFn: SafeParseFn<Output, Input>
       readonly validators:
         | ((value: any, ...otherArgs: any) => SingleValidationError | undefined)[]
         | any
@@ -220,10 +220,10 @@ export interface BaseSchema<
   readonly definition?: Def
   readonly type: Type
   readonly baseType: BaseType
-  parse: ParseFn<Input, Output>
-  safeParse: SafeParseFn<Input, Output>
-  parseAsync: AsyncParseFn<Input, Output>
-  safeParseAsync: AsyncSafeParseFn<Input, Output>
+  parse: ParseFn<Output, Input>
+  safeParse: SafeParseFn<Output, Input>
+  parseAsync: AsyncParseFn<Output, Input>
+  safeParseAsync: AsyncSafeParseFn<Output, Input>
 
   optional(): VOptional<this>
   nullable(): VNullable<this>
@@ -242,17 +242,10 @@ export interface BaseSchema<
   default<S extends Output>(defaultValue: S): VDefault<this>
   catch<S extends Output>(catchValue: S): VCatch<this>
   preprocess<S extends (value: unknown) => unknown | Output>(preprocessFn: S): VPreprocess<this>
-  postprocess<
-    S extends (value: ReturnType<this['safeParse']>) => ResultError<ValidationErrors, any>,
-  >(
-    postprocessFn: S,
+  postprocess<S>(
+    postprocessFn: (value: SafeParseOutput<Output>) => SafeParseOutput<S>,
   ): VPostProcess<this, S>
-  transform<S extends (value: Output) => unknown>(
-    transformFn: S,
-  ): VPostProcess<
-    this,
-    (value: ReturnType<this['safeParse']>) => ResultError<undefined, ReturnType<S>>
-  >
+  transform<S>(transformFn: (value: Output) => S): VPostProcess<this, S>
   pipe<const S extends readonly [MinimumSchema, ...MinimumSchema[]]>(
     ...schemas: S
   ): S extends readonly [...any, infer L extends MinimumSchema]
@@ -276,14 +269,29 @@ export interface BaseSchema<
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type UnionType = [MinimumSchema, ...MinimumSchema[]]
+export type UnionSchemas = [MinimumSchema, ...MinimumSchema[]]
 
 export type VUnionOutput<
-  T extends UnionType,
+  T extends UnionSchemas,
   O extends any[] = {
     [I in keyof T]: VInfer<T[I]>
   },
 > = O[number]
+
+export interface VUnion<
+  T extends UnionSchemas,
+  Output = VUnionOutput<T>,
+  Type extends string = string,
+  Input = unknown,
+> extends BaseSchema<
+    Output,
+    Type,
+    'union',
+    Input,
+    { readonly schemas: T; readonly transformed: boolean }
+  > {
+  readonly definition: { readonly schemas: T; readonly transformed: boolean }
+}
 
 export interface VUnionLiterals<
   Output,
@@ -301,20 +309,67 @@ export interface VUnionLiterals<
   ): VUnionLiterals<Exclude<Output, T[number]>>
 }
 
-export interface VUnion<
-  T extends UnionType,
+export interface VUnionKey<
+  T extends ObjectUnionSchemas,
   Output = VUnionOutput<T>,
   Type extends string = string,
   Input = unknown,
 > extends BaseSchema<
     Output,
     Type,
-    'union',
+    'discriminated union',
     Input,
-    { readonly unionTypes: T; readonly transformed: boolean }
+    { readonly key: PropertyKey; readonly schemas: T; readonly transformed: boolean }
   > {
-  readonly definition: { readonly unionTypes: T; readonly transformed: boolean }
+  readonly definition: {
+    readonly key: PropertyKey
+    readonly schemas: T
+    readonly transformed: boolean
+  }
 }
+
+export interface VUnionAdvanced<
+  T extends UnionSchemas,
+  Output = VUnionOutput<T>,
+  Type extends string = string,
+  Input = unknown,
+> extends BaseSchema<
+    Output,
+    Type,
+    'discriminated union',
+    Input,
+    { readonly matches: PropertySchemasDef; readonly schemas: T; readonly transformed: boolean }
+  > {
+  readonly definition: {
+    readonly matches: PropertySchemasDef
+    readonly schemas: T
+    readonly transformed: boolean
+  }
+}
+
+export type ObjectUnionSchemas = [MinimumObjectSchema, ...MinimumObjectSchema[]]
+// export interface VDiscriminatedUnion<
+//   T extends ObjectUnionSchemas,
+//   Output = VUnionOutput<T>,
+//   Type extends string = string,
+//   Input = unknown,
+// > extends BaseSchema<
+//     Output,
+//     Type,
+//     'discriminated union',
+//     Input,
+//     {
+//       readonly unionTypes: T
+//       readonly discriminatedUnionKey: string | string[]
+//       readonly transformed: boolean
+//     }
+//   > {
+//   readonly definition: {
+//     readonly unionTypes: T
+//     readonly discriminatedUnionKey: string | string[]
+//     readonly transformed: boolean
+//   }
+// }
 
 type baseOptional<Output, Type extends string, Input, T extends MinimumSchema> = Omit<
   BaseSchema<
@@ -426,7 +481,13 @@ type OptionalVAI<T extends ValidArrayItem> = ApplyPartialMethodToVAI<T, 'optiona
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 type DeepPartial<T extends MinimumSchema, Keys extends PropertyKey = never> = OptionalSchema<
-  T extends VObject<infer U extends ObjectDefinition, infer UM extends MinimumSchema, any, any, any>
+  T extends VObject<
+    infer U extends PropertySchemasDef,
+    infer UM extends MinimumSchema,
+    any,
+    any,
+    any
+  >
     ? VObject<DeepPartialObject<U, Keys>, UM>
     : T extends VArrayInfinite<infer V, any, any, any>
     ? VArrayInfinite<UnwrappedDeepPartial<V, Keys>>
@@ -439,7 +500,7 @@ type UnwrappedDeepPartial<
   T extends MinimumSchema,
   Keys extends PropertyKey = never,
 > = T extends VObject<
-  infer U extends ObjectDefinition,
+  infer U extends PropertySchemasDef,
   infer UM extends MinimumSchema,
   any,
   any,
@@ -468,7 +529,7 @@ type DeepPartialFiniteArray<T extends ValidArrayItemsW, Keys extends PropertyKey
   : []
 
 type DeepPartialObject<
-  T extends ObjectDefinition,
+  T extends PropertySchemasDef,
   S extends PropertyKey,
   DeepPartialKeys extends keyof T = [S] extends [never] ? keyof T : S,
   RT = {
@@ -484,7 +545,7 @@ type DeepPartialObject<
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 type DeepRequired<T extends MinimumSchema, Keys extends PropertyKey = never> = T extends VObject<
-  infer U extends ObjectDefinition,
+  infer U extends PropertySchemasDef,
   infer UM extends MinimumSchema,
   any,
   any,
@@ -513,11 +574,11 @@ type DeepRequiredFiniteArray<T extends ValidArrayItemsW, Keys extends PropertyKe
   : []
 
 type DeepRequiredObject<
-  T extends ObjectDefinition,
+  T extends PropertySchemasDef,
   S extends PropertyKey,
   // Props extends ObjectDefinition = T['propertySchemas'],
   DeepRequiredKeys extends keyof T = [S] extends [never] ? keyof T : S,
-  RT extends ObjectDefinition = {
+  RT extends PropertySchemasDef = {
     [K in keyof T]: K extends DeepRequiredKeys ? DeepRequired<T[K], S> : T[K]
   },
 > = RT
@@ -559,11 +620,7 @@ interface ArraySchema extends MinimumArraySchema {
   default(defaultValue: any): MinimumSchema
   catch(catchValue: any): MinimumSchema
   preprocess(preprocessFn: (value: any) => any): MinimumSchema
-  postprocess(
-    postprocessFn: (
-      value: ResultError<ValidationErrors, any>,
-    ) => ResultError<ValidationErrors, any>,
-  ): MinimumSchema
+  postprocess(postprocessFn: (value: SafeParseOutput<any>) => SafeParseOutput<any>): MinimumSchema
   transform(transformFn: (value: any) => any): MinimumSchema
   pipe(...schemas: [MinimumSchema, ...MinimumSchema[]]): MinimumSchema
   promise(): MinimumSchema
@@ -868,11 +925,13 @@ type ArrayOfVArrayInfinite = [
 ]
 
 type IntersectArrayOfObjects<
-  T extends ObjectDefinition[],
+  T extends PropertySchemasDef[],
   // eslint-disable-next-line @typescript-eslint/ban-types
   Current extends { [K: PropertyKey]: [MinimumSchema, ...MinimumSchema[]] } = {},
-  R extends ObjectDefinition[] = T extends [any, ...infer S extends ObjectDefinition[]] ? S : never,
-  TO = T extends [infer S extends ObjectDefinition, ...any[]]
+  R extends PropertySchemasDef[] = T extends [any, ...infer S extends PropertySchemasDef[]]
+    ? S
+    : never,
+  TO = T extends [infer S extends PropertySchemasDef, ...any[]]
     ? {
         [K in keyof Current | keyof S]: K extends keyof Current
           ? K extends keyof S
@@ -905,7 +964,7 @@ export type VIntersectionT<
   ]
     ? {
         [I in keyof T]: T[I]['definition']['propertySchemas']
-      } extends infer OD extends ObjectDefinition[]
+      } extends infer OD extends PropertySchemasDef[]
       ? {
           [I in keyof T]: T[I]['definition']['unmatchedPropertySchema']
         } extends infer UP extends IntersectionT
@@ -928,17 +987,17 @@ export type VIntersectionT<
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export type ObjectDefinition = { [key: PropertyKey]: MinimumSchema }
+export type PropertySchemasDef = { [key: PropertyKey]: MinimumSchema }
 
 export type MinimumObjectDefinition = {
-  propertySchemas: ObjectDefinition
+  propertySchemas: PropertySchemasDef
   unmatchedPropertySchema: MinimumSchema
-  options: { type: string }
+  type: string
   transformed: boolean
 }
 
 export type ObjectDefToObjectType<
-  PropSchemas extends ObjectDefinition,
+  PropSchemas extends PropertySchemasDef,
   UnmatchedPropertySchema extends MinimumSchema,
   BaseObj extends object = {
     [K in keyof PropSchemas]: VInfer<PropSchemas[K]>
@@ -983,46 +1042,46 @@ export type ObjectDefToObjectType<
 type MergePropertySchemas<
   T extends [MinimumObjectSchema, MinimumObjectSchema, ...MinimumObjectSchema[]],
 > = { [I in keyof T]: T[I]['definition']['propertySchemas'] } extends infer PS extends [
-  ObjectDefinition,
-  ObjectDefinition,
-  ...ObjectDefinition[],
+  PropertySchemasDef,
+  PropertySchemasDef,
+  ...PropertySchemasDef[],
 ]
-  ? RMerge<PS> extends infer RT extends ObjectDefinition
+  ? RMerge<PS> extends infer RT extends PropertySchemasDef
     ? RT
     : never
   : never
 
 type PartialObject<
-  T extends ObjectDefinition,
+  T extends PropertySchemasDef,
   S extends PropertyKey,
   PartialKeys = [S] extends [never] ? keyof T : S,
-  RT extends ObjectDefinition = {
+  RT extends PropertySchemasDef = {
     [K in keyof T]: K extends PartialKeys ? OptionalSchema<T[K]> : T[K]
   },
 > = RT
 
 type RequiredObject<
-  T extends ObjectDefinition,
+  T extends PropertySchemasDef,
   S extends PropertyKey,
   RequiredKeys extends keyof T = [S] extends [never] ? keyof T : S,
-  RT extends ObjectDefinition = {
+  RT extends PropertySchemasDef = {
     [K in keyof T]: K extends RequiredKeys ? RequiredSchema<T[K]> : T[K]
   },
 > = RT
 
 export interface VObject<
-  PropertySchemas extends ObjectDefinition,
+  PropertySchemas extends PropertySchemasDef,
   UnmatchedPropertySchema extends MinimumSchema = VNever,
-  Options extends { type: string } = { type: string },
+  Type extends string = string,
   T extends MinimumObjectDefinition = {
     propertySchemas: PropertySchemas
     unmatchedPropertySchema: UnmatchedPropertySchema
-    options: Options
+    type: Type
     transformed: boolean
   },
   Input = unknown,
   Output extends object = ObjectDefToObjectType<PropertySchemas, UnmatchedPropertySchema>,
-> extends BaseSchema<Output, Options['type'], 'object', Input, T> {
+> extends BaseSchema<Output, Type, 'object', Input, T> {
   readonly definition: T
   merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
     ...propertySchemas: S
@@ -1065,17 +1124,13 @@ export interface VObject<
     name: K,
     schema: S,
   ): VObject<RMerge<[PropertySchemas, { [P in K]: S }]>, UnmatchedPropertySchema>
-  extends<R extends ObjectDefinition>(
+  extends<R extends PropertySchemasDef>(
     extendPropertySchemas: R,
   ): VObject<RMerge<[PropertySchemas, R]>, UnmatchedPropertySchema>
-  extends<
-    R extends ObjectDefinition,
-    S extends MinimumSchema = UnmatchedPropertySchema,
-    O extends { type: string } = T['options'] | { type: string },
-  >(
+  extends<R extends PropertySchemasDef, S extends MinimumSchema = UnmatchedPropertySchema>(
     extendPropertySchemas: R,
     unmatchedPropertySchema?: S,
-    newOptions?: O,
+    newOptions?: { type: string },
   ): VObject<RMerge<[PropertySchemas, R]>, S>
 
   // keyof(): keyof T['propertyParsers'][]
@@ -1147,7 +1202,7 @@ export interface VPreprocess<T extends MinimumSchema>
   }
 }
 
-export interface VPostProcess<T extends MinimumSchema, Output>
+export interface VPostProcess<T extends MinimumSchema, Output = VInfer<T>>
   extends BaseSchema<
     Output,
     string,
@@ -1155,17 +1210,13 @@ export interface VPostProcess<T extends MinimumSchema, Output>
     unknown,
     {
       readonly baseSchema: T
-      readonly postprocessFn: (
-        value: ResultError<ValidationErrors, VInfer<T>>,
-      ) => ResultError<ValidationErrors, Output>
+      readonly postprocessFn: (value: SafeParseOutput<VInfer<T>>) => SafeParseOutput<Output>
       readonly transformed: true
     }
   > {
   readonly definition: {
     readonly baseSchema: T
-    readonly postprocessFn: (
-      value: ResultError<ValidationErrors, VInfer<T>>,
-    ) => ResultError<ValidationErrors, Output>
+    readonly postprocessFn: (value: SafeParseOutput<VInfer<T>>) => SafeParseOutput<Output>
     readonly transformed: true
   }
 }
@@ -1181,14 +1232,8 @@ export type VCatch<T extends MinimumSchema> = VPostProcess<T, VInfer<T>>
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 export interface VLiteral<Output, Type extends string = string, Input = unknown>
-  extends BaseSchema<
-    Output,
-    Type,
-    'literal',
-    Input,
-    { readonly literal: Output; readonly transformed?: boolean }
-  > {
-  readonly definition: { readonly literal: Output; readonly transformed?: boolean }
+  extends BaseSchema<Output, Type, 'literal', Input, { readonly literal: Output }> {
+  readonly definition: { readonly literal: Output }
 }
 
 export type VNaN = VLiteral<number, 'NaN'>
@@ -1200,5 +1245,5 @@ export type VNever = VLiteral<never, 'never'>
 export type VUndefined = VLiteral<undefined, 'undefined'>
 export interface VVoid extends VLiteral<void, 'void'> {
   parse(arg?: unknown): void
-  safeParse(input?: unknown): ResultError<ValidationErrors, void>
+  safeParse(input?: unknown): SafeParseOutput<void>
 }

@@ -1,12 +1,12 @@
-import type { ResultError, DeepWriteable, FlattenObjectUnion } from '../toolbelt'
+import type { DeepWriteable, FlattenObjectUnion } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
   BaseSchema,
   defaultErrorFnSym,
   ValidationArray,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -23,10 +23,8 @@ const errorFns = baseObject[defaultErrorFnSym]
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export function parseNumber(
-  invalidNumberFn?: DefaultErrorFn['parseNumber'],
-): SafeParseFn<unknown, number> {
-  return (value: unknown): ResultError<ValidationErrors, number> => {
+export function parseNumber(invalidNumberFn?: DefaultErrorFn['parseNumber']): SafeParseFn<number> {
+  return (value: unknown): SafeParseOutput<number> => {
     if (typeof value !== 'number') {
       return [
         { input: value, errors: [(invalidNumberFn ?? errorFns.parseNumber)(value)] },
@@ -43,7 +41,7 @@ export function parseNumber(
   }
 }
 
-export function coerceNumber(value: unknown): ResultError<ValidationErrors, number> {
+export function coerceNumber(value: unknown): SafeParseOutput<number> {
   return parseNumber()(Number(value))
 }
 
@@ -218,7 +216,7 @@ type NumberOptions =
       parseNumberError: DefaultErrorFn['parseNumber']
     }
   | {
-      parser: SafeParseFn<unknown, number>
+      parser: SafeParseFn<number>
     }
   // eslint-disable-next-line @typescript-eslint/ban-types
   | {}

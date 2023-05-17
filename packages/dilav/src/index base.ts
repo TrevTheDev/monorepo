@@ -63,7 +63,7 @@ export type { VSet as Set } from './types/set'
 export type { VNumber as Number } from './types/number'
 
 export type {
-  ObjectDefinition,
+  PropertySchemasDef as ObjectDefinition,
   MinimumObjectDefinition,
   MinimumObjectSchema,
   VObject as Object,
@@ -128,8 +128,8 @@ export type { ResultError } from './toolbelt'
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-export { vBooleanInstance as boolean } from './types/boolean'
-import { vBoolean } from './types/boolean'
+export { vBooleanInstance as boolean, vTrue as true, vFalse as false } from './types/boolean'
+import { customFalse, customTrue, vBoolean } from './types/boolean'
 
 export { vBigIntInstance as bigInt } from './types/bigint'
 import { vBigInt } from './types/bigint'
@@ -192,6 +192,8 @@ const customize = {
   date: vDate,
   number: vNumber,
   string: vString,
+  true: customTrue,
+  false: customFalse,
 }
 
 export { customize }

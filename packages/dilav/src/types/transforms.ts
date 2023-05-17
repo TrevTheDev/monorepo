@@ -1,13 +1,13 @@
-import { ResultError, isError } from '../toolbelt'
+import { isError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumSchema,
+  SafeParseOutput,
   VCatch,
   VDefault,
   VInfer,
   VPostProcess,
   VPreprocess,
-  ValidationErrors,
 } from './types'
 
 /** ****************************************************************************************************************************
@@ -28,12 +28,9 @@ export function parsePreprocessed<S extends (value: unknown) => unknown, T exten
 export function parsePostProcessed<
   Input extends MinimumSchema,
   Output,
-  Process extends (
-    value: ResultError<ValidationErrors, VInfer<Input>>,
-  ) => ResultError<ValidationErrors, Output>,
+  Process extends (value: SafeParseOutput<VInfer<Input>>) => SafeParseOutput<Output>,
 >(postprocessFn: Process, schema: Input) {
-  return (value: unknown): ResultError<ValidationErrors, Output> =>
-    postprocessFn(schema.safeParse(value))
+  return (value: unknown): SafeParseOutput<Output> => postprocessFn(schema.safeParse(value))
 }
 
 /** ****************************************************************************************************************************
@@ -50,9 +47,7 @@ export type VPreprocessFn = <T extends MinimumSchema>(
 ) => VPreprocess<T>
 
 export type VPostprocessFn = <Input extends MinimumSchema, Output>(
-  postprocessFn: (
-    value: ResultError<ValidationErrors, VInfer<Input>>,
-  ) => ResultError<ValidationErrors, Output>,
+  postprocessFn: (value: SafeParseOutput<VInfer<Input>>) => SafeParseOutput<Output>,
   safeParsableObject: Input,
 ) => VPostProcess<Input, Output>
 
@@ -86,9 +81,7 @@ export function initDefault(baseObject: MinimumSchema): {
     ) as VPreprocess<T>
   }
   function vPostprocess<Input extends MinimumSchema, Output>(
-    postprocessFn: (
-      value: ResultError<ValidationErrors, VInfer<Input>>,
-    ) => ResultError<ValidationErrors, Output>,
+    postprocessFn: (value: SafeParseOutput<VInfer<Input>>) => SafeParseOutput<Output>,
     schema: Input,
   ): VPostProcess<Input, Output> {
     return createFinalBaseObject(
@@ -111,7 +104,7 @@ export function initDefault(baseObject: MinimumSchema): {
     schema: T,
   ): VPostProcess<T, VInfer<T>> {
     const x = vPostprocess(
-      (value: ResultError<ValidationErrors, VInfer<T>>): ResultError<ValidationErrors, VInfer<T>> =>
+      (value: SafeParseOutput<VInfer<T>>): SafeParseOutput<VInfer<T>> =>
         isError(value) ? [undefined, catchValue] : value,
       schema,
     )

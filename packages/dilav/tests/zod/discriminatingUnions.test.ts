@@ -4,36 +4,30 @@ import { v } from '../../src'
 
 it('valid', () => {
   expect(
-    v
-      .union(
-        [
-          v.object({ type: v.literal('a'), a: v.string }),
-          v.object({ type: v.literal('b'), b: v.string }),
-        ],
-        { discriminatedUnionKey: 'type' },
-      )
+    v.union
+      .key('type', [
+        v.object({ type: v.literal('a'), a: v.string }),
+        v.object({ type: v.literal('b'), b: v.string }),
+      ])
       .parse({ type: 'a', a: 'abc' }),
   ).toEqual({ type: 'a', a: 'abc' })
 })
 
 it('valid - discriminator value of various primitive types', () => {
-  const schema = v.union(
-    [
-      v.object({ type: v.literal('1'), val: v.literal(1) }),
-      v.object({ type: v.literal(1), val: v.literal(2) }),
-      v.object({ type: v.literal(BigInt(1)), val: v.literal(3) }),
-      v.object({ type: v.literal('true'), val: v.literal(4) }),
-      v.object({ type: v.literal(true), val: v.literal(5) }),
-      v.object({ type: v.literal('null'), val: v.literal(6) }),
-      v.object({ type: v.literal(null), val: v.literal(7) }),
-      v.object({ type: v.literal('undefined'), val: v.literal(8) }),
-      v.object({ type: v.literal(undefined), val: v.literal(9) }),
-      v.object({ type: v.literal('transform'), val: v.literal(10) }),
-      v.object({ type: v.literal('refine'), val: v.literal(11) }),
-      v.object({ type: v.literal('superRefine'), val: v.literal(12) }),
-    ],
-    { discriminatedUnionKey: 'type' },
-  )
+  const schema = v.union.key('type', [
+    v.object({ type: v.literal('1'), val: v.literal(1) }),
+    v.object({ type: v.literal(1), val: v.literal(2) }),
+    v.object({ type: v.literal(BigInt(1)), val: v.literal(3) }),
+    v.object({ type: v.literal('true'), val: v.literal(4) }),
+    v.object({ type: v.literal(true), val: v.literal(5) }),
+    v.object({ type: v.literal('null'), val: v.literal(6) }),
+    v.object({ type: v.literal(null), val: v.literal(7) }),
+    v.object({ type: v.literal('undefined'), val: v.literal(8) }),
+    v.object({ type: v.literal(undefined), val: v.literal(9) }),
+    v.object({ type: v.literal('transform'), val: v.literal(10) }),
+    v.object({ type: v.literal('refine'), val: v.literal(11) }),
+    v.object({ type: v.literal('superRefine'), val: v.literal(12) }),
+  ])
 
   expect(schema.parse({ type: '1', val: 1 })).toEqual({ type: '1', val: 1 })
   expect(schema.parse({ type: 1, val: 2 })).toEqual({ type: 1, val: 2 })
@@ -69,59 +63,53 @@ it('valid - discriminator value of various primitive types', () => {
 
 it('invalid - null', () => {
   try {
-    v.union(
-      [
+    v.union
+      .key('type', [
         v.object({ type: v.literal('a'), a: v.string }),
         v.object({ type: v.literal('b'), b: v.string }),
-      ],
-      { discriminatedUnionKey: 'type' },
-    ).parse(null)
+      ])
+      .parse(null)
     throw new Error()
   } catch (e: any) {
-    expect(e.errors[0]).toEqual('value null is not of type object')
+    expect(e.errors[0]).toEqual('no schemas matched: null')
   }
 })
 
 it('invalid discriminator value', () => {
   try {
-    v.union(
-      [
+    v.union
+      .key('type', [
         v.object({ type: v.literal('a'), a: v.string }),
         v.object({ type: v.literal('b'), b: v.string }),
-      ],
-      { discriminatedUnionKey: 'type' },
-    ).parse({ type: 'x', a: 'abc' })
+      ])
+      .parse({ type: 'x', a: 'abc' })
     throw new Error()
   } catch (e: any) {
-    expect(e.errors[0]).toEqual(
-      `the discriminatedUnionKey 'type' found no matches for the value: {"type":"x","a":"abc"}`,
-    )
+    expect(e.errors[0]).toEqual(`no schemas matched: {"type":"x","a":"abc"}`)
   }
 })
 
 it('valid discriminator value, invalid data', () => {
   try {
-    v.union(
-      [
+    v.union
+      .key('type', [
         v.object({ type: v.literal('a'), a: v.string }),
         v.object({ type: v.literal('b'), b: v.string }),
-      ],
-      { discriminatedUnionKey: 'type' },
-    ).parse({ type: 'a', b: 'abc' })
+      ])
+      .parse({ type: 'a', b: 'abc' })
     throw new Error()
   } catch (e: any) {
-    expect(e.errors[0])
-      .toEqual(`The object {"type":"a","b":"abc"} is not of type ({type:"a",a:string})|({type:"b",b:string}).
-"a": property: "a" not found in {"type":"a","b":"abc"}, 
-"b": "abc" doesn't match 'never'`)
+    expect(e.errors[0]).toEqual(`a: property: "a" not found in {"type":"a","b":"abc"}`)
   }
 })
 
 it('wrong schema - missing discriminator', () => {
   try {
-    v.union([v.object({ type: v.literal('a'), a: v.string }), v.object({ b: v.string }) as any], {
-      discriminatedUnionKey: 'type',
-    })
+    v.union.key(
+      'type',
+      [v.object({ type: v.literal('a'), a: v.string }), v.object({ b: v.string }) as any],
+      {},
+    )
     throw new Error()
   } catch (e: any) {
     expect(e.message).toBe(`property 'type' not found in object definition: {b:string}`)
@@ -130,13 +118,10 @@ it('wrong schema - missing discriminator', () => {
 
 it.skip('wrong schema - duplicate discriminator values', () => {
   try {
-    v.union(
-      [
-        v.object({ type: v.literal('a'), a: v.string }),
-        v.object({ type: v.literal('a'), b: v.string }),
-      ],
-      { discriminatedUnionKey: 'type' },
-    )
+    v.union.key('type', [
+      v.object({ type: v.literal('a'), a: v.string }),
+      v.object({ type: v.literal('a'), b: v.string }),
+    ])
     throw new Error()
   } catch (e: any) {
     expect(e.message.includes('has duplicate value')).toEqual(true)
@@ -195,23 +180,20 @@ it.skip('async - invalid', async () => {
 })
 
 it.skip('valid - literals with .default or .preprocess', () => {
-  const schema = v.union(
-    [
-      v.object({
-        type: v.literal('foo').default('foo'),
-        a: v.string,
-      }),
-      v.object({
-        type: v.literal('custom'),
-        method: v.string,
-      }),
-      v.object({
-        type: v.literal('bar').preprocess((val) => String(val)),
-        c: v.string,
-      }),
-    ],
-    { discriminatedUnionKey: 'type' },
-  )
+  const schema = v.union.key('type', [
+    v.object({
+      type: v.literal('foo').default('foo'),
+      a: v.string,
+    }),
+    v.object({
+      type: v.literal('custom'),
+      method: v.string,
+    }),
+    v.object({
+      type: v.literal('bar').preprocess((val) => String(val)),
+      c: v.string,
+    }),
+  ])
   expect(schema.parse({ type: 'foo', a: 'foo' })).toEqual({
     type: 'foo',
     a: 'foo',

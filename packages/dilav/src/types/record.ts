@@ -1,5 +1,5 @@
 import { isError } from '../toolbelt'
-import type { FlattenObjectUnion, ResultError } from '../toolbelt'
+import type { FlattenObjectUnion } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   SafeParseFn,
@@ -9,7 +9,7 @@ import {
   ParseFn,
   defaultErrorFnSym,
   SingleValidationError,
-  ValidationErrors,
+  SafeParseOutput,
 } from './types'
 
 import { baseObject } from './init'
@@ -28,12 +28,11 @@ const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
  ***************************************************************************************************************************** */
 
 interface MinimumSafeParsableKey extends MinimumSchema {
-  parse: ParseFn<unknown, string>
-  safeParse: SafeParseFn<unknown, string>
+  parse: ParseFn<string>
+  safeParse: SafeParseFn<string>
 }
 
-type KInfer<T extends MinimumSafeParsableKey> = ReturnType<T['safeParse']> extends ResultError<
-  ValidationErrors,
+type KInfer<T extends MinimumSafeParsableKey> = ReturnType<T['safeParse']> extends SafeParseOutput<
   infer R extends string
 >
   ? R
@@ -47,7 +46,7 @@ type RecordDefToRecordType<
 
 type RecordOptions<T extends RecordDef> = (
   | {
-      parser: SafeParseFn<unknown, RecordDefToRecordType<T>>
+      parser: SafeParseFn<RecordDefToRecordType<T>>
     }
   | {
       parseRecord: DefaultErrorFn['parseRecord']
@@ -61,10 +60,10 @@ type RecordOptions<T extends RecordDef> = (
 export function parseRecord<T extends RecordDef>(
   recordDef: T,
   options: RecordOptions<T>,
-): (value: unknown) => ResultError<ValidationErrors, RecordDefToRecordType<T>> {
+): (value: unknown) => SafeParseOutput<RecordDefToRecordType<T>> {
   type Opts = FlattenObjectUnion<RecordOptions<T>>
   const [keySchema, valueSchema] = recordDef
-  return (value: unknown): ResultError<ValidationErrors, RecordDefToRecordType<T>> => {
+  return (value: unknown): SafeParseOutput<RecordDefToRecordType<T>> => {
     const errors = [] as SingleValidationError[]
     if (isObjectType(value)) {
       // eslint-disable-next-line no-restricted-syntax

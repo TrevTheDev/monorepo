@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import type { FlattenObjectUnion, ResultError } from '../toolbelt'
+import type { FlattenObjectUnion } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
-import { SafeParseFn, BaseSchema, defaultErrorFnSym, ValidationErrors } from './types'
+import { SafeParseFn, BaseSchema, defaultErrorFnSym, SafeParseOutput } from './types'
 
 import { baseObject } from './init'
 import { DefaultErrorFn } from './errorFns'
@@ -20,8 +20,8 @@ const errorFns = baseObject[defaultErrorFnSym]
 export function parseInstanceOf<T extends InstanceOfType>(
   instanceOfItem: T,
   invalidInstanceOf?: DefaultErrorFn['parseInstanceOf'],
-): SafeParseFn<unknown, InstanceType<T>> {
-  return (value: unknown): ResultError<ValidationErrors, InstanceType<T>> => {
+): SafeParseFn<InstanceType<T>> {
+  return (value: unknown): SafeParseOutput<InstanceType<T>> => {
     if (value instanceof instanceOfItem) return [undefined, value as InstanceType<T>]
     return [
       {
@@ -58,7 +58,7 @@ type InstanceOfOptions<T extends InstanceOfType> =
       parseInstanceOf: DefaultErrorFn['parseInstanceOf']
     }
   | {
-      parser: SafeParseFn<unknown, T>
+      parser: SafeParseFn<T>
     }
   | {}
 

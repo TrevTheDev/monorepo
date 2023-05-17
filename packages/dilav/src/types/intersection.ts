@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { type ResultError, type DeepWriteable, isError } from '../toolbelt'
+import { DeepWriteable, isError } from '../toolbelt'
 import { createFinalBaseObject } from './base'
 import {
   MinimumSchema,
@@ -8,13 +8,13 @@ import {
   IntersectionT,
   MSPOArrayToIntersection,
   VIntersectionT,
-  ValidationErrors,
   MinimumObjectSchema,
-  ObjectDefinition,
+  PropertySchemasDef,
   BaseTypes,
   VArrayInfinite,
   parserObject,
   groupBaseTypes,
+  SafeParseOutput,
 } from './types'
 import { VObjectFn, allKeys } from './object'
 import { VArrayFn } from './array'
@@ -68,8 +68,8 @@ export type VIntersectionFn = {
 export function parseIntersection<
   const T extends IntersectionT,
   RV = MSPOArrayToIntersection<DeepWriteable<T>>,
->(types: T, breakOnFirstError = true): (value: unknown) => ResultError<ValidationErrors, RV> {
-  return (value: unknown): ResultError<ValidationErrors, RV> => {
+>(types: T, breakOnFirstError = true): (value: unknown) => SafeParseOutput<RV> {
+  return (value: unknown): SafeParseOutput<RV> => {
     const errors: string[] = []
     // eslint-disable-next-line no-restricted-syntax
     for (const vType of types) {
@@ -110,7 +110,7 @@ export function initIntersectionType(
         else mergeObjectDefinition[propKey] = [propSchemas[propKey]!]
       }
     }
-    const objDefinition: ObjectDefinition = {}
+    const objDefinition: PropertySchemasDef = {}
     for (const propKey of allKeys(
       mergeObjectDefinition,
     ) as (keyof typeof mergeObjectDefinition)[]) {

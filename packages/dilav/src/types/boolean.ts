@@ -1,4 +1,4 @@
-import type { ResultError, DeepWriteable, FlattenObjectUnion } from '../toolbelt'
+import type { DeepWriteable, FlattenObjectUnion } from '../toolbelt'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -6,8 +6,9 @@ import {
   BaseSchema,
   defaultErrorFnSym,
   ValidationArray,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
+  SingleValidationError,
 } from './types'
 
 import { baseObject } from './init'
@@ -69,8 +70,8 @@ const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
 
 export function parseBoolean(
   invalidBooleanFn?: DefaultErrorFn['parseBoolean'],
-): SafeParseFn<unknown, boolean> {
-  return (value: unknown): ResultError<ValidationErrors, boolean> =>
+): SafeParseFn<boolean> {
+  return (value: unknown): SafeParseOutput<boolean> =>
     typeof value !== 'boolean'
       ? [{ input: value, errors: [(invalidBooleanFn ?? errorFns.parseBoolean)(value)] }, undefined]
       : [undefined, value]
@@ -82,8 +83,8 @@ export function coerceBoolean(value: unknown): [undefined, boolean] {
 
 // export function coerceBoolean(
 //   invalidBooleanFn: (invalidValue: string) => SingleValidationError = defaultErrorFn.parseBoolean,
-// ): (value: unknown) => ResultError<ValidationErrors, boolean> {
-//   return (value: unknown): ResultError<ValidationErrors, boolean> => {
+// ): (value: unknown) => SafeParseOutput<boolean> {
+//   return (value: unknown): SafeParseOutput<boolean> => {
 //     const result = safeSaneBooleanParser(value)
 //     return result === undefined
 //       ? [{ input: value, errors: [invalidBooleanFn(String(value))] }, undefined]
@@ -98,12 +99,12 @@ export function coerceBoolean(value: unknown): [undefined, boolean] {
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-export function beTrue(errorReturnValueFn: () => string = errorFns.beTrue) {
-  return (value: boolean) => (!value ? errorReturnValueFn() : undefined)
+export function beTrue(errorReturnValueFn?: DefaultErrorFn['beTrue']) {
+  return (value: boolean) => (!value ? (errorReturnValueFn ?? errorFns.beTrue)(value) : undefined)
 }
 
-export function beFalse(errorReturnValueFn: () => string = errorFns.beFalse) {
-  return (value: boolean) => (value ? errorReturnValueFn() : undefined)
+export function beFalse(errorReturnValueFn?: DefaultErrorFn['beFalse']) {
+  return (value: boolean) => (value ? (errorReturnValueFn ?? errorFns.beFalse)(value) : undefined)
 }
 
 /** ****************************************************************************************************************************
@@ -149,12 +150,12 @@ export interface VBoolean<Output extends boolean = boolean, Input = unknown>
   readonly coerce: this
   custom(newOptions: BooleanOptions): this
 }
-type BooleanOptions =
+export type BooleanOptions =
   | {
       parseBooleanError: DefaultErrorFn['parseBoolean']
     }
   | {
-      parser: SafeParseFn<unknown, boolean>
+      parser: SafeParseFn<boolean>
     }
   // eslint-disable-next-line @typescript-eslint/ban-types
   | {} // | Record<string, never>
@@ -176,6 +177,16 @@ export function vBoolean(options: BooleanOptions = {}): VBoolean {
 }
 
 export const vBooleanInstance = vBoolean()
+
+export const vTrue = vBooleanInstance.beTrue() as VBoolean<true>
+export const vFalse = vBooleanInstance.beFalse() as VBoolean<false>
+
+export const customTrue = (errorFn: (value: unknown) => SingleValidationError) =>
+  vBoolean({ parseBooleanError: errorFn }).beTrue(errorFn) as VBoolean<true>
+
+export const customFalse = (errorFn: (value: unknown) => SingleValidationError) =>
+  vBoolean({ parseBooleanError: errorFn }).beFalse(errorFn) as VBoolean<false>
+// export const customFalse: (options?: BooleanOptions) => vBoolean(options).beFalse() as VBoolean<false>
 // export const vBooleanCoerce = vBoolean({ parser: coerceBoolean })
 
 // const baseBooleanObj: VBoolean & {

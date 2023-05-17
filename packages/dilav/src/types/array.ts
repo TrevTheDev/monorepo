@@ -14,11 +14,11 @@ import {
   ValidArrayItems,
   ValidArrayItemsT,
   ValidArrayItemsW,
-  ValidationErrors,
   defaultErrorFnSym,
   parserObject,
   stratifiedSchemaProp,
   MinimumInfiniteArraySchema,
+  SafeParseOutput,
 } from './types'
 import {
   isOptional,
@@ -171,7 +171,7 @@ export function parseArray<T extends unknown[]>(
   >,
   transformed: boolean,
 ) {
-  return function ParseArrayFn(value: unknown): ResultError<ValidationErrors, T> {
+  return function ParseArrayFn(value: unknown): SafeParseOutput<T> {
     if (Array.isArray(value)) {
       const result = parseArrayElements(value, stratifiedSchemas, errorMessageFns, transformed)
       return result[0] === undefined

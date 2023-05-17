@@ -37,7 +37,9 @@ it('readonly enum', () => {
 })
 
 it('error params', () => {
-  const result = v.enum(['test'], { parseLiteralUnion: () => 'REQUIRED' }).safeParse(undefined)
+  const result = v
+    .enum(['test'], { noMatchFoundInLiteralUnion: () => 'REQUIRED' })
+    .safeParse(undefined)
   expect(v.isResult(result)).toEqual(false)
   if (v.isError(result)) expect(result[0].errors[0]).toEqual('REQUIRED')
 })

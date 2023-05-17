@@ -1,7 +1,8 @@
+/* eslint-disable no-unreachable-loop */
 /* eslint-disable no-restricted-syntax */
-import { type ResultError, type DeepWriteable, intersection, difference } from '../toolbelt'
+import { type DeepWriteable, intersection, difference, isResult } from '../toolbelt'
 
-import { parseObject } from './object'
+// import { parseObject } from './object'
 
 import { createFinalBaseObject } from './base'
 import {
@@ -9,9 +10,7 @@ import {
   MinimumSchema,
   BaseTypes,
   SafeParseFn,
-  UnionType,
-  VInfer,
-  VNever,
+  UnionSchemas,
   VNull,
   VNullable,
   VNullish,
@@ -20,12 +19,18 @@ import {
   VUnion,
   VUnionLiterals,
   VUnionOutput,
-  ValidationErrors,
   defaultErrorFnSym,
   groupBaseTypes,
+  ObjectUnionSchemas,
+  SafeParseOutput,
+  PropertySchemasDef,
+  SingleValidationError,
+  VUnionAdvanced,
+  VUnionKey,
 } from './types'
 import defaultErrorFn, { DefaultErrorFn } from './errorFns'
 import { isObjectType, isTransformed } from './shared'
+import { parsePropertySchemas } from './object'
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -36,80 +41,54 @@ import { isObjectType, isTransformed } from './shared'
  ***************************************************************************************************************************** */
 let errorFns = defaultErrorFn
 
-type DiscriminatedUnionParseErrorMessageFns = Pick<
-  DefaultErrorFn,
-  | 'parseObject'
-  | 'invalidObjectPropertiesFn'
-  | 'missingProperty'
-  | 'missingPropertyInDef'
-  | 'keyNotFoundInDiscriminatedUnionDef'
-  | 'keyNotFoundInDiscriminatedUnion'
-  | 'noKeyMatchFoundInDiscriminatedUnion'
-  | 'schemaIsNotOfTypeObject'
-  | 'discriminatedUnionValueIsNotAnObject'
->
-
-type ObjectUnionSchemas = [MinimumObjectSchema, ...MinimumObjectSchema[]]
 export type LiteralUnionType = [unknown, ...unknown[]]
 
-type UnionOptions<Output = unknown> = {
-  parser?: SafeParseFn<ValidationErrors, Output>
-  type?: string
+type BaseOptions<Output = unknown> = {
+  parser?: SafeParseFn<Output>
   baseType?: BaseTypes
+  type?: string
   definitionObject?: object
 }
 
-type DiscriminatedUnionOptions = {
-  discriminatedUnionKey: string
-  unmatchedPropertySchema: MinimumSchema
-  errorMessageFns?: Partial<DiscriminatedUnionParseErrorMessageFns>
-  type: string
+type BasicOptions<Output = unknown> = Pick<VUnionOptions<Output>, 'noMatchFoundInUnion' | 'parser'>
+
+interface VUnionOptions<Output = unknown> extends BaseOptions<Output> {
+  noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion']
 }
 
-export type LiteralUnionOptions<
-  T,
-  RT = {
-    literalUnion: true
-    parser?: SafeParseFn<ValidationErrors, T>
-    type?: string
-    parseLiteralUnion?: DefaultErrorFn['parseLiteralUnion']
-    baseType?: BaseTypes
-    definitionObject?: object
-  },
-> = RT
-
-interface PartialDiscriminatedUnionOptions {
-  parser?: (
-    typeSchemas: ObjectUnionSchemas,
-    options: DiscriminatedUnionOptions,
-  ) => (value: unknown) => ResultError<ValidationErrors, object>
-  discriminatedUnionKey: string
-  unmatchedPropertySchema?: MinimumSchema
-  errorMessageFns?: Partial<DiscriminatedUnionParseErrorMessageFns>
+export interface VLiteralOptions<Output = unknown> extends BaseOptions<Output> {
+  noMatchFoundInLiteralUnion?: DefaultErrorFn['noMatchFoundInLiteralUnion']
 }
 
-type BasicOptions<Output = unknown> = {
-  parser?: SafeParseFn<unknown, Output>
+interface VUnionKeyOptions<Output = unknown> extends VUnionOptions<Output> {
+  keyNotFoundInDiscriminatedUnionDef?: DefaultErrorFn['keyNotFoundInDiscriminatedUnionDef']
+  oneMatchOnly?: boolean
 }
 
 export type VUnionFn = {
-  <T extends Readonly<ObjectUnionSchemas>, TW extends ObjectUnionSchemas = DeepWriteable<T>>(
-    types: T,
-    options: PartialDiscriminatedUnionOptions,
+  <const T extends Readonly<UnionSchemas>, TW extends UnionSchemas = DeepWriteable<T>>(
+    schemas: T,
+    options?: VUnionOptions<VUnionOutput<TW>>,
   ): VUnion<TW>
-  <T extends Readonly<UnionType>, TW extends UnionType = DeepWriteable<T>>(
-    types: T,
-    options?: UnionOptions<VUnionOutput<TW>>,
-  ): VUnion<TW>
-  <const T extends Readonly<LiteralUnionType>>(
-    types: T,
-    options: LiteralUnionOptions<T[number]>,
+  literals<const T extends Readonly<LiteralUnionType>>(
+    literals: T,
+    options?: VLiteralOptions<T[number]>,
   ): VUnionLiterals<T[number]>
-  (
-    types: UnionType,
-    options: PartialDiscriminatedUnionOptions | UnionOptions | LiteralUnionOptions<string>,
-  ): MinimumSchema
+  key<
+    const T extends Readonly<ObjectUnionSchemas>,
+    TW extends ObjectUnionSchemas = DeepWriteable<T>,
+  >(
+    key: PropertyKey,
+    schemas: T,
+    options?: VUnionKeyOptions<VUnionOutput<TW>>,
+  ): VUnionKey<TW>
+  advanced<const T extends Readonly<UnionSchemas>, TW extends UnionSchemas = DeepWriteable<T>>(
+    matches: PropertySchemasDef,
+    schemas: T,
+    options?: VUnionOptions<VUnionOutput<TW>>,
+  ): VUnionAdvanced<TW>
 }
+
 export type VOptionalFn = <T extends MinimumSchema>(
   type: T,
   undefinedInstance?: VUndefined,
@@ -134,138 +113,130 @@ export type VNullishFn = <T extends MinimumSchema>(
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
-
-export function parseUnion<T extends UnionType, Output = { [K in keyof T]: VInfer<T[K]> }[number]>(
-  types: T,
-) {
-  const typeSchemas = types.map((type) => (value: unknown) => type.safeParse(value))
-  return (value: unknown): ResultError<ValidationErrors, Output> => {
-    const errors: string[] = []
-    // eslint-disable-next-line no-restricted-syntax
-    for (const vType of typeSchemas) {
-      const result = vType(value)
-      if (result[0] === undefined) return result
+function createUnionParser(noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion']) {
+  return function unionParser<Output>(
+    schemas: MinimumSchema[],
+    value: unknown,
+  ): SafeParseOutput<Output> {
+    const errors: SingleValidationError[] = []
+    for (const schema of schemas) {
+      const result = schema.safeParse(value)
+      if (isResult(result)) return result
       errors.push(...result[0].errors)
     }
-    return [{ input: value, errors }, undefined]
+    return errors.length === 0
+      ? [
+          {
+            input: value,
+            errors: [(noMatchFoundInUnion ?? errorFns.noMatchFoundInUnion)(value, schemas)],
+          },
+        ]
+      : [{ input: value, errors }]
   }
 }
 
-function isObject(mspo: MinimumSchema | MinimumObjectSchema): mspo is MinimumObjectSchema {
-  return mspo.baseType === 'object'
-}
-
-export function parseLiteralUnion<T extends readonly unknown[]>(
-  literalUnionDef: T,
-  options: LiteralUnionOptions<T[number]>,
-): (value: unknown) => ResultError<ValidationErrors, T[number]> {
-  return (value: unknown): ResultError<ValidationErrors, T[number]> => {
-    if (literalUnionDef.includes(value)) return [undefined, value as T[number]]
-    return [
-      {
-        input: value,
-        errors: [(options.parseLiteralUnion ?? errorFns.parseLiteralUnion)(value, literalUnionDef)],
-      },
-      undefined,
-    ]
-  }
-}
-
-export function parseDiscriminatedUnion<
-  T extends ObjectUnionSchemas,
-  Output extends object = {
-    [K in keyof T]: VInfer<T[K]> extends object ? VInfer<T[K]> : never
-  }[number],
+function parseUnion_<
+  T extends MinimumSchema[],
+  Output extends T extends UnionSchemas ? VUnionOutput<T> : never,
 >(
-  schemas: T,
-  options: DiscriminatedUnionOptions,
-): (value: unknown) => ResultError<ValidationErrors, Output> {
-  const errorMessageFns = {
-    // invalidObjectFn: errorFns.parseObject,
-    // invalidObjectPropertiesFn: errorFns.invalidObjectPropertiesFn,
-    // missingProperty: errorFns.missingProperty,
-    // missingPropertyInDef: errorFns.missingPropertyInDef,
-    keyNotFoundInDiscriminatedUnionDef: errorFns.keyNotFoundInDiscriminatedUnionDef,
-    keyNotFoundInDiscriminatedUnion: errorFns.keyNotFoundInDiscriminatedUnion,
-    noKeyMatchFoundInDiscriminatedUnion: errorFns.noKeyMatchFoundInDiscriminatedUnion,
-    schemaIsNotOfTypeObject: errorFns.schemaIsNotOfTypeObject,
-    discriminatedUnionValueIsNotAnObject: errorFns.discriminatedUnionValueIsNotAnObject,
-    ...options.errorMessageFns,
+  getSchemasFn: (value: unknown) => T,
+  parseSchemasFn: (schemas: T, value: unknown) => SafeParseOutput<Output>,
+): SafeParseFn<Output> {
+  return function ParseDiscriminatedUnion2(value: unknown): SafeParseOutput<Output> {
+    return parseSchemasFn(getSchemasFn(value), value)
   }
-  const { discriminatedUnionKey, unmatchedPropertySchema } = options
-  const typeSchemas = schemas.map((schema: MinimumSchema | MinimumObjectSchema) => {
-    if (!isObject(schema)) throw new Error(errorMessageFns.schemaIsNotOfTypeObject(schema))
+}
+
+export function parseUnion<T extends UnionSchemas, Output extends VUnionOutput<T>>(
+  schemas: T,
+  noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion'],
+): SafeParseFn<Output> {
+  const parseSchemasFn = createUnionParser(noMatchFoundInUnion)
+  return parseUnion_(() => schemas, parseSchemasFn)
+}
+
+function matchFnOnKey<T extends ObjectUnionSchemas>(
+  key: PropertyKey,
+  schemas: T,
+  options: {
+    keyNotFoundInDiscriminatedUnionDef?: DefaultErrorFn['keyNotFoundInDiscriminatedUnionDef']
+    oneMatchOnly?: boolean
+  } = {},
+): (value: unknown) => MinimumObjectSchema[] {
+  for (const schema of schemas) {
     const { propertySchemas } = schema.definition
-    const keySchema = propertySchemas[discriminatedUnionKey]
+    const keySchema = propertySchemas[key]
     if (keySchema === undefined) {
       throw new Error(
-        errorMessageFns.keyNotFoundInDiscriminatedUnionDef(discriminatedUnionKey, schema.type),
+        (options.keyNotFoundInDiscriminatedUnionDef ?? errorFns.keyNotFoundInDiscriminatedUnionDef)(
+          key,
+          schema.type,
+        ),
       )
     }
-
-    return [
-      (value) => keySchema.safeParse(value),
-      parseObject(
-        {
-          propertySchemas,
-          unmatchedPropertySchema,
-          options: { type: options.type },
-          transformed: isTransformed(schema),
-        },
-        errorMessageFns,
-      ),
-    ] as [
-      (value: unknown) => ResultError<ValidationErrors, unknown>,
-      (value: unknown) => ResultError<ValidationErrors, object>,
-    ]
-  })
-  return (value: unknown): ResultError<ValidationErrors, Output> => {
-    const errors: string[] = []
-    if (typeof value !== 'object' || Array.isArray(value) || value === null) {
-      return [
-        {
-          input: value,
-          errors: [errorMessageFns.discriminatedUnionValueIsNotAnObject(value)],
-        },
-        undefined,
-      ]
-    }
-    if (discriminatedUnionKey in value) {
-      const keyValueToMatch = value[discriminatedUnionKey]
-      // eslint-disable-next-line no-restricted-syntax
-      for (const vType of typeSchemas) {
-        const [keySchema, propertySchema] = vType
-        const result = keySchema(keyValueToMatch)
-        if (result[0] === undefined) {
-          const oResult = propertySchema(value)
-          if (oResult[0] === undefined) return oResult as ResultError<ValidationErrors, Output>
-          errors.push(...oResult[0].errors)
-        }
+  }
+  return function MatchFnOnKeyFn(value: unknown): MinimumObjectSchema[] {
+    const matchedSchemas = [] as MinimumObjectSchema[]
+    if (!isObjectType(value)) return matchedSchemas
+    for (const schema of schemas) {
+      const result = schema.definition.propertySchemas[key]!.safeParse(value[key])
+      if (isResult(result)) {
+        matchedSchemas.push(schema)
+        if (options.oneMatchOnly ?? false) return matchedSchemas
       }
-      return [
-        errors.length === 0
-          ? {
-              input: value,
-              errors: [
-                errorMessageFns.noKeyMatchFoundInDiscriminatedUnion(
-                  value,
-                  discriminatedUnionKey,
-                  schemas as ObjectUnionSchemas,
-                ),
-              ],
-            }
-          : { input: value, errors },
-        undefined,
-      ]
     }
+    return matchedSchemas
+  }
+}
+
+export function parseUnionKey<T extends ObjectUnionSchemas, Output extends VUnionOutput<T>>(
+  key: PropertyKey,
+  schemas: T,
+  options: {
+    noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion']
+    keyNotFoundInDiscriminatedUnionDef?: DefaultErrorFn['keyNotFoundInDiscriminatedUnionDef']
+    oneMatchOnly?: boolean
+  } = {},
+): SafeParseFn<Output> {
+  const parseSchemasFn = createUnionParser(options.noMatchFoundInUnion)
+  return parseUnion_(matchFnOnKey(key, schemas, options), parseSchemasFn)
+}
+
+export function parseUnionLiteral<const T extends Readonly<LiteralUnionType>>(
+  literals: T,
+  noMatchFoundInLiteralUnion?: DefaultErrorFn['noMatchFoundInLiteralUnion'],
+): SafeParseFn<T[number]> {
+  return (value: unknown): SafeParseOutput<T[number]> => {
+    if (literals.includes(value)) return [undefined, value as T[number]]
     return [
       {
         input: value,
-        errors: [errorMessageFns.keyNotFoundInDiscriminatedUnion(discriminatedUnionKey, value)],
+        errors: [
+          (noMatchFoundInLiteralUnion ?? errorFns.noMatchFoundInLiteralUnion)(value, literals),
+        ],
       },
-      undefined,
     ]
   }
+}
+
+function matchFnOnPropSchemaDef<T extends MinimumSchema[]>(
+  matches: PropertySchemasDef,
+  schemas: T,
+): (value: unknown) => MinimumSchema[] {
+  const parser = parsePropertySchemas(matches)
+  return function MatchFnOnKey(value: unknown): MinimumSchema[] {
+    if (!isObjectType(value)) return [] as MinimumSchema[]
+    return isResult(parser(value)) ? schemas : ([] as MinimumSchema[])
+  }
+}
+
+export function parseUnionAdvanced<T extends UnionSchemas, Output extends VUnionOutput<T>>(
+  matches: PropertySchemasDef,
+  schemasIfMatch: T,
+  noMatchFoundInUnion?: DefaultErrorFn['noMatchFoundInUnion'],
+): SafeParseFn<Output> {
+  const parseSchemasFn = createUnionParser(noMatchFoundInUnion)
+  return parseUnion_(matchFnOnPropSchemaDef(matches, schemasIfMatch), parseSchemasFn)
 }
 
 /** ****************************************************************************************************************************
@@ -276,13 +247,6 @@ export function parseDiscriminatedUnion<
  * *****************************************************************************************************************************
  ***************************************************************************************************************************** */
 
-/**
- * joins strings into a union e.g. ['A','B'] becomes 'A|B'
- * @param typeStrings - any array of strings
- * @returns
- */
-const literalArrayToUnionTypeString = (literalArray: unknown[]) =>
-  literalArray.map((value) => JSON.stringify(value)).join('|')
 // /**
 //  * Wraps each item in a string array in single quotes e.g. ['A','B'] becomes ["'A'","'B'"]
 //  * @param typeStrings - any array of strings
@@ -321,43 +285,52 @@ const literalArrayToUnionTypeString = (literalArray: unknown[]) =>
 //   return (schemas as any[]).every((type) => type.baseType === 'object')
 // }
 
-export function initUnionTypes(baseObject: MinimumSchema) {
+function schemasToTypeString(schemas: MinimumSchema[]) {
+  let typeString = ''
+  for (const schema of schemas) {
+    typeString = `${typeString}${
+      groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type
+    }|`
+  }
+  return typeString.slice(0, -1)
+}
+
+export function initUnionTypes(baseObject: MinimumSchema): {
+  vUnion: VUnionFn
+  vOptional: VOptionalFn
+  vNullable: VNullableFn
+  vNullish: VNullishFn
+  setUnionInstances: (undefinedInstance: VUndefined, nullInstance: VNull) => void
+} {
   errorFns = baseObject[defaultErrorFnSym]
   let vUndefinedInstance: VUndefined
   let vNullInstance: VNull
-  let vNeverInstance: VNever
-  function setUnionInstances(
-    undefinedInstance: VUndefined,
-    nullInstance: VNull,
-    neverInstance: VNever,
-  ) {
+  function setUnionInstances(undefinedInstance: VUndefined, nullInstance: VNull): void {
     vUndefinedInstance = undefinedInstance
     vNullInstance = nullInstance
-    vNeverInstance = neverInstance
   }
 
   const baseUnionObject = Object.create(baseObject)
 
-  function vUnionFnLiteral(
-    literals: LiteralUnionType,
-    options: LiteralUnionOptions<LiteralUnionType[number]>,
-  ) {
-    const typeString = options.type ?? literalArrayToUnionTypeString(literals)
+  function vUnionLiterals(literals: LiteralUnionType, options: VLiteralOptions = {}) {
+    const typeString = options.type ?? literals.map((value) => JSON.stringify(value)).join('|')
 
     return Object.defineProperties(
       createFinalBaseObject(
         baseUnionObject,
-        options.parser ? options.parser : parseLiteralUnion(literals, options),
+        options.parser ?? parseUnionLiteral(literals, options.noMatchFoundInLiteralUnion),
         typeString,
         options.baseType ?? 'literal union',
-        options.definitionObject ?? { literals },
+        options.definitionObject ?? {
+          literals,
+        },
       ),
       {
         definition: options.definitionObject ?? { literals },
         extract: {
           value(...keys: [unknown, ...unknown[]]) {
             const newKeys = intersection(literals, keys) as unknown as LiteralUnionType
-            return vUnionFn(newKeys, options)
+            return vUnionLiterals(newKeys, options)
           },
           enumerable: true,
           configurable: false,
@@ -366,7 +339,7 @@ export function initUnionTypes(baseObject: MinimumSchema) {
         exclude: {
           value(...keys: [unknown, ...unknown[]]) {
             const newKeys = difference(literals, keys) as unknown as LiteralUnionType
-            return vUnionFn(newKeys, options)
+            return vUnionLiterals(newKeys, options)
           },
           enumerable: true,
           configurable: false,
@@ -376,79 +349,64 @@ export function initUnionTypes(baseObject: MinimumSchema) {
     ) as VUnionLiterals<LiteralUnionType[number]>
   }
 
-  function vUnionFnDiscriminatedUnion(
+  function vUnionKey(
+    key: PropertyKey,
     schemas: ObjectUnionSchemas,
-    options: PartialDiscriminatedUnionOptions,
-    typeString: string,
-  ) {
-    const fOptions = {
-      unmatchedPropertySchema: vNeverInstance,
-      ...options,
-      errorMessageFns: { ...options.errorMessageFns },
-      type: typeString,
-    } as DiscriminatedUnionOptions
-    const parserFn = options.parser
-      ? options.parser(schemas, fOptions)
-      : parseDiscriminatedUnion(schemas, fOptions)
-    return createFinalBaseObject(baseUnionObject, parserFn, typeString, 'discriminated union', {
-      unionTypes: schemas,
-      discriminatedUnionKey: fOptions.discriminatedUnionKey,
-      unmatchedPropertySchema: fOptions.unmatchedPropertySchema,
-    }) as VUnion<UnionType>
-  }
-
-  function vUnionFn(
-    schemasOrLiterals: UnionType | LiteralUnionType | ObjectUnionSchemas,
-    options:
-      | PartialDiscriminatedUnionOptions
-      | UnionOptions<VUnionOutput<UnionType>>
-      | LiteralUnionOptions<unknown> = {},
-  ): VUnion<UnionType> | VUnionLiterals<LiteralUnionType[number]> {
-    if (!Array.isArray(schemasOrLiterals)) throw new Error('types must be an array')
-    if ('literalUnion' in options && options.literalUnion === true)
-      return vUnionFnLiteral(schemasOrLiterals, options)
-
-    let baseTypes: BaseTypes | 'mixed' | undefined
-    let typeString = ''
-    for (const schema of schemasOrLiterals as MinimumSchema[]) {
-      if (!isObjectType(schema)) throw new Error('must be of type schema')
-      if (!('baseType' in schema)) throw new Error('must be of type schema')
-      if (isTransformed(schema as MinimumSchema | MinimumObjectSchema))
-        throw new Error('transformed schemas cannot be included in a union')
-      if (baseTypes === undefined)
-        baseTypes = (schema as MinimumSchema | MinimumObjectSchema).baseType
-      else if (baseTypes !== (schema as MinimumSchema | MinimumObjectSchema).baseType)
-        baseTypes = 'mixed'
-
-      typeString = `${typeString}${
-        groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type
-      }|`
-    }
-
-    typeString = typeString.slice(0, -1)
-
-    if ('discriminatedUnionKey' in options && typeof options.discriminatedUnionKey === 'string') {
-      if (baseTypes !== 'object') throw new Error('all elements must be a object schemas')
-      return vUnionFnDiscriminatedUnion(
-        schemasOrLiterals as ObjectUnionSchemas,
-        options,
-        typeString,
-      )
-    }
-
+    options: VUnionKeyOptions = {},
+  ): VUnionKey<ObjectUnionSchemas> {
     return createFinalBaseObject(
       baseUnionObject,
-      (options as UnionOptions<VUnionOutput<UnionType>>).parser ??
-        parseUnion(schemasOrLiterals as UnionType),
-      typeString,
-      (options as UnionOptions<VUnionOutput<UnionType>>).baseType ?? 'union',
-      (options as UnionOptions<VUnionOutput<UnionType>>).definitionObject ?? {
-        unionTypes: schemasOrLiterals,
-      },
-    ) as VUnion<UnionType>
+      options.parser ?? parseUnionKey(key, schemas, options),
+      options.type ?? schemasToTypeString(schemas),
+      options.baseType ?? 'discriminated union',
+      options.definitionObject ?? { key, schemas },
+    ) as VUnionKey<ObjectUnionSchemas>
   }
 
-  const vUnion: VUnionFn = ((types, options) => vUnionFn(types, options)) as VUnionFn
+  function vUnionAdv(
+    matches: PropertySchemasDef,
+    schemas: UnionSchemas,
+    options: VUnionOptions = {},
+  ): VUnionAdvanced<UnionSchemas> {
+    return createFinalBaseObject(
+      baseUnionObject,
+      options.parser ?? parseUnionAdvanced(matches, schemas, options.noMatchFoundInUnion),
+      options.type ?? schemasToTypeString(schemas),
+      options.baseType ?? 'discriminated union',
+      options.definitionObject ?? { matches, schemas },
+    ) as VUnionAdvanced<UnionSchemas>
+  }
+
+  function vUnionFn(schemas: UnionSchemas, options: VUnionOptions = {}): VUnion<UnionSchemas> {
+    return createFinalBaseObject(
+      baseUnionObject,
+      options.parser ?? parseUnion(schemas, options.noMatchFoundInUnion),
+      options.type ?? schemasToTypeString(schemas),
+      options.baseType ?? 'union',
+      options.definitionObject ?? { schemas },
+    ) as VUnion<UnionSchemas>
+  }
+
+  const vUnion: VUnionFn = Object.defineProperties(vUnionFn, {
+    literals: {
+      value: vUnionLiterals,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    },
+    key: {
+      value: vUnionKey,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    },
+    advanced: {
+      value: vUnionAdv,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    },
+  }) as VUnionFn
 
   const vOptional: VOptionalFn = function vOptionalFn<T extends MinimumSchema>(
     type: T,

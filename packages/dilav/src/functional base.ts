@@ -106,7 +106,7 @@ import {
   endsWith,
 } from './types/string'
 
-import { parseUnion, parseDiscriminatedUnion, parseLiteralUnion } from './types/union'
+import { parseUnion, parseUnionKey, parseUnionLiteral, parseUnionAdvanced } from './types/union'
 
 // export { parseUnion, parseDiscriminatedUnion, parseStringUnion }
 
@@ -224,7 +224,7 @@ export default {
     validations: {},
   },
   union: {
-    parsers: { parseUnion, parseDiscriminatedUnion, parseStringUnion: parseLiteralUnion },
+    parsers: { parseUnion, parseUnionKey, parseUnionLiteral, parseUnionAdvanced },
     validations: {},
   },
   map: {

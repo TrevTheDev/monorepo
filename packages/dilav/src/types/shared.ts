@@ -1,8 +1,9 @@
-import { ResultError, isResult } from '../toolbelt'
+import { isResult } from '../toolbelt'
 
 import {
   MinimumArrayRestSchema,
   MinimumSchema,
+  SafeParseOutput,
   VOptional,
   ValidArrayItem,
   ValidationErrors,
@@ -28,14 +29,12 @@ export function isObjectType(val: unknown): val is {} {
   return typeOfItem(val) === 'Object'
 }
 
-export function errorFromResultError(
-  resultError: ResultError<ValidationErrors, unknown>,
-): ValidationErrors {
+export function errorFromResultError(resultError: SafeParseOutput<unknown>): ValidationErrors {
   if (isResult(resultError)) throw new Error('was an result, so no error found!')
   return resultError[0]
 }
 
-export function resultFromResultError<T>(resultError: ResultError<ValidationErrors, T>): T {
+export function resultFromResultError<T>(resultError: SafeParseOutput<T>): T {
   if (!isResult(resultError)) throw new Error('was an error, so no result found!')
   return resultError[1]
 }
@@ -44,7 +43,7 @@ export function firstError(validationErrors: ValidationErrors) {
   return validationErrors.errors[0]
 }
 
-export function firstErrorFromResultError(resultError: ResultError<ValidationErrors, unknown>) {
+export function firstErrorFromResultError(resultError: SafeParseOutput<unknown>) {
   return firstError(errorFromResultError(resultError))
 }
 

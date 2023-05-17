@@ -7,6 +7,71 @@ type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V exten
 const assertEqual = <A, B>(val2: AssertEqual<A, B>) => val2
 
 it('typing tests', () => {
+  const A = v.literal('A')
+  const B = v.literal('B')
+  const X = v.literal('X')
+  const Y = v.literal('Y')
+  const example = v.union.advanced({ _type: v.string }, [
+    v.union.advanced({ _type: A, duration: v.never }, [
+      v.union.advanced({ flag: v.true }, [
+        v.union.advanced({ technique: X }, [
+          v.object({
+            _type: A,
+            flag: v.true,
+            technique: X,
+            time: v.number,
+            delay: v.number,
+          }),
+        ]),
+        v.union.advanced({ technique: Y }, [
+          v.object({
+            _type: A,
+            flag: v.true,
+            technique: Y,
+            time: v.array([v.number, v.number]),
+            delay: v.number,
+          }),
+        ]),
+      ]),
+      v.union.advanced({ flag: v.false, technique: v.never, time: v.never }, [
+        v.object({
+          _type: A,
+          flag: v.false,
+          delay: v.number,
+        }),
+      ]),
+    ]),
+    v.union.advanced(
+      {
+        _type: B,
+        flag: v.never,
+        technique: v.never,
+        time: v.never,
+      },
+      [
+        v.object({
+          _type: B,
+          duration: v.number,
+          delay: v.number,
+        }),
+      ],
+    ),
+  ])
+  example.parse({ _type: 'A', delay: 1, flag: true, technique: 'X', time: 1 })
+  example.parse({ _type: 'A', delay: 1, flag: true, technique: 'Y', time: [1, 1] })
+  example.parse({ _type: 'A', delay: 1, flag: false })
+  example.parse({ _type: 'B', duration: 1, delay: 1 })
+
+  const x = v.union.advanced({ a: v.literal('a') }, [
+    v.object({ a: v.literal('a'), b: v.literal('b') }),
+    v.object({ a: v.literal('a'), c: v.literal('c') }),
+    v.union.advanced({ d: v.literal('d') }, [
+      v.object({ a: v.literal('a'), d: v.literal('d'), e: v.literal('e') }),
+    ]),
+  ])
+  const x1 = x.safeParse({ a: 'a', c: 'c' })
+  const x2 = x.safeParse({ a: 'a', d: 'd', e: 'e' })
+
   assertEqual<v.Infer<typeof v.string>, string>(true)
   expect(v.string.type).toBe('string')
   assertEqual<typeof v.string.type, 'string'>(true)
@@ -218,37 +283,67 @@ it('typing tests', () => {
   const obj1 = v.object({ a: v.never, b: v.literal('B') }, v.unknown)
   obj1.parse({ b: 'B', c: 'C' })
   expect(() => obj1.parse({ b: 'b', a: 'C' })).toThrow()
-  const res = obj1.safeParse({ b: 'b', a: 'C' })
-  // const A1 = v.object({
-  //   _type: v.literal('A'),
-  //   delay: v.number,
-  //   flag: v.boolean.beTrue(),
-  //   technique: v.literal('X'),
-  //   time: v.number,
-  // })
 
-  // const A2 = v.object({
-  //   _type: v.literal('A'),
-  //   delay: v.number,
-  //   flag: v.boolean.beTrue(),
-  //   technique: v.literal('X'),
-  //   time: v.array([v.number, v.number]),
-  // })
+  const BaseAbstract = v.object(
+    {
+      duration: v.never,
+      delay: v.never,
+      flag: v.never,
+      technique: v.never,
+      time: v.never,
+    },
+    v.unknown,
+  )
 
-  // const A3 = v.object({
-  //   _type: v.literal('A'),
-  //   delay: v.number,
-  //   flag: v.boolean.beFalse(),
-  // })
+  const AAbstract = BaseAbstract.extends({
+    _type: v.literal('A'),
+    delay: v.number,
+  })
 
-  // const B = v.object({
-  //   _type: v.literal('B'),
-  //   duration: v.number,
-  //   delay: v.number,
-  // })
+  const AAbstractFlagTrue = AAbstract.extends({
+    flag: v.boolean.beTrue(),
+  })
 
-  // const union = v.union([A1, A2, A3, B])
-  // const typer = union.parse({})
+  const union = v.union.key('_type', [
+    AAbstractFlagTrue.extends({ technique: v.literal('X'), time: v.number }),
+    AAbstractFlagTrue.extends({
+      technique: v.literal('Y'),
+      time: v.array([v.number, v.number]),
+    }),
+    AAbstract.extends({
+      flag: v.boolean.beFalse(),
+    }),
+    BaseAbstract.extends({
+      _type: v.literal('B'),
+      duration: v.number,
+      delay: v.number,
+    }),
+  ])
+  union.parse({
+    _type: 'A',
+    delay: 1,
+    flag: true,
+    technique: 'X',
+    time: 1,
+  })
+  union.parse({
+    _type: 'A',
+    delay: 1,
+    flag: true,
+    technique: 'Y',
+    time: [1, 1],
+  })
+  union.parse({
+    _type: 'A',
+    delay: 1,
+    flag: false,
+  })
+  union.parse({
+    _type: 'B',
+    duration: 1,
+    delay: 1,
+  })
+
   // type B = v.Infer<typeof B>
 
   // type X =

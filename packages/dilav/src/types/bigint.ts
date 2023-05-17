@@ -1,12 +1,12 @@
-import type { ResultError, DeepWriteable } from '../toolbelt'
+import type { DeepWriteable } from '../toolbelt'
 
 import type {
   SafeParseFn,
   BaseSchema,
   SingleValidationError,
   ValidationArray,
-  ValidationErrors,
   ValidationItem,
+  SafeParseOutput,
 } from './types'
 import { baseObject } from './init'
 import { createValidationBuilder } from './base validations'
@@ -26,8 +26,8 @@ const errorFns = baseObject[defaultErrorFnSym]
 
 export function parseBigInt(
   invalidBigIntFn?: (invalidValue: string) => SingleValidationError,
-): (value: unknown) => ResultError<ValidationErrors, bigint> {
-  return (value: unknown): ResultError<ValidationErrors, bigint> => {
+): (value: unknown) => SafeParseOutput<bigint> {
+  return (value: unknown): SafeParseOutput<bigint> => {
     if (typeof value !== 'bigint') {
       return [
         { input: value, errors: [(invalidBigIntFn ?? errorFns.parseBigInt)(String(value))] },
@@ -38,9 +38,7 @@ export function parseBigInt(
   }
 }
 
-export function coerceBigInt(
-  value: string | number | bigint | boolean,
-): ResultError<ValidationErrors, bigint> {
+export function coerceBigInt(value: string | number | bigint | boolean): SafeParseOutput<bigint> {
   return [undefined, BigInt(value)]
 }
 
@@ -177,7 +175,7 @@ export interface VBigInt<Output extends bigint = bigint, Input = unknown>
 }
 
 type BigIntOptions = {
-  parser?: SafeParseFn<unknown, bigint>
+  parser?: SafeParseFn<bigint>
   parseBigIntError?: (invalidValue: unknown) => SingleValidationError
 }
 
