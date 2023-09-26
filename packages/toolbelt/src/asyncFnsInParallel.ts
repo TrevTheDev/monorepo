@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { IsFinite, TupleToUnion, UnionToTuple } from './typescript utils'
+import { IsFinite, TupleToUnion, UnionToTuple } from './typescriptUtils'
 
 type ResultCb<
   ResultCbArgs extends any[] = any[],

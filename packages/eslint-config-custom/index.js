@@ -54,6 +54,9 @@ module.exports = {
     '@typescript-eslint/func-call-spacing': ['error'],
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '_.*' }],
     // 'import/no-extraneous-dependencies': ['error', { packageDir: ['./vitest'] }],
+    'no-shadow': 'off',
+    '@typescript-eslint/no-shadow': 'error',
+    'no-restricted-syntax': ['error', 'ForInStatement', 'LabeledStatement', 'WithStatement'],
   },
   settings: {
     node: {

@@ -1,118 +1,158 @@
-import {
-  didError,
-  DidError,
-  EnhancedMap,
-  enhancedMap,
-  resultError,
-  ResultError,
-} from '@trevthedev/toolbelt'
+import { addStateMachine, EnhancedMap, enhancedMap } from '@trevthedev/toolbelt'
 
-import readerQueue from './readers to objects/reader queue'
 import HttpError from './stream/http error'
-import { Reader } from './stream/reader'
-import { ServerResponseCode, ServerStream } from './stream/server stream'
+import { ServerStream0, ServerStreamN } from './stream/server stream'
 import { Writer } from './stream/writer'
-import { Message, MessageId } from './types'
+import { Message, MessageId, QuestionId } from './types'
+import { readersToObjects } from './readers to objects/readers to objects'
+import { AwaitObjectEvents } from './readers to objects/data to objects'
 
 export type ConversationId = string
 
 export type Conversations = ReturnType<typeof conversationDb>
 
+// export type Conversation = {
+//   readonly messageHandlers: EnhancedMap<(msg: Message) => void, MessageId>
+//   readonly startStream: ServerStream0
+//   readonly writer: Writer
+//   readonly state: 'error' | 'ended' | 'init' | 'underway'
+//   readonly isEnded: boolean
+//   addStream(stream: ServerStream0): HttpError | undefined
+//   await: (nextObjectCb: (message: object) => void, noDataCb?: (() => void) | undefined) => void
+//   error(error: HttpError): void
+//   end(): void
+// }
+
 export type Conversation = {
-  readonly messageHandlers: EnhancedMap<(msg: Message) => void, MessageId>
-  readonly startStream: ServerStream
-  readonly writer: Writer
-  readonly state: 'error' | 'ended' | 'init' | 'underway'
+  readonly uid: string
+  messageHandlers: EnhancedMap<(msg: Message) => void, MessageId>
+  writer: Writer
+  readonly startStream: ServerStream0
   readonly isEnded: boolean
-  addStream(stream: ServerStream & { idx: number }): DidError<HttpError, boolean>
-  await: (nextObjectCb: (message: Message) => void, noDataCb?: (() => void) | undefined) => void
-  error(error: HttpError): void
-  end(): void
+  readonly state: 'cancelled' | 'errored' | 'ended' | 'init' | 'underway'
+  addStream: (stream: ServerStreamN) => void
+  await: (
+    nextObjectCb: (object: Record<string, unknown>) => void,
+    awaitObjectEvents: AwaitObjectEvents,
+  ) => void
+  toState: (state: 'cancelled' | 'errored' | 'ended' | 'underway') => Conversation
+  error: (error: HttpError) => void
+  cancel: (reason: unknown) => void
+  end: () => void
 }
 
 export function conversationDb() {
   const conversationsDb = enhancedMap<Conversation, ConversationId>()
 
   return {
-    startConversation(eStream: ServerStream & { idx: 0 }) {
-      const output = resultError<Conversation, HttpError>()
-      const possibleRespondedStream = eStream.respondConversation(() => conversation.end())
-      if (possibleRespondedStream.isError())
-        return output.error(
-          (
-            possibleRespondedStream as ResultError<
-              { uid: string; writer: Writer },
-              HttpError,
-              'error'
-            >
-          ).error,
-        )
-      const { uid, writer } = (
-        possibleRespondedStream as ResultError<{ uid: string; writer: Writer }, HttpError, 'result'>
-      )()
+    startConversation(eStream: ServerStream0): Conversation {
+      // function toEndState(endState: 'ended' | 'error') {
+      //   if (!conversation.isEnded) {
+      //     conversation.toState(endState)
+      //     if (!readerQ.isEnded) readerQ.end()
+      //     writer.end()
+      //     conversationsDb.delete(conversation.uid)
+      //   }
+      // }
 
-      let state: 'init' | 'underway' | 'ended' | 'error' = 'init'
+      const writer = eStream.respondConversation({
+        onCancel(reason) {
+          conversation.cancel(reason)
+        },
+        onDone() {
+          if (!conversation.isEnded) conversation.end()
+        },
+        onError(error) {
+          conversation.error(error)
+        },
+      })
 
-      const errorFn = (error: HttpError) => {
-        if (!conversation.isEnded) {
-          error.send(writer)
-          toEndState('error')
-        }
-      }
+      const readerQ = readersToObjects({
+        onCancel(reason) {
+          conversation.cancel(reason)
+        },
+        onError(error) {
+          conversation.error(error)
+        },
+        onDone() {
+          console.log('done')
+        },
+        onNoReaders() {
+          console.log('no readers')
+        },
+      })
 
-      const readerQ = readerQueue<Reader>(errorFn)
-
-      const toEndState = (endState: 'ended' | 'error') => {
-        if (!conversation.isEnded) {
-          state = endState
-          readerQ.cancel()
-          writer.end()
-          conversationsDb.delete(uid)
-        }
-      }
-
-      const conversation: Conversation = {
-        messageHandlers: enhancedMap<(msg: Message) => void, QuestionId>(),
-        writer,
-        get startStream() {
-          return eStream
+      const conversation = addStateMachine({
+        baseObject: {
+          get uid(): ConversationId {
+            return eStream.uid
+          },
+          messageHandlers: enhancedMap<(msg: Message) => void, QuestionId>(),
+          writer,
+          get startStream(): ServerStream0 {
+            return eStream
+          },
+          get isEnded(): boolean {
+            return ['ended', 'error'].includes(conversation.state)
+          },
+          addStream(stream: ServerStreamN): void {
+            conversation.toState('underway')
+            readerQ.addReader(stream.read, {
+              onCancel(reason) {
+                stream.respondCancel(reason)
+              },
+              onError(error) {
+                stream.respondError(error)
+              },
+              onDone() {
+                stream.respondEnd()
+              },
+            })
+          },
+          await: readerQ.awaitObject,
+          error(error: HttpError): void {
+            if (!conversation.isEnded) {
+              conversation.toState('errored')
+              if (!readerQ.isEnded) readerQ.error(error)
+              if (!writer.isEnded) {
+                error.send(writer)
+                writer.error(error)
+              }
+              conversationsDb.delete(conversation.uid)
+            }
+          },
+          cancel(reason: unknown) {
+            if (!conversation.isEnded) {
+              conversation.toState('cancelled')
+              if (!readerQ.isEnded) readerQ.cancel(reason)
+              if (!writer.isEnded) writer.cancel(reason)
+              conversationsDb.delete(conversation.uid)
+            }
+          },
+          end() {
+            if (conversation.isEnded) throw new Error('conversation already ended')
+            conversation.toState('ended')
+            if (!readerQ.isEnded) readerQ.end()
+            if (!writer.isEnded) writer.end()
+            conversationsDb.delete(conversation.uid)
+          },
         },
-        get state() {
-          return state
-        },
-        get isEnded() {
-          return ['ended', 'error'].includes(state)
-        },
-        addStream(stream: ServerStream & { idx: number }) {
-          const output = didError<HttpError>()
-          if (conversation.isEnded)
-            return output.error(
-              new HttpError(ServerResponseCode.badRequest, 'conversation already ended'),
-            )
-          state = 'underway'
-          return readerQ.addReader(
-            stream.read,
-            stream.idx,
-            (serverResponseCode: ServerResponseCode) => {
-              if (stream.idx !== 0) stream.respondEnd(serverResponseCode)
-            },
-          )
-        },
-        await: readerQ.await,
-        error(error: HttpError) {
-          return errorFn(error)
-        },
-        end() {
-          state = 'ended'
-          readerQ.cancel()
-          writer.end()
-          conversationsDb.delete(uid)
-        },
-      }
+        transitions: [
+          ['init', ['underway', 'ended', 'errored', 'cancelled']],
+          ['underway', ['ended', 'errored', 'cancelled']],
+        ],
+        beforeCallGuards: [
+          ['writer', ['init', 'underway']],
+          ['addStream', ['init', 'underway']],
+          ['await', ['init', 'underway']],
+        ],
+      })
 
       conversationsDb.add(conversation)
 
-      return output(conversation)
+      conversation.addStream(eStream)
+
+      return conversation
     },
     get(conversationId: ConversationId) {
       return conversationsDb.get(conversationId)

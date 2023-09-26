@@ -1,95 +1,107 @@
-import { runFunctionsOnlyOnce } from '@trevthedev/toolbelt'
-import { ServerHttp2Stream } from 'http2'
-import { FetchDuplex } from '../../../browser/duplex stream'
-import httpError from './http error'
+import {
+  ObjectWrappedWithStateMachine,
+  addStateMachine,
+  runFunctionsOnlyOnce,
+} from '@trevthedev/toolbelt'
 import HttpError from './http error'
-import { ServerResponseCode } from './server stream'
+import { ServerStreamN } from './server stream'
+import { SharedEvents, SharedIFace } from '../types'
 
-export type Reader = ReturnType<typeof createReader>
-export type AwaitedReader = ReturnType<Reader>
+export interface ReaderEvents extends Omit<SharedEvents, 'onDone'> {
+  onText(text: string): void // onDone
+}
 
-export default function createReader<T extends ServerHttp2Stream>(
-  stream: T,
-  onStreamError: (error: HttpError) => void,
-) {
-  const reader = runFunctionsOnlyOnce()(
-    (onData: (data: string) => void, onError: (error: HttpError) => void, onEnd: () => void) => {
-      let state: 'reading' | 'error' | 'done' | 'cancel' = 'reading'
+export interface ReaderController
+  extends ObjectWrappedWithStateMachine<
+    Omit<SharedIFace, 'end'>,
+    'cancelled' | 'errored' | 'ended',
+    'reading' | 'cancelled' | 'errored' | 'ended'
+  > {
+  readonly idx: number
+  readonly isEnded: boolean
+}
 
-      const toEndState = runFunctionsOnlyOnce(null)(
-        (endState: 'error' | 'done' | 'cancel' = 'done') => {
-          state = endState
-          stream.removeListener('data', dataCb)
-          stream.removeListener('end', endCb)
-          stream.removeListener('aborted', abortedFn)
-          stream.removeListener('error', errorFn)
-          stream.removeListener('close', closeCb)
-          if (state === 'done') onEnd()
-        },
-      )
+export type Reader = (readerEvents: ReaderEvents) => ReaderController
 
-      const readErrorFn = runFunctionsOnlyOnce(null)((error: HttpError) => {
-        toEndState('error')
-        onError(error)
-        onStreamError(error)
-        return false
-      })
+export default function streamToText(stream: ServerStreamN): Reader {
+  function streamToTextFn(readerEvents: ReaderEvents): ReaderController {
+    const http2Stream = stream.stream
+    let text: string
 
-      const throwErrorFn = (msg: string) => () =>
-        readErrorFn(new httpError(ServerResponseCode.internalServerError, msg))
-      const abortedFn = throwErrorFn('unexpected stream aborted')
-      const errorFn = throwErrorFn('unexpected stream error')
+    const cleanUp = runFunctionsOnlyOnce(null)(() => {
+      http2Stream.removeListener('data', dataCb)
+      http2Stream.removeListener('end', endCb)
+      http2Stream.removeListener('aborted', abortedFn)
+      http2Stream.removeListener('error', errorFn)
+      http2Stream.removeListener('close', closeCb)
+      http2Stream.removeListener('timeout', timeOutCb)
+    })
 
-      const dataCb = (chunk: Buffer) => {
-        if (state === 'reading') onData(chunk.toString())
-        else if (state === 'done')
-          readErrorFn(
-            new httpError(
-              ServerResponseCode.internalServerError,
-              'data received, but stream is in the wrong state',
-            ),
-          )
+    function toErrorState(error: HttpError) {
+      if (readerObj.state === 'reading') {
+        readerObj.toState('errored')
+        cleanUp()
+        readerEvents.onError(error)
       }
+    }
 
-      const endCb = runFunctionsOnlyOnce(null)(() => {
-        if (state === 'reading') toEndState()
-      })
+    const toErrorStateFn = (msg: string) => toErrorState(new HttpError(msg))
 
-      const closeCb = () => {
-        if (state === 'reading')
-          readErrorFn(
-            new httpError(ServerResponseCode.internalServerError, 'unexpected stream closure'),
-          )
-      }
+    const abortedFn = () => toErrorStateFn('unexpected stream aborted')
+    const errorFn = () => toErrorStateFn('unexpected stream error')
 
-      stream.on('data', dataCb)
-      // The 'end' event is emitted when there is no more data to be consumed from the stream.
-      stream.once('end', endCb)
-      // The 'finish' event is emitted after the stream.end() method has been called, and all data has been flushed to the underlying system.
-      stream.once('finished', () => {
-        debugger
-      })
-      // The 'aborted' event is emitted whenever a Http2Stream instance is abnormally aborted in mid-communication.
-      stream.once('aborted', abortedFn)
-      // The 'error' event is emitted when an error occurs during the processing of an Http2Stream.
-      stream.once('error', errorFn)
-      // The 'close' event is emitted when the Http2Stream is destroyed. Once this event is emitted, the Http2Stream instance is no longer usable.
-      stream.once('close', closeCb)
-      return {
-        get state() {
-          return state
+    function dataCb(chunk: Buffer) {
+      if (readerObj.state !== 'reading')
+        toErrorStateFn('data received, but stream is in the wrong state')
+      else text += chunk.toString()
+    }
+
+    function endCb() {
+      if (readerObj.state === 'reading') {
+        readerObj.toState('ended')
+        cleanUp()
+        readerEvents.onText(text)
+      } else toErrorStateFn('data received, but stream is in the wrong state')
+    }
+
+    function closeCb() {
+      if (readerObj.state === 'reading') toErrorStateFn('unexpected stream closure')
+    }
+
+    const timeOutCb = () => toErrorStateFn('timed out')
+
+    http2Stream.on('data', dataCb)
+    // The 'end' event is emitted when there is no more data to be consumed from the stream.
+    http2Stream.once('end', endCb)
+    // The 'aborted' event is emitted whenever a Http2Stream instance is abnormally aborted in mid-communication.
+    http2Stream.once('aborted', abortedFn)
+    // The 'error' event is emitted when an error occurs during the processing of an Http2Stream.
+    http2Stream.once('error', errorFn)
+    // The 'close' event is emitted when the Http2Stream is destroyed. Once this event is emitted, the Http2Stream instance is no longer usable.
+    http2Stream.once('close', closeCb)
+    // The 'timeout' event is emitted after no activity is received for this Http2Stream within the number of milliseconds set using http2stream.setTimeout()
+    http2Stream.once('timeout', timeOutCb)
+
+    const readerObj = addStateMachine({
+      baseObject: {
+        cancel(reason: unknown): void {
+          readerObj.toState('cancelled')
+          cleanUp()
+          readerEvents.onCancel(reason)
         },
-        cancel() {
-          toEndState('cancel')
+        error(error: HttpError): void {
+          toErrorState(error)
         },
-        // error(error: HttpError) {
-        //   readErrorFn(error)
-        // },
-        // end() {
-        //   toEndState('done')
-        // },
-      }
-    },
-  )
-  return reader
+        get idx(): number {
+          return stream.idx as number
+        },
+        get isEnded(): boolean {
+          return ['cancelled', 'errored', 'ended'].includes(readerObj.state)
+        },
+      },
+      transitions: [['reading', ['cancelled', 'errored', 'ended']]],
+    })
+    return readerObj
+  }
+  return runFunctionsOnlyOnce()(streamToTextFn)
 }

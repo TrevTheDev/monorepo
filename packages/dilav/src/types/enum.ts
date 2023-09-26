@@ -5,8 +5,6 @@ import { VUnionLiterals } from './types'
 import { vUnion } from './init'
 import { LiteralUnionType, VLiteralOptions } from './union'
 
-// const errorFns: DefaultErrorFn = baseObject[defaultErrorFnSym]
-
 type MatchTypes = 'key' | 'value' | 'either'
 
 type LiteralEnumOptions<T> = Identity<
@@ -14,31 +12,6 @@ type LiteralEnumOptions<T> = Identity<
 >
 
 type EnumOptions<T> = LiteralEnumOptions<T> & { matchType?: MatchTypes }
-
-// function parseEnum<T extends object>(
-//   enumV: T,
-//   options: FlattenObjectUnion<EnumOptions<T>> = {},
-// ): SafeParseFn<unknown, T> {
-//   const values = Object.values(enumV)
-//   const keys = Object.keys(enumV)
-//   const matchOnKey = (value) => keys.includes(value)
-//   const matchOnValue = (value) => values.includes(value)
-//   const matchBoth = (value) => matchOnValue(value) || matchOnValue(value)
-//   const matchType: MatchTypes = options.matchType ?? 'value'
-//   const matchFn =
-//     // eslint-disable-next-line no-nested-ternary
-//     matchType === 'key' ? matchOnKey : matchType === 'value' ? matchOnValue : matchBoth
-//   return (value: unknown): SafeParseOutput<T> =>
-//     !matchFn(value)
-//       ? [
-//           {
-//             input: value,
-//             errors: [(options.parseEnumError ?? errorFns.parseEnum)(String(value), enumV)],
-//           },
-//           undefined,
-//         ]
-//       : [undefined, value as T]
-// }
 
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -118,23 +91,10 @@ export function vEnum<T extends object, O extends EnumOptions<T[keyof T]>>(
   return Object.defineProperty(
     vUnion.literals(literals, {
       ...options,
-      // literalUnion: true,
       baseType: 'enum',
       definitionObject: { enum: enumD, literals },
     }),
     'enum',
     { value: enumD, enumerable: false, writable: false, configurable: false },
   )
-
-  // return Object.defineProperty(
-  //   createFinalBaseObject(
-  //     baseEnumObject,
-  //     (options as Opts).parser ?? parseEnum(enumDef, options as EnumOptions<T>),
-  //     typeString,
-  //     'enum',
-  //     { enum: enumDef },
-  //   ) as VEnum<T>,
-  // 'enum',
-  // { value: enumDef, enumerable: false, writable: false, configurable: false },
-  // ) as VEnum<T>
 }

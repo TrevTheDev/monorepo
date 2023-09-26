@@ -127,4 +127,3 @@ export function vDate<Input = unknown, Output extends Date = Date>(
 }
 
 export const vDateInstance = vDate()
-// export const vDateCoerce = vDate({ parser: coerceDate })

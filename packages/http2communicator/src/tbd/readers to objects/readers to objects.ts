@@ -1,93 +1,113 @@
-import { ResultError } from '@trevthedev/toolbelt'
+import { addStateMachine, asyncFunctionLinkedList } from '@trevthedev/toolbelt'
+import type { ObjectWrappedWithStateMachine } from '@trevthedev/toolbelt'
 import HttpError from '../stream/http error'
-import type { AwaitedReader, Reader } from '../stream/reader'
-import { ServerResponseCode } from '../stream/server stream'
-import { dataToObjects } from './data to objects'
+import type { Reader, ReaderController } from '../stream/reader'
+import dataToObjects, { DataToObjects } from './data to objects'
+import { SharedEvents, SharedIFace } from '../types'
 
-export function readersToObjects<T extends Reader>(
-  awaitReader: (
-    onReader: (reader: T, doneWithReaderCb: () => void) => void,
-  ) => ResultError<() => void, Error>,
-  onError: (error: HttpError) => void,
-) {
+export type R2OReaderEvents = SharedEvents
+
+export interface ReadersToObjectsEvents extends SharedEvents {
+  onNoReaders(): void
+}
+
+interface BaseReadersToObjects extends SharedIFace, Pick<DataToObjects, 'awaitObject'> {
+  addReader(reader: Reader, readerEvents: R2OReaderEvents): void
+  readonly isEnded: boolean
+  readonly readerCount: number
+}
+
+export type ReadersToObjects = ObjectWrappedWithStateMachine<
+  BaseReadersToObjects,
+  'idle' | 'reading' | 'cancelled' | 'errored' | 'ended',
+  'idle' | 'reading' | 'cancelled' | 'errored' | 'ended'
+>
+
+const activeStates = ['idle', 'reading'] as ('idle' | 'reading')[]
+
+export function readersToObjects(events: ReadersToObjectsEvents): ReadersToObjects {
   const data2Objects = dataToObjects()
-  let state: 'idle' | 'awaitingReader' | 'reading' | 'cancelled' | 'error' = 'idle'
-  let cancelAwaitReader: (() => void) | undefined
+  const readerLinkList = asyncFunctionLinkedList()
+  let currentReader: ReaderController | undefined
+  let readerCount = 0
+  let cancelReason: unknown
+  let errorArgument: HttpError
 
-  let currentReader: AwaitedReader | undefined
-
-  const isEnded = () => state === 'error' || state === 'cancelled'
-
-  const errorFn = (error: HttpError) => {
-    if (state === 'cancelled') return
-    if (state === 'error') return
-    state = 'error'
-    data2Objects.cancel()
-    onError(error)
-  }
-
-  let doneWithReaderFn: (() => void) | undefined
-
-  const doneProcessingReader = () => {
-    if (doneWithReaderFn) doneWithReaderFn()
-    doneWithReaderFn = undefined
-  }
-
-  const processNextReader = () => {
-    if (state === 'idle') {
-      state = 'awaitingReader'
-      const result = awaitReader((reader, doneWithReader) => {
-        doneWithReaderFn = doneWithReader
-        cancelAwaitReader = undefined
-        if (state === 'awaitingReader') {
-          state = 'reading'
-          const onReaderErrorFn = (error: HttpError) => {
-            currentReader = undefined
-            console.log(error)
-            doneProcessingReader()
-            errorFn(
-              new HttpError(
-                ServerResponseCode.internalServerError,
-                'something went wrong reading the stream',
-              ),
-            )
+  const readersToObj = addStateMachine({
+    baseObject: {
+      addReader(reader: Reader, readerEvents: R2OReaderEvents): void {
+        readerCount += 1
+        readersToObj.toState('reading')
+        readerLinkList((doneCb) => {
+          if (readersToObj.isEnded) {
+            if (readersToObj.state === 'cancelled') readerEvents.onCancel(cancelReason)
+            else if (readersToObj.state === 'errored') readerEvents.onError(errorArgument)
+            else throw new Error('unexpected state')
+          } else {
+            currentReader = reader({
+              onText: (data) => {
+                currentReader = undefined
+                readerCount -= 1
+                data2Objects.addData(data)
+                readerEvents.onDone()
+                if (readerCount === 0) {
+                  readersToObj.toState('idle')
+                  events.onNoReaders()
+                }
+                doneCb()
+              },
+              onError: readersToObj.error,
+              onCancel: readersToObj.cancel,
+            })
           }
-          const onReaderEndFn = () => {
-            currentReader = undefined
-            doneProcessingReader()
-            if (!isEnded()) {
-              state = 'idle'
-              processNextReader()
-            }
-          }
-          currentReader = reader(data2Objects.addData, onReaderErrorFn, onReaderEndFn)
+        })
+      },
+      awaitObject: data2Objects.awaitObject,
+      cancel(reason: unknown): void {
+        if (!readersToObj.isEnded) {
+          if (currentReader && !currentReader.isEnded) currentReader.cancel(reason)
+          if (!data2Objects.isEnded) data2Objects.cancel(reason)
+          currentReader = undefined
+          readersToObj.toState('cancelled')
+          cancelReason = reason
+          events.onCancel(reason)
         }
-      })
-      if (result.isError())
-        errorFn(
-          new HttpError(
-            ServerResponseCode.internalServerError,
-            (result as ResultError<() => void, Error, 'error'>).error.message,
-          ),
-        )
-      else {
-        cancelAwaitReader = (result as ResultError<() => void, Error, 'result'>)()
-      }
-    }
-  }
-
-  processNextReader()
-
-  return {
-    awaitObject: data2Objects.awaitObject,
-    cancel: () => {
-      if (!isEnded) {
-        state = 'cancelled'
-        data2Objects.cancel()
-        if (cancelAwaitReader) cancelAwaitReader()
-        if (currentReader) currentReader.cancel()
-      }
-      doneProcessingReader()
+      },
+      error(errorArg: HttpError): void {
+        if (!readersToObj.isEnded) {
+          if (currentReader && !currentReader.isEnded) currentReader.error(errorArg)
+          if (!data2Objects.isEnded) data2Objects.error(errorArg)
+          currentReader = undefined
+          readersToObj.toState('errored')
+          errorArgument = errorArg
+          events.onError(errorArg)
+        }
+      },
+      end(): void {
+        if (readersToObj.isEnded) throw new Error('already in an end state')
+        if (currentReader && !currentReader.isEnded) throw new Error('current reader not ended')
+        if (readerCount !== 0) throw new Error('not all readers have been read')
+        if (data2Objects.dataState !== 'noData') throw new Error('still has data in data2Object')
+        if (!data2Objects.isEnded) data2Objects.end()
+        currentReader = undefined
+        readersToObj.toState('ended')
+        events.onDone()
+      },
+      get readerCount(): number {
+        return readerCount
+      },
+      get isEnded(): boolean {
+        return ['cancelled', 'errored', 'ended'].includes(readersToObj.state)
+      },
     },
-  }
+    transitions: [
+      ['idle', ['reading', 'cancelled', 'errored', 'ended']],
+      ['reading', ['idle', 'cancelled', 'errored', 'ended']],
+    ],
+    beforeCallGuards: [
+      ['addReader', activeStates],
+      ['awaitObject', activeStates],
+    ],
+  })
+  return readersToObj
 }

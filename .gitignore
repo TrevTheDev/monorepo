@@ -44,3 +44,5 @@ archive
 .VSCodeCounter
 
 .vscode
+
+packages/playground/src/**/*

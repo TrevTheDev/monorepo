@@ -1,6 +1,6 @@
 {
   "name": "dilav",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "A blazing fast way to transforms `unknown` types, into valid known typescript types.",
   "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/dilav#readme",
   "repository": {
@@ -24,17 +24,13 @@
   "files": [
     "build/"
   ],
-  "exports": {
-    "require": "./build/index.js",
-    "import": "./build/index.mjs",
-    "types": "./build/index.d.ts"
-  },
   "sideEffects": false,
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
     "buildx": "echo 'WIP'",
-    "build": "tsup --dts",
+    "build": "rimraf dist && tsup --dts",
     "build:tsc": "tsc && tsc -p tsconfig-esm.json",
     "build:no": "tsc --noEmit",
     "dev": "tsup --dts --watch",
@@ -49,23 +45,25 @@
   "license": "MIT",
   "private": false,
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.59.2",
-    "@typescript-eslint/parser": "^5.59.2",
+    "@typescript-eslint/eslint-plugin": "^5.59.6",
+    "@typescript-eslint/parser": "^5.59.6",
     "docsify-cli": "^4.4.4",
-    "esbuild": "^0.17.18",
-    "eslint": "^8.39.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-custom": "*",
+    "esbuild": "^0.17.19",
+    "eslint-config-custom": "workspace:*",
     "eslint-config-prettier": "^8.8.0",
     "prettier": "2.8.8",
+    "rimraf": "^5.0.1",
     "ts-unused-exports": "^9.0.4",
-    "tsconfig": "*",
+    "tsconfig": "workspace:*",
     "tsup": "^6.7.0",
     "typescript": "^5.0.4",
-    "vitest": "^0.30.1",
-    "zod": "^3.21.4"
+    "vite": "^4.3.8",
+    "vitest": "^0.31.1",
+    "zod": "^3.21.4",
+    "@trevthedev/toolbelt": "workspace:*"
   },
   "engines": {
     "node": ">=19.0.0"
-  }
+  },
+  "type": "module"
 }

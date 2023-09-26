@@ -339,4 +339,3 @@ export function vString(options: StringOptions = {}): VString {
 }
 
 export const vStringInstance = vString()
-// export const vStringCoerce = vString({ parser: coerceString })

@@ -7,8 +7,10 @@
       "outputs": ["build/**", ".next/**"]
     },
     "test": {
-      "dependsOn": ["build"],
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx"]
+    },
+    "test:watch": {
+      "cache": false
     },
     "lint": {
       "outputs": []

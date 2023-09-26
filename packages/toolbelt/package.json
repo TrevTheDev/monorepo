@@ -8,16 +8,13 @@
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "module": "./build/index.mjs",
-  "exports": {
-    "require": "./build/index.js",
-    "import": "./build/index.mjs",
-    "types": "./build/index.d.ts"
-  },
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
-    "build": "tsup --dts",
-    "build:tsc": "tsc && tsc -p tsconfig-esm.json",
+    "build": "rimraf dist && tsup --dts",
+    "build:tsc": "rimraf dist && tsc && tsc -p tsconfig-esm.json",
+    "build:no": "tsc --noEmit",
     "dev": "tsup --dts --watch",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint && npm run build",
@@ -40,21 +37,20 @@
   },
   "private": false,
   "devDependencies": {
-    "@types/node": "^18.16.3",
-    "@typescript-eslint/eslint-plugin": "^5.59.2",
-    "@typescript-eslint/parser": "^5.59.2",
-    "eslint": "^8.39.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-custom": "*",
+    "@types/node": "^20.4.1",
+    "@typescript-eslint/eslint-plugin": "^5.61.0",
+    "@typescript-eslint/parser": "^5.61.0",
+    "eslint-config-custom": "workspace:*",
     "eslint-config-prettier": "^8.8.0",
-    "prettier": "2.8.8",
-    "promises-aplus-tests": "^2.1.2",
-    "tsconfig": "*",
-    "tsup": "^6.7.0",
-    "typescript": "^5.0.4",
-    "vitest": "^0.30.1"
+    "prettier": "3.0.0",
+    "rimraf": "^5.0.1",
+    "tsconfig": "workspace:*",
+    "tsup": "^7.1.0",
+    "typescript": "^5.1.6",
+    "vitest": "^0.33.0"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "type": "module"
 }

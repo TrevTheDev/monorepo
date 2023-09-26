@@ -1,9 +1,9 @@
-import { Message, MessagePayload, MessageTypes } from './question'
+import { addStateMachine, createUid, didError, ResultError } from '@trevthedev/toolbelt'
 
-import { createUid, didError, DidError, resultError, ResultError } from '@trevthedev/toolbelt'
 import HttpError from '../stream/http error'
 import { Conversation } from '../conversation db'
 import { ServerResponseCode } from '../stream/server stream'
+import { Message, MessagePayload } from '../types'
 
 type Events = {
   onMessage?<S extends MessagePayload>(message: S, continues: boolean): void
@@ -18,8 +18,6 @@ type State =
   | 'forceEnd'
   | 'replied'
   | 'replyReceived'
-
-const END_STATES = ['endMessage', 'forceEnd', 'error', 'replied', 'replyReceived']
 
 // export type Response = ReturnType<typeof response>
 
@@ -37,36 +35,34 @@ export type Response = {
   questionId: string | undefined
 }
 
+const END_STATES = ['endMessage', 'replied', 'replyReceived', 'errored', 'cancelled']
+
+function isEnded(state) {
+  return END_STATES.includes(state)
+}
+
 export function response(
   conversation: Conversation,
   questionMessage: Message,
   onEnded: () => void,
 ) {
-  const output = resultError<Response, HttpError>()
-
-  let state: State = 'responding'
-
   const { messageHandlers, writer, error } = conversation
 
-  const isEnded = () => END_STATES.includes(state)
-
-  const endResponse = (finalState: 'endMessage' | 'error' | 'replyReceived' | 'forceEnd'): true => {
-    if (!isEnded()) {
-      state = finalState
+  function endResponse(finalState: 'endMessage' | 'error' | 'replyReceived' | 'forceEnd'): void {
+    if (!resp.isEnded) {
+      resp.toState(finalState)
       messageHandlers.delete(responseId)
       onEnded()
     }
-    return true
   }
 
-  const errorFn = (code: ServerResponseCode, msg: string): false => {
-    if (!isEnded()) {
+  function errorFn(code: ServerResponseCode, msg: string): void {
+    if (!resp.isEnded) {
       endResponse('error')
-      error(new HttpError(code, msg))
+      error(new HttpError(msg, code))
     }
-    return false
   }
-  const questionId = questionMessage.questionId as string
+  const questionId = questionMessage.id
   if (!questionId) return output.error(new HttpError(418, 'no questionId'))
   const responseId = createUid()
 
@@ -79,93 +75,113 @@ export function response(
   )
   const isConversing = () => state === 'conversing'
 
-  const resp: Response = {
-    reply(json: MessagePayload, onResponseReceived?: () => void) {
-      const output = didError<Error>()
-      if (state !== 'responding' && state !== 'conversing')
-        return output.error(
-          new Error(`state is: '${state}' and it should be 'responding' or 'conversing'`),
-        )
-      messageHandlers.set(responseId, (msg: Message) => {
-        if (msg.type !== 'replyReceived') return errorFn(418, 'unrecognised message type')
-        if (state !== 'replied') return errorFn(418, 'wrong state')
-        if (msg.questionId !== questionId) return errorFn(418, 'wrong questionId')
-        endResponse('replyReceived')
-        if (onResponseReceived) onResponseReceived()
-      })
-      state = 'replied'
-      write(json, 'reply')
-      return output()
-    },
-    converse(events?: Events) {
-      const output = resultError<Converse, Error>()
-      if (state !== 'responding')
-        return output.error(new Error(`state is: ${state} and it should be 'responding'`))
-      write({ responseId }, 'questionReceived')
-      state = 'conversing'
-      if (events) {
+  const resp = addStateMachine({
+    baseObject: {
+      reply(json: MessagePayload, onResponseReceived?: () => void) {
+        const output = didError<Error>()
+        if (state !== 'responding' && state !== 'conversing') {
+          return output.error(
+            new Error(`state is: '${state}' and it should be 'responding' or 'conversing'`),
+          )
+        }
         messageHandlers.set(responseId, (msg: Message) => {
-          if (!isConversing())
-            return errorFn(
-              ServerResponseCode.badRequest,
-              'wrong state to handle a incoming message',
-            )
-          if (msg.questionId !== questionId)
-            return errorFn(ServerResponseCode.badRequest, 'wrong questionId')
-          switch (msg.type) {
-            case 'continueMessage':
-              if (!events.onMessage)
-                return errorFn(ServerResponseCode.badRequest, `no 'onMessage' provided`)
-              return events.onMessage(msg.message, true)
-            case 'endMessage':
-              endResponse('endMessage')
-              if (!events.onMessage)
-                return errorFn(ServerResponseCode.badRequest, `no 'onMessage' provided`)
-              return events.onMessage(msg.message, false)
-            case 'error':
-              endResponse('error')
-              if (!events.onError)
-                return errorFn(ServerResponseCode.badRequest, `no 'onError' provided`)
-              return events.onError(msg.message)
-            default:
-              return errorFn(418, 'unrecognised type')
-          }
+          if (msg.type !== 'replyReceived') return errorFn(418, 'unrecognised message type')
+          if (state !== 'replied') return errorFn(418, 'wrong state')
+          if (msg.questionId !== questionId) return errorFn(418, 'wrong questionId')
+          endResponse('replyReceived')
+          if (onResponseReceived) onResponseReceived()
         })
-      }
+        state = 'replied'
+        write(json, 'reply')
+        return output()
+      },
+      converse(events?: Events) {
+        const output = resultError<Converse, Error>()
+        if (state !== 'responding')
+          return output.error(new Error(`state is: ${state} and it should be 'responding'`))
+        write({ responseId }, 'questionReceived')
+        state = 'conversing'
+        if (events) {
+          messageHandlers.set(responseId, (msg: Message) => {
+            if (!isConversing()) {
+              return errorFn(
+                ServerResponseCode.badRequest,
+                'wrong state to handle a incoming message',
+              )
+            }
+            if (msg.questionId !== questionId)
+              return errorFn(ServerResponseCode.badRequest, 'wrong questionId')
+            switch (msg.type) {
+              case 'continueMessage':
+                if (!events.onMessage)
+                  return errorFn(ServerResponseCode.badRequest, `no 'onMessage' provided`)
+                return events.onMessage(msg.message, true)
+              case 'endMessage':
+                endResponse('endMessage')
+                if (!events.onMessage)
+                  return errorFn(ServerResponseCode.badRequest, `no 'onMessage' provided`)
+                return events.onMessage(msg.message, false)
+              case 'error':
+                endResponse('error')
+                if (!events.onError)
+                  return errorFn(ServerResponseCode.badRequest, `no 'onError' provided`)
+                return events.onError(msg.message)
+              default:
+                return errorFn(418, 'unrecognised type')
+            }
+          })
+        }
 
-      return output({
-        say(json: MessagePayload): DidError<Error, boolean> {
-          const output = didError<Error>()
-          if (!isConversing())
-            return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
-          write(json, 'continueMessage')
-          return output()
-        },
-        error(code: number, message: string) {
-          return errorFn(code, message)
-        },
-        end(json: MessagePayload): DidError<Error, boolean> {
-          const output = didError<Error>()
-          if (!isConversing())
-            return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
-          write(json, 'endMessage')
-          endResponse('endMessage')
-          return output()
-        },
-      })
+        return output({
+          say(json: MessagePayload): DidError<Error, boolean> {
+            const output = didError<Error>()
+            if (!isConversing())
+              return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
+            write(json, 'continueMessage')
+            return output()
+          },
+          error(code: number, message: string) {
+            return errorFn(code, message)
+          },
+          end(json: MessagePayload): DidError<Error, boolean> {
+            const output = didError<Error>()
+            if (!isConversing())
+              return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
+            write(json, 'endMessage')
+            endResponse('endMessage')
+            return output()
+          },
+        })
+      },
+      end(): DidError<Error, boolean> {
+        const output = didError<Error>()
+        if (state !== 'responding')
+          return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
+        endResponse('forceEnd')
+        return output()
+      },
+      responseId,
+      questionId,
     },
-    end(): DidError<Error, boolean> {
-      const output = didError<Error>()
-      if (state !== 'responding')
-        return output.error(new Error(`state is: ${state} and it should be 'conversing'`))
-      endResponse('forceEnd')
-      return output()
-    },
-    responseId,
-    questionId,
-  }
+    transitions: [
+      [
+        'responding',
+        [
+          'conversing',
+          'endMessage',
+          // 'forceEnd',
+          'replied',
+          'replyReceived',
+          'errored',
+          'cancelled',
+        ],
+      ],
+      ['conversing', ['endMessage', 'replied', 'replyReceived', 'errored', 'cancelled']],
+      ['replied', ['replyReceived', 'errored', 'cancelled']],
+    ],
+  })
 
-  return output(resp)
+  return resp
 }
 
 // export default class ServerResponse extends Response {

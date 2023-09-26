@@ -21,9 +21,6 @@ import { VArrayFn } from './array'
 import { isTransformed } from './shared'
 import { vOptional } from './init'
 
-// import { isObject } from './shared'
-// import { MergeObjects, MinimumObject, MinimumObjectDefinition, VObject } from './object'
-
 /** ****************************************************************************************************************************
  * *****************************************************************************************************************************
  * *****************************************************************************************************************************
@@ -38,18 +35,6 @@ type IntersectionOptions<T extends IntersectionT> = {
 }
 
 export type VIntersectionFn = {
-  // <const T extends readonly [MinimumObjectSchema, MinimumObjectSchema, ...MinimumObjectSchema[]]>(
-  //   types: T,
-  // ): MergeObjects<DeepWriteable<T>>
-  // <
-  //   const T extends readonly [
-  //     VArrayInfinite<any, any, any, any>,
-  //     VArrayInfinite<any, any, any, any>,
-  //     ...VArrayInfinite<any, any, any, any>[],
-  //   ],
-  // >(
-  //   types: T,
-  // ): MergeArrays<DeepWriteable<T>>
   <const T extends IntersectionT2, TW extends IntersectionT = DeepWriteable<T>>(
     types: T,
     options?: IntersectionOptions<TW>,
@@ -139,8 +124,6 @@ export function initIntersectionType(
       if (isTransformed(schema)) throw new Error('transformed schemas cannot be intersected')
       if (baseSchemaType === undefined) baseSchemaType = schema.baseType
       else if (baseSchemaType !== schema.baseType) baseSchemaType = 'mixed'
-      // finalSchemas.push(isObjectSchema(schema) ? schema.passThrough() : schema)
-      // typeStrings.push(groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type)
       typeString = `${typeString}${
         groupBaseTypes.includes(schema.baseType) ? `(${schema.type})` : schema.type
       }&`

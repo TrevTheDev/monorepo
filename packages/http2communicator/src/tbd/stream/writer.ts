@@ -1,92 +1,80 @@
-import { runFunctionsOnlyOnce } from '@trevthedev/toolbelt'
-
-import { Message } from '../objects/question'
+import { ObjectWrappedWithStateMachine, addStateMachine } from '@trevthedev/toolbelt'
+import { Message, SharedEvents, SharedIFace } from '../types'
+import HttpError from './http error'
 
 const NUMBER_OF_BYTES = 4
 
 const toBytesInt32 = (num: number): string => {
   let ascii = ''
   for (let i = NUMBER_OF_BYTES - 1; i >= 0; i -= 1)
+    // eslint-disable-next-line no-bitwise
     ascii += String.fromCharCode((num >> (8 * i)) & 255)
 
   return ascii
 }
 
-export type Writer = {
-  readonly state: 'writing' | 'error' | 'done' | 'cancel'
-  (msgObject: Message): boolean | void
-  cancel(): void
-  error(error: Error): void
-  end(): void
+export interface Writer
+  extends ObjectWrappedWithStateMachine<
+    SharedIFace,
+    'cancelled' | 'errored' | 'ended',
+    'writing' | 'cancelled' | 'errored' | 'ended'
+  > {
   writeRaw(msgString: string): boolean | void
   write(msgObject: Message): boolean | void
+  writeEnd(msgObject: Message): boolean | void
+  readonly isEnded: boolean
 }
+
+const activeStates = ['writing'] as 'writing'[]
 
 export default function createWriter(
   stream: {
     write(
-      chunk: any,
+      chunk: string,
       encoding?: BufferEncoding | undefined,
       cb?: ((error: Error | null | undefined) => void) | undefined,
     ): boolean
   },
-  errorFn: (error: Error) => void,
-  endRequested: () => void,
-) {
-  let state: 'writing' | 'error' | 'done' | 'cancel' = 'writing'
-
-  const toEndState = runFunctionsOnlyOnce(null)(
-    (endState: 'error' | 'done' | 'cancel' = 'done') => {
-      state = endState
-      if (state === 'done') endRequested()
-    },
-  )
-
-  const writeErrorFn = runFunctionsOnlyOnce(null)((error: Error) => {
-    toEndState('error')
-    errorFn(error)
-    return false
-  })
-
-  const writer = function Writer(msgObject: Message) {
-    const str = JSON.stringify(msgObject)
-    return writer.writeRaw(toBytesInt32(str.length).concat(str))
-  } as unknown as Writer
-
-  Object.defineProperties(writer, {
-    state: {
-      get() {
-        return state
-      },
-    },
-    cancel: {
-      value: () => {
-        toEndState('cancel')
-      },
-    },
-    error: {
-      value: (error: Error) => {
-        writeErrorFn(error)
-      },
-    },
-    end: {
-      value: () => {
-        toEndState()
-      },
-    },
-    writeRaw: {
-      value: (msgString: string) => {
-        if (state !== 'writing') return false
+  events: SharedEvents,
+): Writer {
+  const writer = addStateMachine({
+    baseObject: {
+      writeRaw(msgString: string): void {
         stream.write(msgString)
-        return true
       },
-    },
-    write: {
-      value: (msgObject: Message) => {
+      write(msgObject: Message): void {
         const str = JSON.stringify(msgObject)
         return writer.writeRaw(toBytesInt32(str.length).concat(str))
       },
+      writeEnd(msgObject: Message): void {
+        writer.write(msgObject)
+        writer.end()
+      },
+      end(): void {
+        writer.toState('ended')
+        events.onDone()
+      },
+      cancel(reason: unknown): void {
+        writer.toState('cancelled')
+        events.onCancel(reason)
+      },
+      error(error: HttpError): void {
+        writer.toState('errored')
+        events.onError(error)
+      },
+      get isEnded(): boolean {
+        return !activeStates.includes(writer.state as unknown as 'writing')
+      },
     },
+    transitions: [['writing', ['cancelled', 'errored', 'ended']]],
+    beforeCallGuards: [
+      ['writeRaw', activeStates],
+      ['write', activeStates],
+      // ['end', activeStates],
+      // ['cancel', activeStates],
+      // ['error', activeStates],
+    ],
   })
+
   return writer
 }

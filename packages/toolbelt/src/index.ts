@@ -20,7 +20,7 @@ export type { EnhancedMap } from './enhancedMap'
 export { default as asyncFnsInParallel, asyncFnsInParallelShort } from './asyncFnsInParallel'
 export type { Resolver as AsyncFnResolver, ValidResolver } from './asyncFnsInParallel'
 
-export { default as asyncCoupler, asyncCouplerWorkAround } from './asyncCoupler'
+export { asyncCoupler } from './asyncCoupler'
 export type { AsyncCoupler } from './asyncCoupler'
 
 export { default as compose, composeWithError, pipe } from './compose'
@@ -51,10 +51,21 @@ export {
   onlyExecuteOnResult,
   isResult,
   isError,
-} from './result error'
-export type { ResultError } from './result error'
+} from './resultError'
+export type { ResultError } from './resultError'
 
-export { didError, wrapTryCatchInDidError } from './did error'
-export type { DidError } from './did error'
+export {
+  didError,
+  didNotError,
+  throwOnError,
+  voidNeverToUndefinedError,
+  undefinedErrorToVoidNever,
+} from './canError'
+export type { CanError } from './canError'
 
-export * from './typescript utils'
+export * from './typescriptUtils'
+
+export { default as addStateMachine } from './stateMachine'
+export type { ObjectWrappedWithStateMachine } from './stateMachine'
+
+export { default as asyncFunctionLinkedList } from './asyncFunctionLinkedList'

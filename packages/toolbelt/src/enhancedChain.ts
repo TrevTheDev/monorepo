@@ -13,7 +13,7 @@ import type {
   SharedProperties,
 } from './chain'
 
-import type { RMerge } from './typescript utils'
+import type { RMerge } from './typescriptUtils'
 import type { Fn, FunctionChainArray } from './compose'
 import compositor from './compositor'
 

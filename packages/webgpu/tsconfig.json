@@ -1,0 +1,10 @@
+{
+  "extends": "tsconfig/nodeBrowser.json",
+  "compilerOptions": {
+    "noErrorTruncation": true,
+    "outDir": "build/cjs",
+    "typeRoots": ["./node_modules/@webgpu/types", "./node_modules/@types"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "archive", "test", "tests", "**/.archive/**"]
+}

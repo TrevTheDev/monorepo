@@ -37,11 +37,6 @@ type FunctionOptions<Output extends Fn> = {
   returnedFunction?: 'inputValidated' | 'outputValidated' | 'validated' | 'original'
 }
 
-// type FunctionOptions<Output extends Fn> = {
-//   parser?: SafeParseFn<unknown, Output>
-//   notAFunction: typeof defaultErrorFn.notAFunction
-// }
-
 interface FunctionTypes {
   args: unknown[]
   return: unknown
@@ -254,17 +249,6 @@ const baseFunctionObject = Object.create(baseObject)
 function finaliseFunctionDefinition<T extends PartialFunctionDefinition>(
   functionDefinition: T,
 ): PartialToFuncDef<T> {
-  // if (functionDefinition) {
-  //   let parameters: MinimumSafeParsableArray | undefined
-  //   if ('args' in functionDefinition && functionDefinition.args)
-  //     parameters = vArray(functionDefinition.args)
-  //   else if ('parameters' in functionDefinition)
-  //     parameters = functionDefinition.parameters
-  //   return {
-  //     parameters,
-  //     returns: functionDefinition.returns,
-  //   } as unknown as PartialToFuncDef<T>
-  // }
   return {
     parameters:
       // eslint-disable-next-line no-nested-ternary

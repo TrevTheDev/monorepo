@@ -1,4 +1,4 @@
-import type { DeduplicateUnion, IsFinite, Writeable } from './typescript utils'
+import type { DeduplicateUnion, IsFinite, Writeable } from './typescriptUtils'
 
 type Diff<T extends unknown[], S extends unknown[]> = {
   bothFinite: Exclude<T[number], S[number]>[]

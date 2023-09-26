@@ -1,60 +1,66 @@
-import { DidError, EnhancedMap, enhancedMap, isError, ResultError } from '@trevthedev/toolbelt'
+import { isError } from '@trevthedev/toolbelt'
 import type { IncomingHttpHeaders, OutgoingHttpHeaders, ServerHttp2Stream } from 'http2'
+import { v } from 'dilav'
 import HttpError from './stream/http error'
-import type { Message, QuestionId } from './objects/question'
 import { response } from './objects/server response'
-import type { Response } from './objects/server response'
 import { Conversation, conversationDb, Conversations } from './conversation db'
 import { QuestionHandler } from '../server'
-import serverStream, {
+import {
   ServerResponseCode,
-  ServerStream,
-  StartServerStream,
+  ServerStream0,
+  ServerStreamN,
+  serverStream0,
+  serverStreamN,
 } from './stream/server stream'
-import { messageSchema } from './types'
-import { v } from 'dilav'
+import { firstHeaderSchema, headerSchema, messageSchema } from './types'
 
-function isPossibleNewConversationStream(
-  eStream: ServerStream | StartServerStream,
-): eStream is StartServerStream {
-  return eStream.idx === 0
-}
-
-function addStreamToConversation(
-  conversationGetFn: Conversations['get'],
-  eStream: ServerStream & { uid: string },
-) {
+function addStreamToConversation(conversationGetFn: Conversations['get'], eStream: ServerStreamN) {
   const chat = conversationGetFn(eStream.uid)
   if (chat === undefined)
-    eStream.respondError(new HttpError(ServerResponseCode.notFound, 'not found'))
+    eStream.respondError(new HttpError('not found', ServerResponseCode.notFound))
   else if (eStream.idx === undefined)
-    eStream.respondError(new HttpError(ServerResponseCode.badRequest, 'not found'))
-  else {
-    const addStreamResult = chat.addStream(eStream as ServerStream & { idx: number })
-    if (addStreamResult.isError())
-      eStream.respondError((addStreamResult as DidError<HttpError, true>).errorValue())
-  }
+    eStream.respondError(new HttpError('not found', ServerResponseCode.badRequest))
+  else chat.addStream(eStream)
 }
 
 function objectRouter(questionHandler: QuestionHandler, chat: Conversation) {
   function getNextObject() {
-    chat.await((object) => {
-      const parseResult = messageSchema.safeParse(object)
-      if (isError(parseResult)) return chat.error(parseResult[0])
-      const message = parseResult[1]
-      if (message.type === 'question') {
-        const createResponseResult = response(chat, message)
-        if (isError(createResponseResult)) return chat.error(createResponseResult[0])
-        questionHandler(createResponseResult[1])
-        return getNextObject()
-      }
+    chat.await(
+      (object) => {
+        const parseResult = messageSchema.safeParse(object)
+        if (isError(parseResult)) return chat.error(new HttpError(v.firstError(parseResult[0])))
+        const message = parseResult[1]
+        if (message.type === 'question') {
+          const createResponseResult = response(chat, message)
+          if (isError(createResponseResult)) return chat.error(createResponseResult[0])
+          questionHandler(createResponseResult[1])
+          return getNextObject()
+        }
 
-      const createMessageHandlerResult = chat.messageHandlers.get(message.id)
-      if (isError(createMessageHandlerResult))
-        return chat.error(new HttpError(ServerResponseCode.badRequest, 'no messageHandlers found'))
-      messageHandler(createMessageHandlerResult[1])
-      return getNextObject()
-    })
+        const createMessageHandlerResult = chat.messageHandlers.get(message.id)
+        if (isError(createMessageHandlerResult)) {
+          return chat.error(
+            new HttpError('no messageHandlers found', ServerResponseCode.badRequest),
+          )
+        }
+        messageHandler(createMessageHandlerResult[1])
+        return getNextObject()
+      },
+      {
+        onCancel(reason) {
+          console.log(reason)
+        },
+        onDone() {
+          console.log('done')
+        },
+        onError(error) {
+          console.log(error)
+        },
+        onNoData() {
+          console.log('done')
+        },
+      },
+    )
   }
   getNextObject()
 }
@@ -62,37 +68,38 @@ function objectRouter(questionHandler: QuestionHandler, chat: Conversation) {
 function startConversation(
   questionHandler: QuestionHandler,
   startConversationFn: Conversations['startConversation'],
-  eStream: ServerStream & { idx: 0 },
+  eStream: ServerStream0,
 ) {
   const startConversationResult = startConversationFn(eStream)
-  if (isError(startConversationResult)) return eStream.respondError(startConversationResult[0])
-  return objectRouter(questionHandler, startConversationResult[0])
+  return objectRouter(questionHandler, startConversationResult)
 }
+
+export const conversations = conversationDb()
 
 export default function serverConversationRouter(
   defaultResponseHeaders: OutgoingHttpHeaders,
   questionHandler: QuestionHandler,
 ) {
-  const conversations = conversationDb()
-  return function ServerStreamReceiverFn (
+  return function ServerStreamReceiverFn(
     stream: ServerHttp2Stream,
     headers: IncomingHttpHeaders,
     _flags: number,
     _rawHeaders: Array<unknown>,
   ) {
-    const eStream: ServerStream = serverStream(
-      stream,
-      headers,
-      defaultResponseHeaders,
-      (error: Error) => {},
-      () => {},
-    )
-
-    if (eStream.uid)
-      addStreamToConversation(conversations.get, eStream)
-    else if (!isPossibleNewConversationStream(eStream))
-      eStream.respondError(new HttpError(ServerResponseCode.badRequest, 'bad index'))
-    else startConversation(questionHandler, conversations.startConversation, eStream)
-    return true
+    const header0 = firstHeaderSchema.safeParse(headers)
+    if (isError(header0)) {
+      const headerN = headerSchema.safeParse(headers)
+      if (isError(headerN)) {
+        stream.respond({ ':status': ServerResponseCode.badRequest })
+        stream.end()
+        stream.close()
+      } else {
+        const eStreamN = serverStreamN(stream, headerN[1], defaultResponseHeaders)
+        addStreamToConversation(conversations.get, eStreamN)
+      }
+    } else {
+      const eStream0 = serverStream0(stream, header0[1], defaultResponseHeaders)
+      startConversation(questionHandler, conversations.startConversation, eStream0)
+    }
   }
 }

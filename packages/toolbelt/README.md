@@ -4,6 +4,54 @@ A set of useful utilities and tools.
 
 ## Table Of Contents
 
+> - [Toolbelt](#toolbelt)
+
+- [Toolbelt](#toolbelt)
+  - [Table Of Contents](#table-of-contents)
+  - [Chain Overview](#chain-overview)
+    - [Example Basic Usage](#example-basic-usage)
+    - [chain](#chain)
+      - [AsyncFn](#asyncfn)
+      - [Resolver](#resolver)
+      - [ChainNode](#chainnode)
+      - [AwaitedChainController](#awaitedchaincontroller)
+  - [EnhancedChain Overview](#enhancedchain-overview)
+    - [Example Usage](#example-usage)
+    - [enhancedChain](#enhancedchain)
+      - [EnhanceChainOptions](#enhancechainoptions)
+      - [EnhancedChainNode](#enhancedchainnode)
+  - [Compose Overview](#compose-overview)
+    - [Example Usage](#example-usage-1)
+    - [ComposeWithError](#composewitherror)
+    - [Example Usage](#example-usage-2)
+    - [Pipe](#pipe)
+  - [Compositor Overview](#compositor-overview)
+    - [Example Usage](#example-usage-3)
+    - [compositor](#compositor)
+  - [AsyncCoupler Overview](#asynccoupler-overview)
+    - [Example Usage](#example-usage-4)
+  - [AsyncFnsInParallel](#asyncfnsinparallel)
+    - [Example Usage](#example-usage-5)
+      - [asyncFnsInParallel](#asyncfnsinparallel-1)
+      - [AsyncFnsInParallelController](#asyncfnsinparallelcontroller)
+      - [AsyncFnResolver](#asyncfnresolver)
+  - [Difference](#difference)
+    - [Example Usage](#example-usage-6)
+  - [Intersection](#intersection)
+    - [Example Usage](#example-usage-7)
+  - [EnhancedMap](#enhancedmap)
+  - [StateMachine](#statemachine)
+    - [`addStateMachine` `stateMachineDefinition`](#addstatemachine-statemachinedefinition)
+  - [ResultError](#resulterror)
+    - [toError](#toerror)
+    - [toResult](#toresult)
+    - [isResult](#isresult)
+    - [isError](#iserror)
+    - [resultErrorToResultNever](#resulterrortoresultnever)
+    - [resultNeverToResultError](#resultnevertoresulterror)
+    - [onlyExecuteOnResult](#onlyexecuteonresult)
+  - [Other utilities](#other-utilities)
+
 ## Chain Overview
 
 A fast, simple, typed way to chain together asynchronous functions - with the output of each function acting as the input to the subsequent function.
@@ -523,60 +571,82 @@ Enhances javascript's `map` function
 }
 ```
 
-## OutputPins
+## StateMachine
 
-A function that creates an object which provides convenient ways to route an outcome.
-
-```typescript
-const exampleResultErrorGenerator = outputPins<
-  { result: [result: 'RESULT']; error: [error: Error]; cancel: [cancelReason: 'CANCEL'] },
-  'result'
->('result', 'error', 'cancel')
-type OutputError = OutputPinGetter<
-  { result: [result: 'RESULT']; error: [error: Error]; cancel: [cancelReason: unknown] },
-  'error'
->
-type OutputCancel = OutputPinGetter<
-  { result: [result: 'RESULT']; error: [error: Error]; cancel: [cancelReason: unknown] },
-  'cancel'
->
-
-type OutputResult = OutputPinGetter<
-  { result: [result: 'RESULT']; error: [error: Error]; cancel: [cancelReason: unknown] },
-  'result'
->
-const fn = (error: boolean) => {
-  const returnResult = exampleResultErrorGenerator()
-  // eslint-disable-next-line no-constant-condition
-  if (false) return returnResult.cancel('CANCEL')
-  return error ? returnResult.error(new Error('error')) : returnResult('RESULT')
-}
-const results = fn(true)
-if (results.isError()) throw (results as OutputError).error
-if (results.isCancel()) throw (results as OutputCancel).cancel
-console.log(results()) // 'RESULT'
-console.log(results.isResult())
-console.log((results as OutputResult).result)
-```
-
-### resultNone
-
-Inspired by the `maybe` monad, this function returns a function object, that can have either a `result` or a `none` set.
+Wraps an object in a simple state machine in order to track object state.
 
 ```typescript
-const fn = (error: boolean) => {
-  const returnResult = resultNone<'RESULT', null>()
-  return error ? returnResult.none(null) : returnResult('RESULT')
-}
-const results = fn(false)
-if (results.isNone()) throw new Error('null')
-console.log(results()) // 'RESULT'
-console.log((results as ResultNone<'RESULT', null, 'result'>).result) // 'RESULT'
+const sm = addStateMachine({
+  // baseObject is the input object which has a state machine wrapped around it
+  baseObject: {
+    cancel() {
+      this.toState('cancel')
+    },
+  },
+  // all allowed transitions (i.e. the arrows in a state machine diagram)
+  transitions: [
+    ['A', ['B', 'cancel']],
+    ['B', ['cancel']],
+  ],
+  // before allowing a property to be called, it must be in one of these states
+  beforeCallGuards: [['cancel', ['A', 'B']]],
+})
+console.log(sm.state) // 'A'
+sm.toState('B')
+console.log(sm.state) // 'B'
+expect(() => sm.toState('A')).toThrow() // invalid transitions throw, alternatively
+// a function can be provided to handle
+// invalid transitions
+console.log(sm.state) // 'B'
+sm.cancel()
+console.log(sm.state) // 'cancel'
 ```
 
-## RresultError
+### `addStateMachine` `stateMachineDefinition`
 
-Inspired by the `either` monad, means functions take the form `(...args)=>[error,undefined]|[undefined,result]`
+The following options can be passed to `addStateMachine`:
+
+```typescript
+type StateMachineDefinition = {
+  // the object to wrap in a state machine
+  baseObject: object
+  // an array of all valid transitions
+  // type Transition = readonly [
+  //   from: string,
+  //   to: [string, ...string[]],
+  //   // called before the transition, if `false` is returned then the transition
+  //   // wont occur
+  //   beforeTransitionFn?: () => boolean | void,
+  //   // called after the transition
+  //   afterTransitionFn?: () => void,
+  // ]
+  transitions: [Transition, ...Transition[]]
+  // before allowing a property to be called, it must be in one of these states
+  beforeCallGuards?: [
+    [propOrMethod: keyof baseObject, validStates: States[], invalidStateFn?: () => void],
+    ...[propOrMethod: keyof baseObject, validStates: States[], invalidStateFn?: () => void][],
+  ]
+  // called before any transitions and before `beforeTransitionFn`.  If a different
+  // state is returned then the state machine will attempt to transition to that state
+  beforeStateTransitions?: (newState: States, oldState: States) => States | undefined
+  // called after any transitions and after `afterTransitionFn`.
+  afterStateTransitions?: (newState: States, oldState: States) => void
+  // called if a transition was attempted which doesn't exist in `transitions`.
+  invalidTransitionFn?: (newState: States, oldState: States) => void
+  // the property key to use for the state getter - by default this is `state`
+  // if `null` is specified then a state getter will not be defined on the object
+  stateGetterKey?: States
+  // the property key to use for the to state function - by default this is `toState`
+  // if `null` is specified then a sto state function will not be defined on the object
+  // in that case the return from `addStateMachine` will be an array of the form:
+  //    [stateMachineObject: object, toStateFn: (newState: ToStates) => stateMachineObject, getStateFn: () => States]
+  toStateKey?: States
+}
+```
+
+## ResultError
+
+Inspired by the `either` monad, usage means functions take the form `(...args)=>[error,undefined]|[undefined,result]`
 
 ```typescript
 type ResultError<E, R> = [error: E, result?: undefined] | [error: undefined, result: R]

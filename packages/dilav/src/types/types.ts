@@ -80,6 +80,7 @@ export const baseTypes = [
   'nullish',
   'function',
   'object',
+  'partial object',
   'number',
   'promise',
   'record',
@@ -195,10 +196,15 @@ export interface MinimumArraySchema extends MinimumSchema {
 export interface MinimumObjectSchema extends MinimumSchema {
   readonly definition: MinimumObjectDefinition
   readonly baseType: 'object'
-  // partial(): MinimumObjectSchema
-  // deepPartial(...keysToDeepPartial: any[]): MinimumObjectSchema
-  // required(...keysToRequire: any[]): MinimumObjectSchema
-  // deepRequired(...keysToRequire: any[]): MinimumObjectSchema
+  parse: ParseFn<any, object>
+  safeParse: SafeParseFn<any, object>
+}
+
+export interface MinimumPartialObjectSchema extends MinimumSchema {
+  readonly definition: MinimumPartialObjectDefinition
+  readonly baseType: 'partial object'
+  parse: ParseFn<object, object>
+  safeParse: SafeParseFn<object, object>
 }
 
 /** ****************************************************************************************************************************
@@ -996,6 +1002,13 @@ export type MinimumObjectDefinition = {
   transformed: boolean
 }
 
+export type MinimumPartialObjectDefinition = {
+  propertySchemas: PropertySchemasDef
+  type: string
+  transformed?: true
+  parentSchema?: MinimumObjectSchema | MinimumPartialObjectSchema
+}
+
 export type ObjectDefToObjectType<
   PropSchemas extends PropertySchemasDef,
   UnmatchedPropertySchema extends MinimumSchema,
@@ -1073,14 +1086,14 @@ export interface VObject<
   PropertySchemas extends PropertySchemasDef,
   UnmatchedPropertySchema extends MinimumSchema = VNever,
   Type extends string = string,
+  Input = unknown,
+  Output extends object = ObjectDefToObjectType<PropertySchemas, UnmatchedPropertySchema>,
   T extends MinimumObjectDefinition = {
     propertySchemas: PropertySchemas
     unmatchedPropertySchema: UnmatchedPropertySchema
     type: Type
     transformed: boolean
   },
-  Input = unknown,
-  Output extends object = ObjectDefToObjectType<PropertySchemas, UnmatchedPropertySchema>,
 > extends BaseSchema<Output, Type, 'object', Input, T> {
   readonly definition: T
   merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
@@ -1130,10 +1143,80 @@ export interface VObject<
   extends<R extends PropertySchemasDef, S extends MinimumSchema = UnmatchedPropertySchema>(
     extendPropertySchemas: R,
     unmatchedPropertySchema?: S,
-    newOptions?: { type: string },
+    newOptions?: { type?: string },
   ): VObject<RMerge<[PropertySchemas, R]>, S>
 
   // keyof(): keyof T['propertyParsers'][]
+}
+
+export type PartialObjectDefToObjectType<
+  Input extends object,
+  PropSchemas extends PropertySchemasDef,
+  BaseObj extends object = { [K in keyof PropSchemas]: VInfer<PropSchemas[K]> },
+  RequiredKeysT extends PropertyKey = keyof {
+    [K in keyof PropSchemas as PropSchemas[K] extends {
+      baseType: 'optional'
+    }
+      ? never
+      : K]: K
+  },
+  RequiredKeys extends keyof BaseObj = RequiredKeysT extends keyof BaseObj ? RequiredKeysT : never,
+  FinalObj extends object = Identity<Partial<BaseObj> & Required<Pick<BaseObj, RequiredKeys>>>,
+> = Input & FinalObj
+
+export interface VPartialObject<
+  P extends MinimumObjectSchema | MinimumPartialObjectSchema = MinimumPartialObjectSchema,
+  PropertySchemas extends PropertySchemasDef = PropertySchemasDef,
+  Type extends string = string,
+  Input extends object = VInfer<P>,
+  Output extends object = PartialObjectDefToObjectType<Input, PropertySchemas>,
+  T extends MinimumPartialObjectDefinition = {
+    propertySchemas: PropertySchemas
+    type: Type
+    transformed?: true
+    parentSchema?: P
+  },
+> extends BaseSchema<Output, Type, 'partial object', Input, T> {
+  readonly definition: T
+  merge<const S extends readonly [MinimumObjectSchema, ...MinimumObjectSchema[]]>(
+    ...propertySchemas: S
+  ): [this, ...DeepWriteable<S>] extends infer S2 extends [
+    MinimumObjectSchema,
+    MinimumObjectSchema,
+    ...MinimumObjectSchema[],
+  ]
+    ? VPartialObject<P, MergePropertySchemas<S2>>
+    : never
+  partial<S extends (keyof PropertySchemas)[]>(
+    ...keysToPartial: S
+  ): VPartialObject<P, PartialObject<PropertySchemas, S[number]>>
+  required<S extends (keyof PropertySchemas)[]>(
+    ...keysToRequire: S
+  ): VPartialObject<P, RequiredObject<PropertySchemas, S[number]>>
+  deepPartial<S extends PropertyKey[]>(
+    ...keysToDeepPartial: S
+  ): VPartialObject<P, DeepPartialObject<PropertySchemas, S[number]>>
+  // [internalDeepPartial]<S extends (keyof PropertySchemas)[]>(
+  //   ...keysToDeepPartial: S
+  // ): DeepPartial<this, S[number]>
+
+  // // deepRequired<S extends (keyof PropertySchemas)[]>(
+  // //   ...keysToDeepRequired: S
+  // // ): DeepRequired<this, S[number]>
+
+  pick<S extends (keyof PropertySchemas)[]>(
+    ...keys: S
+  ): VPartialObject<P, Pick<PropertySchemas, S[number]>>
+  omit<S extends (keyof PropertySchemas)[]>(
+    ...keys: S
+  ): VPartialObject<P, Omit<PropertySchemas, S[number]>>
+  setKey<K extends PropertyKey, S extends MinimumSchema>(
+    name: K,
+    schema: S,
+  ): VPartialObject<P, RMerge<[PropertySchemas, { [I in K]: S }]>>
+  extends<R extends PropertySchemasDef>(
+    extendPropertySchemas: R,
+  ): VPartialObject<P, RMerge<[PropertySchemas, R]>>
 }
 
 /** ****************************************************************************************************************************

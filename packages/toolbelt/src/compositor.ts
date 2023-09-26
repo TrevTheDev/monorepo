@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import compose, { CalculatedCompositeFn, Fn, FunctionChainArray } from './compose'
-import { ReverseTuple } from './typescript utils'
+import { ReverseTuple } from './typescriptUtils'
 
 type Compositor<
   T extends Fn[],

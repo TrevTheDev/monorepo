@@ -1,5 +1,5 @@
 {
-  "extends": "tsconfig/node.json",
+  "extends": "tsconfig/nodeBrowser.json",
   "compilerOptions": {
     "noErrorTruncation": true,
     "outDir": "build/cjs"

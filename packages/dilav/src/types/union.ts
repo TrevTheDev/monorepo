@@ -1,8 +1,5 @@
-/* eslint-disable no-unreachable-loop */
 /* eslint-disable no-restricted-syntax */
 import { type DeepWriteable, intersection, difference, isResult } from '../toolbelt'
-
-// import { parseObject } from './object'
 
 import { createFinalBaseObject } from './base'
 import {

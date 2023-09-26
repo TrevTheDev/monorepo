@@ -1,0 +1,71 @@
+{
+  "name": "dilav2",
+  "version": "0.0.01",
+  "description": "A blazing fast way to transforms `unknown` types, into valid known typescript types.",
+  "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/dilav2#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TrevTheDev/monorepo.git",
+    "directory": "packages/dilav2"
+  },
+  "bugs": {
+    "url": "https://github.com/TrevTheDev/monorepo/issues"
+  },
+  "keywords": [
+    "typescript",
+    "schema",
+    "validation",
+    "type",
+    "inference"
+  ],
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "module": "./build/index.mjs",
+  "files": [
+    "build/"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "build": "echo 'WIP'",
+    "buildx2": "rimraf dist && tsup --dts",
+    "build:tsc": "tsc && tsc -p tsconfig-esm.json",
+    "build:no": "tsc --noEmit",
+    "dev": "tsup --dts --watch",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint && npm run build",
+    "preversion": "npm run lint",
+    "publish": "npm version patch && git push --tags origin main",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "author": "TrevTheDev",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.59.6",
+    "@typescript-eslint/parser": "^5.59.6",
+    "docsify-cli": "^4.4.4",
+    "esbuild": "^0.17.19",
+    "eslint-config-custom": "workspace:*",
+    "eslint-config-prettier": "^8.8.0",
+    "prettier": "2.8.8",
+    "rimraf": "^5.0.1",
+    "ts-unused-exports": "^9.0.4",
+    "tsconfig": "workspace:*",
+    "tsup": "^6.7.0",
+    "typescript": "^5.0.4",
+    "vite": "^4.3.8",
+    "vitest": "^0.31.1",
+    "zod": "^3.21.4"
+  },
+  "dependencies": {
+    "@trevthedev/toolbelt": "workspace:*"
+  },
+  "engines": {
+    "node": ">=19.0.0"
+  },
+  "type": "module"
+}

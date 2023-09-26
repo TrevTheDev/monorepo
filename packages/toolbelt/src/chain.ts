@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IsStrictAny, Lookup, RMerge } from './typescript utils'
+import { IsStrictAny, Lookup, RMerge } from './typescriptUtils'
 
 export const chainNodeType = Symbol('Chain Node')
 

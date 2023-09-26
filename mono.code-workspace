@@ -1,0 +1,39 @@
+{
+  "folders": [
+    {
+      "path": "packages/toolbelt"
+    },
+    {
+      "path": "packages/dilav"
+    },
+    {
+      "path": "packages/http2communicator"
+    },
+    {
+      "path": "packages/playground"
+    },
+    {
+      "path": "packages/dilav2"
+    },
+    {
+      "path": "packages/webgpu"
+    }
+  ],
+  "settings": {
+    "vitest.disabledWorkspaceFolders": ["root"],
+    "cSpell.words": [
+      "Chainy",
+      "datetime",
+      "gerstner",
+      "glsl",
+      "HJKMNP",
+      "keyof",
+      "Microtask",
+      "treeshake",
+      "unauthorised",
+      "unmap",
+      "webgpu"
+    ],
+    "testing.automaticallyOpenPeekView": "never"
+  }
+}

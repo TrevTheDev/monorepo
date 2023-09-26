@@ -71,7 +71,11 @@ export function createValidationBuilder<
     Object.defineProperties(newObject, {
       coerce: {
         get() {
-          return this.custom({ parser: coerceFn })
+          const newVObject = this.custom({ parser: coerceFn })
+          Object.defineProperty(newVObject[parserObject], 'definition', {
+            value: { transformed: true },
+          })
+          return newVObject
         },
         enumerable: true,
         configurable: false,

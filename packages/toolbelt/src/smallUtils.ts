@@ -57,15 +57,19 @@ export function runFunctionsOnlyOnce<E extends DuplicateCallErrorFn | any = neve
   let called = false
   let calledFn = ''
   // eslint-disable-next-line @typescript-eslint/ban-types
-  let errorFn: Function
-  // | (E & Function)
-  // | ((calledFn2: string | undefined, firstCalledFn: string | undefined) => never)
-  // | (() => E)
+  let errorFn: DuplicateCallErrorFn | (() => unknown)
   if (errorMsgCb === undefined) errorFn = defaultErrorFn
-  else if (typeof errorMsgCb === 'function') errorFn = errorMsgCb
+  else if (typeof errorMsgCb === 'function') errorFn = errorMsgCb as DuplicateCallErrorFn
   else errorFn = () => errorMsgCb
 
-  return <Args extends unknown[], Y>(fn: (...args: Args) => Y, fnName = '') =>
+  return <Args extends unknown[], Y>(
+    fn: (...args: Args) => Y,
+    fnName = '',
+  ): [E] extends [never]
+    ? (...args: Args) => Y
+    : E extends DuplicateCallErrorFn
+    ? (...args: Args) => Y
+    : (...args: Args) => Y | E =>
     ((...args: Args) => {
       if (called) return errorFn(fnName, calledFn, args)
       called = true
@@ -73,8 +77,7 @@ export function runFunctionsOnlyOnce<E extends DuplicateCallErrorFn | any = neve
       return fn(...args)
     }) as unknown as [E] extends [never]
       ? (...args: Args) => Y
-      : // eslint-disable-next-line @typescript-eslint/ban-types
-      E extends Function
+      : E extends DuplicateCallErrorFn
       ? (...args: Args) => Y
       : (...args: Args) => Y | E
 }

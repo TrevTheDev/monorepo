@@ -1,7 +1,7 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResultError, onlyExecuteOnResult } from './result error'
-import type { Lookup } from './typescript utils'
+import { ResultError, onlyExecuteOnResult } from './resultError'
+import type { Lookup } from './typescriptUtils'
 
 export type Fn<InputType = any, ReturnedType = any, Res = (input: InputType) => ReturnedType> = Res
 

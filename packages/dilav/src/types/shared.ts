@@ -39,11 +39,12 @@ export function resultFromResultError<T>(resultError: SafeParseOutput<T>): T {
   return resultError[1]
 }
 
-export function firstError(validationErrors: ValidationErrors) {
-  return validationErrors.errors[0]
+export function firstError(validationErrors: ValidationErrors): string {
+  if (validationErrors.errors.length === 0) throw new Error('no first error found')
+  return validationErrors.errors[0] as string
 }
 
-export function firstErrorFromResultError(resultError: SafeParseOutput<unknown>) {
+export function firstErrorFromResultError(resultError: SafeParseOutput<unknown>): string {
   return firstError(errorFromResultError(resultError))
 }
 
