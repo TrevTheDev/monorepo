@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest'
-import { v } from '../src'
+import { v } from '../src/dilav2'
 
 type AssertEqual<T, U> = (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
   ? true

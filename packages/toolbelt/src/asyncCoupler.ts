@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { enhancedMap } from '.'
+import { enhancedMap } from './enhancedMap'
 import type { CanError, EnhancedMap } from '.'
 import addStateMachine, { ObjectWrappedWithStateMachine } from './stateMachine'
 import { Identity } from './typescriptUtils'
@@ -276,11 +276,13 @@ export function asyncCoupler(
     : asyncCouplerBase(options as any)
 }
 
-// /**
-//  * see https://stackoverflow.com/questions/74662987/how-can-one-achieve-better-generic-inference?noredirect=1#comment131785747_74662987
-//  */
+/**
+ * see https://stackoverflow.com/questions/74662987/how-can-one-achieve-better-generic-inference?noredirect=1#comment131785747_74662987
+ */
 
 // export const asyncCouplerWorkAround =
 //   <O extends PartialOptions>(options?: O) =>
 //   <T extends AnyCallback>() =>
 //     asyncCoupler<T, O>(options || ({} as O))
+
+export { enhancedMap }

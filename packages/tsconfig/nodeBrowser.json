@@ -1,42 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "nodeBrowser",
-  "extends": "./base.json",
+  "display": "NodeBrowser",
+  "extends": "./node.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "esnext",
-    "lib": ["dom", "dom.iterable", "ESNext"],
-    "removeComments": false,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-
-    "strict": true,
-    "noImplicitAny": false,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "useUnknownInCatchVariables": true,
-    "alwaysStrict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "allowUnusedLabels": true,
-    "allowUnreachableCode": true,
-
-    "allowJs": true,
-    "skipLibCheck": true,
-    "incremental": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "noErrorTruncation": false,
-    "tsBuildInfoFile": ".tsbuildinfo"
+    "lib": ["dom", "dom.iterable", "ESNext"]
   }
 }

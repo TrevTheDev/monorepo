@@ -1,43 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import enhancedMap from './enhancedMap'
 
-export const createUid = (length = 20): string =>
-  Array.from({ length }, () => Math.random().toString(36)[2]).join('')
+import { enhancedMap } from './asyncCoupler'
 
 /**
- * Executes a callback `nTimes` - if a startValue is provided, the callbackfn is `(previousResult: U, index: number) => U`
- * else it is `(index: number) => void`
- * @param nTimes - number of times to execute the callback
- * @param callbackfn - callback to execute
- * @param startValue - optional startValue
- * @returns U[] | void
+ * A basic function generating UIDs
+ * @param length the length of the returned UID - defaults to 20
+ * @returns random string
  */
-//  function times<U>(
-//   nTimes: number,
-//   callbackfn: (previousResult: U, index: number) => U
-// )
-export function times(nTimes: number, callbackfn: (index: number) => void): void
-export function times<U>(
-  nTimes: number,
-  callbackfn: (previousResult: U, index: number) => U,
-  startValue: U,
-): U
-export function times<U>(
-  nTimes: number,
-  callbackfn: (previousResult: U, index: number) => U,
-  startValue?: U,
-): U | void {
-  if (arguments.length === 3) {
-    let rV: U = startValue as U
-    for (let step = 0; step < nTimes; step += 1) rV = callbackfn(rV, step)
-    return rV
-  }
-  for (let step = 0; step < nTimes; step += 1)
-    (callbackfn as unknown as (index: number) => void)(step)
-  return undefined
+export function createUid(length = 20): string {
+  return Array.from({ length }, () => Math.random().toString(36)[2]).join('')
 }
 
-type DuplicateCallErrorFn = (calledFn: string, firstCalledFn: string, args: unknown[]) => never
+type DuplicateCallErrorFn = (calledFn: string, firstCalledFn: string, args: unknown[]) => any
 
 function defaultErrorFn(calledFn_: string | undefined, firstCalledFn_: string | undefined): never {
   if (calledFn_ === '') throw new Error(`cannot call function more than once`)
@@ -46,60 +20,89 @@ function defaultErrorFn(calledFn_: string | undefined, firstCalledFn_: string | 
 }
 
 /**
+ * Wraps function(s) altering their behavior if any are called more once.  By default
+ * it throws if any functions are called more than once.  Alternatively an error handling
+ * function can be supplied or any other error return value
+ * As it can handle multiple functions, a second parameter can be an identifier for the
+ * function - which may be useful in the error handling function.
  *
  * @param errorMsgCb - if a function is provided, this will be called as follows: (calledFn: string, firstCalledFn: string, args: unknown[])
- *                     if `undefined` a default error must be throw (this is the default behavior)
+ *                     if not supplied an error is thrown (this is the default behavior)
  *                     any thing else, becomes the value returned if the function is run more than once
- * @returns <T extends (...args)=>unknown>(functionName: string)=>T - returned T can only be called once
- *          either throws or returns errorMsgCb value if called more than once
  */
-export function runFunctionsOnlyOnce<E extends DuplicateCallErrorFn | any = never>(errorMsgCb?: E) {
+export function runFunctionsOnlyOnce(): <T extends (...args: any) => any>(
+  fn: T,
+  fnName?: string,
+) => T
+export function runFunctionsOnlyOnce<E>(
+  errorMsgCbOrReturnValue: E,
+): E extends (...args: any) => infer RT
+  ? <Args extends unknown[], Y>(
+      fn: (...args: Args) => Y,
+      fnName?: string,
+    ) => (...args: Args) => Y | RT
+  : <Args extends unknown[], Y>(
+      fn: (...args: Args) => Y,
+      fnName?: string,
+    ) => (...args: Args) => Y | E
+export function runFunctionsOnlyOnce(
+  errorMsgCb?: DuplicateCallErrorFn,
+): (fn: (...args: any) => unknown, fnName: string) => (...args: unknown[]) => unknown {
   let called = false
   let calledFn = ''
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  let errorFn: DuplicateCallErrorFn | (() => unknown)
-  if (errorMsgCb === undefined) errorFn = defaultErrorFn
-  else if (typeof errorMsgCb === 'function') errorFn = errorMsgCb as DuplicateCallErrorFn
-  else errorFn = () => errorMsgCb
+  const errorFn: DuplicateCallErrorFn | (() => unknown) =
+    // eslint-disable-next-line no-nested-ternary
+    errorMsgCb === undefined
+      ? defaultErrorFn
+      : typeof errorMsgCb === 'function'
+      ? errorMsgCb
+      : () => errorMsgCb
 
-  return <Args extends unknown[], Y>(
-    fn: (...args: Args) => Y,
+  return function addFns(
+    fn: (...args: any) => unknown,
     fnName = '',
-  ): [E] extends [never]
-    ? (...args: Args) => Y
-    : E extends DuplicateCallErrorFn
-    ? (...args: Args) => Y
-    : (...args: Args) => Y | E =>
-    ((...args: Args) => {
+  ): (...args: unknown[]) => unknown {
+    if (called) throw new Error("can't add a function to an already called `runFunctionsOnlyOnce`")
+    return function runFn(...args: unknown[]): unknown {
       if (called) return errorFn(fnName, calledFn, args)
       called = true
       calledFn = fnName
       return fn(...args)
-    }) as unknown as [E] extends [never]
-      ? (...args: Args) => Y
-      : E extends DuplicateCallErrorFn
-      ? (...args: Args) => Y
-      : (...args: Args) => Y | E
-}
-// const x = runFunctionsOnlyOnce()((a: string) => a)
-
-/**
- * Function wrapper that executes `fn` with functions args and if it returns true, throws an error via errorCb
- * @param errorCb: (meta?: M, args?: P) => never - function that throws a custom error
- * @param isValidArgs: (args: P, meta?: M) => boolean - function that performs some test and if it returns `false` then `errorCb` is called
- * @returns (fn: T, meta?: M)=> T - a function that accepts a function `fn` and optional meta data `meta` that may be passed to `errorCb`
- */
-export function validateFn<
-  T extends (...args: any[]) => any,
-  M,
-  P extends any[] = T extends (...args: infer A) => any ? A : never,
->(errorCb: (meta?: M, args?: P) => never, isValidArgs: (args: P, meta?: M) => boolean) {
-  return (fn: T, meta?: M) =>
-    (...args: P) => {
-      if (!isValidArgs(args, meta)) return errorCb(meta, args)
-      return fn(...args)
     }
+  }
 }
+
+// /**
+//  * Function wrapper that executes `fn` with functions args and if it returns true, throws an error via errorCb
+//  * @param errorCb: (meta?: M, args?: P) => never - function that throws a custom error
+//  * @param isValidArgs: (args: P, meta?: M) => boolean - function that performs some test and if it returns `false` then `errorCb` is called
+//  * @returns (fn: T, meta?: M)=> T - a function that accepts a function `fn` and optional meta data `meta` that may be passed to `errorCb`
+//  */
+// export function validateFnArgs<
+//   P extends unknown[],
+//   M,
+// >(
+//   errorCb: (meta?: M, args?: P) => never,
+//   isValidArgs: (args: P, meta?: M) => boolean,
+// ): <RT>(fn: (...args: P) => RT, meta?: M) => (...args: P) => RT
+// export function validateFnArgs<T extends (...args: any[]) => any, M>(
+//   errorCb: (meta?: M, args?: Parameters<T>) => never,
+//   isValidArgs: (args: Parameters<T>, meta?: M) => boolean,
+// ): (fn: T, meta?: M) => T
+// export function validateFnArgs(
+//   errorCb: (meta?: unknown, args?: unknown[]) => never,
+//   isValidArgs: (args: unknown[], meta?: unknown) => boolean,
+// ): (fn: (...args: unknown[]) => unknown, meta?: unknown) => (...args: unknown[]) => unknown {
+//   return function X1(
+//     fn: (...args: unknown[]) => unknown,
+//     meta?: unknown,
+//   ): (...args: unknown[]) => unknown {
+//     return function X2(...args: unknown[]): unknown {
+//       if (!isValidArgs(args, meta)) return errorCb(meta, args)
+//       return fn(...args)
+//     }
+//   }
+// }
 
 // /**
 //  * Function wrapper that throws an error `errorMsg` if arg is undefined, '', null or []
@@ -216,7 +219,6 @@ function callbackTee_<Arguments extends unknown[], ReturnVal>(
  *  callCallbacks: 
  * }
  */
-
 export function callbackTee<Arguments extends unknown[], ReturnVal = void>(
   options: {
     callInReverseOrder?: boolean
@@ -289,76 +291,3 @@ export function capitaliseWords(stringToCapitalise: string, separators = [' ', '
 
 //   return fn
 // }
-
-type ObjectWithExecutableProperty<P extends string> = { [K in P]: (...args: any[]) => any }
-
-export function isObjectAndHasExecutableProperty<P extends string>(
-  object: unknown,
-  property: P,
-): object is ObjectWithExecutableProperty<P> {
-  if (object === null || !['object', 'function'].includes(typeof object)) return false
-  const descriptor = Object.getOwnPropertyDescriptor(object, property)
-  if (descriptor === undefined) return false
-  return typeof descriptor.get === 'function' || typeof descriptor.value === 'function'
-}
-
-/**
- * whether a property of `obj` is a getter.  prop is assumed to exist.
- *
- * @param obj
- * @param prop
- * @returns boolean
- */
-export function isGetter<P extends PropertyKey, O extends { [Property in P]: any }>(
-  obj: O,
-  prop: P,
-): boolean {
-  return !!(Object.getOwnPropertyDescriptor(obj, prop) as PropertyDescriptor).get
-}
-/**
- * whether a property of `obj` is a setter.  prop is assumed to exist.
- *
- * @param obj
- * @param prop
- * @returns boolean
- */
-export function isSetter<P extends PropertyKey, O extends { [Property in P]: any }>(
-  obj: O,
-  prop: P,
-): boolean {
-  return !!(Object.getOwnPropertyDescriptor(obj, prop) as PropertyDescriptor).set
-}
-/**
- * whether a property of `obj` is a value - i.e. a non-callable property.  prop is assumed to exist.
- *
- * @param obj
- * @param prop
- * @returns boolean
- */
-export function isValue<P extends PropertyKey, O extends { [Property in P]: any }>(
-  obj: O,
-  prop: P,
-): boolean {
-  const x = (Object.getOwnPropertyDescriptor(obj, prop) as PropertyDescriptor).value
-  return x !== undefined && typeof x !== 'function'
-}
-/**
- * whether a property of `obj` is a callable function.  prop is assumed to exist.
- *
- * @param obj
- * @param prop
- * @returns boolean
- *
- * @example
- * type Foo = { foo: unknown }
- * const foo1:Foo = { foo: () => 1 }
- * foo1.foo() // errors
- * if(isFunction(foo1, 'foo')) foo1.foo() // doesn't error
- */
-export function isFunction<P extends PropertyKey>(
-  obj: { [Property in P]: unknown } | { [Property in P]: (...args: any[]) => any },
-  prop: P,
-): obj is { [Property in P]: (...args) => any } {
-  const x = (Object.getOwnPropertyDescriptor(obj, prop) as PropertyDescriptor).value
-  return x !== undefined && typeof x === 'function'
-}

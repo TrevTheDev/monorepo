@@ -5,7 +5,7 @@ import { basicSchemaTests, testValidations } from './shared'
 
 it('passing validations', () => {
   const { greaterThan, lesserThan } = v.number.validators
-  const schema01 = v.number({ validations: [greaterThan(3), lesserThan(5)] })
+  const schema01 = v.number.validations([greaterThan(3), lesserThan(5)])
   basicSchemaTests({
     parser: schema01,
     passValue: 4,
@@ -13,8 +13,8 @@ it('passing validations', () => {
     type: 'number',
     schemaType: 'number',
   })
-  const { builder } = v.number
-  const schema02 = v.number({ validations: builder.greaterThan(3).lesserThan(5) })
+
+  const schema02 = v.number.validations(v.number.builder.greaterThan(3).lesserThan(5))
   basicSchemaTests({
     parser: schema02,
     passValue: 4,
@@ -40,7 +40,7 @@ it('passing validations', () => {
 
 it('validations', () => {
   const b = v.number.validators
-  testValidations(v.number, [
+  testValidations(v.number.validations, [
     {
       validations: [b.greaterThan(3)],
       passValues: [{ passValue: 4 }],

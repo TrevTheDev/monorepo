@@ -1,12 +1,12 @@
 import { difference, isError } from '@trevthedev/toolbelt'
-import { MinimumSchema, VInfer } from '../schema'
 import {
   SafeParseObjectFn,
   SingleObjectValidationError,
   allKeys,
   objectValidationErrorsToValidationErrors,
 } from './parse object properties'
-import { SafeParseOutput } from './parsers'
+import { VInfer } from '../shared/infer'
+import { MinimumSchema, SafeParseOutput } from '../shared/schema'
 
 export type ParseUnmatchedKeysOptions<T extends MinimumSchema> = {
   unmatchedPropertiesSchema: T

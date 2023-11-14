@@ -1,9 +1,9 @@
 import { Identity } from '@trevthedev/toolbelt'
-import defaultErrorFn, { DefaultErrorFn } from '../errorFns'
-import { SafeParseOutput } from './parsers'
 import { SingleValidationError } from '../validations/validations'
-import { isNeverSchema, isOptionalSchema } from '../shared'
-import { MinimumSchema, SafeParseFn, VInfer } from '../schema'
+import defaultErrorFn, { DefaultErrorFn } from '../shared/errorFns'
+import { VInfer } from '../shared/infer'
+import { MinimumSchema, SafeParseFn, SafeParseOutput } from '../shared/schema'
+import { isOptionalSchema, isNeverSchema } from '../shared/shared'
 
 const errorFns = defaultErrorFn
 

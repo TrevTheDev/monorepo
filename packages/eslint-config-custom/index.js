@@ -1,15 +1,14 @@
-/* eslint-disable node/no-unsupported-features/es-syntax */
+/* eslint-disable no-undef */
 module.exports = {
   parser: '@typescript-eslint/parser',
   plugins: ['node', '@typescript-eslint', 'import'],
   env: {
     browser: false,
     node: true,
-    es2021: true,
+    // es2021: true,
   },
   parserOptions: {
-    // Only ESLint 6.2.0 and later support ES2020.
-    ecmaVersion: 2020,
+    ecmaVersion: 'latest',
   },
   extends: [
     'turbo',
@@ -61,11 +60,11 @@ module.exports = {
   settings: {
     node: {
       tryExtensions: ['.js', '.json', '.ts', '.d.ts'],
-      allowModules: ['vitest', 'tsup'],
+      // allowModules: ['vitest', 'tsup'],
     },
     'import/resolver': {
       typescript: {},
     },
-    'import/core-modules': ['vitest', 'tsup'],
+    // 'import/core-modules': ['vitest', 'tsup'],
   },
 }

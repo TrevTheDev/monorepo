@@ -41,7 +41,7 @@ describe('enhanced chain', () => {
     new Promise((done) => {
       const events: string[] = []
       const tracker = (callback: string) => () => events.push(callback)
-      const chainy = enhancedChain({
+      const chainA = enhancedChain({
         forceAsync: 'setImmediate',
         callbacks: {
           onItemAddedToChain: tracker('onItemAddedToChain'),
@@ -60,7 +60,8 @@ describe('enhanced chain', () => {
           afterNodeError: tracker('afterNodeError'),
           onChainEmpty: tracker('onChainEmpty'),
         },
-      })((x: string, resolve: Resolver<(arg: string) => void>) => {
+      })
+      const chainy = chainA((x: string, resolve: Resolver<(arg: string) => void>) => {
         expect(x).toEqual('start')
         resolve('A')
       })
@@ -149,12 +150,13 @@ describe('enhanced chain', () => {
 
   it('error to errorCb', () =>
     new Promise((done) => {
-      const chainy = enhancedChain()(
-        (x: string, resolve: Resolver<(arg: string) => void, (error: Error) => void>) => {
-          expect(x).toEqual('start')
-          resolve('A')
-        },
-      )
+      const chainy = enhancedChain()((
+        x: string,
+        resolve: Resolver<(arg: string) => void, (error: Error) => void>,
+      ) => {
+        expect(x).toEqual('start')
+        resolve('A')
+      })
 
       const b = chainy(
         (x: string, resolve: Resolver<(arg: string) => void>) => {

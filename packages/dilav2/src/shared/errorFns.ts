@@ -1,3 +1,5 @@
+import type { MinimumObjectSchema, MinimumSchema } from './schema'
+
 const JSONstringify = (unknownObject) => {
   try {
     return JSON.stringify(
@@ -23,7 +25,7 @@ const defaultErrorFn = {
   parseError: (value: unknown) => `unable to parse ${stringify(value)}`,
   parseStringError: (value: unknown) => `${stringify(value)} is not a string`,
   parseNumberError: (value: unknown) => `${stringify(value)} is not a number`,
-  parseBigIntError: (value: unknown) => `${stringify(value)} is not a bigint`,
+  parseBigintError: (value: unknown) => `${stringify(value)} is not a bigint`,
   parseBooleanError: (value: unknown) => `${stringify(value)} is not a boolean`,
   parseNaNError: (value: unknown) => `${stringify(value)} is not a NaN`,
   parseSymbolError: (value: unknown) => `${stringify(value)} is not a symbol`,
@@ -38,6 +40,8 @@ const defaultErrorFn = {
   // eslint-disable-next-line @typescript-eslint/ban-types
   parseInstanceOfError: (value: unknown, instanceOfItem: Function) =>
     `${stringify(value)} is not an instance of '${instanceOfItem.name}'`,
+  parseExcludeError: (value: unknown, schema: MinimumSchema) =>
+    `${stringify(value)} is of type ${schema.schemaType}`,
   minimumArrayLengthError: (value: unknown[], minLength: number) =>
     `array contains ${value.length} element(s) but must contain ${minLength}`,
   maximumArrayLengthError: (value: unknown[], maxLength: number) =>
@@ -177,8 +181,8 @@ const defaultErrorFn = {
   // discriminatedUnionValueIsNotAnObjectError: (value: unknown) =>
   //   `value ${stringify(value)} is not of type object`,
 
-  noMatchFoundInLiteralUnionError: (value: unknown, literalUnionDef: readonly unknown[]) =>
-    `value ${stringify(value)} not found in: ${stringify(literalUnionDef)}`,
+  noMatchFoundInLiteralUnionError: (value: unknown, literals: readonly unknown[]) =>
+    `value ${stringify(value)} not found in: ${stringify(literals)}`,
   parseMapError: (value: unknown) => `${stringify(value)} is not an instance of a Map`,
   minimumMapLengthError: (value: Map<unknown, unknown>, minLength: number) =>
     `${value.size} is less elements than the minimum of ${minLength}`,

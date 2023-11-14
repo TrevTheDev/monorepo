@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable max-len */
-import defaultErrorFn, { DefaultErrorFn } from '../errorFns'
+import defaultErrorFn, { DefaultErrorFn } from '../shared/errorFns'
 import { SingleValidationError, customValidations } from './validations'
 
 // #TODO: make settable
@@ -46,13 +46,13 @@ function validateAgainstRegex(
 
 const cuidRegex = /^c[^\s-]{8,}$/i
 const cuid2Regex = /^[a-z][a-z0-9]*$/
-const ulidRegex = /[0-9A-HJKMNP-TV-Z]{26}/
+const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/
 const uuidRegex =
   /^([a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[a-f0-9]{4}-[a-f0-9]{12}|00000000-0000-0000-0000-000000000000)$/i
 const emailRegex =
-  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\])|(\[IPv6:(([a-f0-9]{1,4}:){7}|::([a-f0-9]{1,4}:){0,6}|([a-f0-9]{1,4}:){1}:([a-f0-9]{1,4}:){0,5}|([a-f0-9]{1,4}:){2}:([a-f0-9]{1,4}:){0,4}|([a-f0-9]{1,4}:){3}:([a-f0-9]{1,4}:){0,3}|([a-f0-9]{1,4}:){4}:([a-f0-9]{1,4}:){0,2}|([a-f0-9]{1,4}:){5}:([a-f0-9]{1,4}:){0,1})([a-f0-9]{1,4}|(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2})))\])|([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])*(\.[A-Za-z]{2,})+))$/
+  // eslint-disable-next-line no-useless-escape
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i
 const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Component})+$/u
-
 const ipv4Regex =
   /^(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))$/
 
@@ -87,7 +87,7 @@ export const stringValidations = {
   /**
    * value.length === length
    */
-  length(
+  size(
     length: number,
     stringLengthError?: DefaultErrorFn['stringLengthError'],
   ): StringValidationFn {
@@ -127,8 +127,8 @@ export const stringValidations = {
 
   validIp(validIpError?: DefaultErrorFn['validIpError']): StringValidationFn {
     return (value: string) => {
-      if (this.validIpv4(validIpError)(value) === undefined) return undefined
-      if (this.validIpv6(validIpError)(value) === undefined) return undefined
+      if (stringValidations.validIpv4(validIpError)(value) === undefined) return undefined
+      if (stringValidations.validIpv6(validIpError)(value) === undefined) return undefined
       return (validIpError ?? errorFns.validIpError)(value)
     }
   },

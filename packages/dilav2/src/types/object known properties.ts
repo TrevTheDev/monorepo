@@ -1,57 +1,133 @@
-import { Builder } from '../builder'
-import { DefaultErrorFn } from '../errorFns'
-import { parsers } from '../parsers/parsers'
+import { Identity, Or, RMerge, isError } from '@trevthedev/toolbelt'
 import {
   PropertySchemasDef,
   ObjectDefToObjectType,
   allKeys,
+  parseObjectProperties,
 } from '../parsers/parse object properties'
-import { Schema, SchemaPrototype, MinimumSchema, SafeParseFn } from '../schema'
+import { DefaultErrorFn } from '../shared/errorFns'
+import { BasicSchema2, MinimumSchema } from '../shared/schema'
+import { createBasicSchema2 } from '../shared/schema creator'
+import { isOptionalSchema, isTransformed, unwrappedSchema } from '../shared/shared'
+import { CustomValidations, customValidations } from '../validations/validations'
+import { type MustTransform } from './object'
 
-import { isOptionalSchema, unwrappedSchema, isTransformed } from '../shared'
-import { ObjectValidations, ValidationFn, objectValidations } from '../validations/validations'
+type ObjectValidatorLibrary<O> = CustomValidations<O>
 
-interface VObjectKnownPropertiesSchemaRoot<O extends object = object, I extends object = object>
-  extends Schema<O, I, [], SchemaPrototype<O, I, 'object known properties', string>> {
-  transformed?: boolean
-}
-
-interface VObjectKnownPropertiesSchema<O extends object = object, I extends object = object>
-  extends VObjectKnownPropertiesSchemaRoot<O, I>,
-    SharedCreateSchemaProperties<ObjectValidations<O>> {
-  validations(
-    validations?: Builder<ObjectValidations<O>> | ValidationFn<O>[],
-  ): VObjectKnownPropertiesSchemaRoot<O, I>
+export interface VObjectKnownPropertiesSchema<
+  O extends object,
+  I,
+  Transformed extends boolean,
+  PriorO extends object = object,
+  KeysIncluded extends keyof O = keyof O,
+> extends BasicSchema2<{
+    output: O
+    input: I
+    args: []
+    schemaType: 'object known properties'
+    type: string
+    validators: ObjectValidatorLibrary<O>
+  }> {
   extends<S extends PropertySchemasDef>(
     propertySchemas: S,
-  ): VObjectKnownPropertiesSchema<O & ObjectDefToObjectType<S>, O>
+  ): VObjectKnownPropertiesSchema<
+    O & ObjectDefToObjectType<S>,
+    O & { [P in PropertyKey]: unknown },
+    Or<Transformed, MustTransform<S>>,
+    O,
+    keyof S
+  >
+  merge<S extends PropertySchemasDef>(
+    propertySchemas: S,
+  ): VObjectKnownPropertiesSchema<
+    RMerge<[O, ObjectDefToObjectType<S>]>,
+    I,
+    Or<Transformed, MustTransform<S>>,
+    O,
+    keyof S | KeysIncluded
+  >
+  pick<const S extends [KeysIncluded, ...KeysIncluded[]]>(
+    ...S
+  ): VObjectKnownPropertiesSchema<PriorO & Pick<O, S[number]>, I, Transformed, PriorO, S[number]>
+  omit<const S extends [KeysIncluded, ...KeysIncluded[]]>(
+    ...S
+  ): VObjectKnownPropertiesSchema<
+    PriorO & Omit<O, S[number]>,
+    I,
+    Transformed,
+    PriorO,
+    Exclude<KeysIncluded, S[number]>
+  >
   readonly validatedProperties: (keyof O)[]
+  readonly transformed: Transformed
 }
 
-export type ObjectKnownPropertiesOptions<T extends PropertySchemasDef> = {
+export type ObjectKnownPropertiesOptions<
+  T extends PropertySchemasDef,
+  Transformed extends boolean = boolean,
+> = {
+  propertySchemas: T
+  missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  typePrefix?: string
+  transform?: Transformed
+  upStreamPropertySchemaKeys?: PropertyKey[]
+  breakOnFirstError?: boolean
+  objectTypeOfParser?: MinimumSchema
+}
+
+// export type VObjectKnownProperties<
+//   T extends PropertySchemasDef,
+//   Transformed extends boolean,
+//   I,
+//   O extends object = [keyof I] extends [never]
+//     ? ObjectDefToObjectType<T>
+//     : I & ObjectDefToObjectType<T>,
+// > = (
+//   options?: ObjectKnownPropertiesOptions<T, Transformed>,
+// ) => VObjectKnownPropertiesSchema<O, I, Transformed>
+
+export function vObjectKnownProperties<
+  T extends PropertySchemasDef,
+  Transformed extends boolean,
+  I,
+  O extends object = [keyof I] extends [never]
+    ? ObjectDefToObjectType<T>
+    : I & ObjectDefToObjectType<T>,
+>(
+  options: ObjectKnownPropertiesOptions<T, Transformed>,
+): VObjectKnownPropertiesSchema<O, I, Transformed>
+export function vObjectKnownProperties<
+  T extends PropertySchemasDef,
+  Transformed extends boolean,
+  O extends object = ObjectDefToObjectType<T>,
+>(options: {
+  propertySchemas: T
+  objectTypeOfParser: MinimumSchema
+  missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  breakOnFirstError?: boolean
+}): VObjectKnownPropertiesSchema<O, unknown, Transformed>
+export function vObjectKnownProperties<
+  T extends PropertySchemasDef,
+  Transformed extends boolean,
+  I extends object,
+  O extends object = I & ObjectDefToObjectType<T>,
+>(options: {
   propertySchemas: T
   missingPropertyError?: DefaultErrorFn['missingPropertyError']
   typePrefix?: string
   transform?: boolean
   upStreamPropertySchemaKeys?: PropertyKey[]
   breakOnFirstError?: boolean
-}
-
-export type VObjectKnownProperties<
-  T extends PropertySchemasDef,
-  I extends object = object,
-  O extends object = [keyof I] extends [never]
-    ? ObjectDefToObjectType<T>
-    : I & ObjectDefToObjectType<T>,
-> = (options?: ObjectKnownPropertiesOptions<T>) => VObjectKnownPropertiesSchema<O, I>
-
-export function vObjectKnownProperties<
-  T extends PropertySchemasDef,
-  I extends object = object,
-  O extends object = [keyof I] extends [never]
-    ? ObjectDefToObjectType<T>
-    : I & ObjectDefToObjectType<T>,
->(options: ObjectKnownPropertiesOptions<T>): VObjectKnownPropertiesSchema<O, I> {
+}): VObjectKnownPropertiesSchema<O, I, Transformed>
+export function vObjectKnownProperties(options: {
+  propertySchemas: PropertySchemasDef
+  missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  typePrefix?: string
+  transform?: boolean
+  upStreamPropertySchemaKeys?: PropertyKey[]
+  breakOnFirstError?: boolean
+  objectTypeOfParser?: MinimumSchema
+}): MinimumSchema {
   const {
     propertySchemas,
     missingPropertyError,
@@ -59,7 +135,7 @@ export function vObjectKnownProperties<
     typePrefix,
     transform = false,
     upStreamPropertySchemaKeys = [],
-    // validatedPropertySchemaKeys = [],
+    objectTypeOfParser,
   } = options
 
   const propertySchemaKeys = allKeys(propertySchemas)
@@ -76,96 +152,84 @@ export function vObjectKnownProperties<
   }
   type = `${typePrefix ? `${typePrefix} & ` : ''}{ ${middleType.slice(0, -2)} }`
 
-  const baseParser = parsers.objectProperties({
+  const baseParser = parseObjectProperties({
     propertySchemas,
     missingPropertyError,
     propertySchemaKeys,
     breakOnFirstError,
   })
-  const parser = transformed ? (input, newObject = {}) => baseParser(input, newObject) : baseParser
-
-  const createParserFn: (...args: any[]) => SafeParseFn<any, any, any[]> = () => parser
-
-  const schemaPrototype = sharedSchemaProperties<
-    object,
-    unknown,
-    'object known properties',
-    string
-  >({
-    type,
-    schemaType: 'object known properties',
-  })
-  if (transformed) {
-    Object.defineProperty(schemaPrototype, 'transformed', {
-      get() {
-        return true
-      },
-    })
+  // const parser = transformed ? (input, newObject = {}) => baseParser(input, newObject) : baseParser
+  let parser
+  if (objectTypeOfParser) {
+    parser = function parserT1(input: unknown, newObject?: object) {
+      const result = objectTypeOfParser(input)
+      if (isError(result)) return result
+      return baseParser(input as object, transformed ? newObject ?? {} : newObject)
+    }
+  } else {
+    parser = function parserT2(input: object, newObject?: object) {
+      return transformed ? baseParser(input, newObject ?? {}) : baseParser(input, newObject)
+    }
   }
 
-  const createSchemaPrototype = Object.defineProperties(
-    sharedCreateSchemaProperties({
-      validators: objectValidations,
-      baseObject: Object.create(schemaPrototype),
-    }),
-    {
-      validations: {
-        value(
-          validations: Exclude<
-            Exclude<Parameters<typeof baseSchemaObj>[0], undefined>['validations'],
-            undefined
-          >,
-        ) {
-          return baseSchemaObj({
-            validations,
-            breakOnFirstError,
-          } as any)
-        },
-      },
-      validatedProperties: {
-        get() {
-          return [...upStreamPropertySchemaKeys, ...propertySchemaKeys]
-        },
-      },
-      extends: {
-        value(extendedPropertySchemas: PropertySchemasDef) {
-          return vObjectKnownProperties({
-            propertySchemas: extendedPropertySchemas,
-            missingPropertyError: missingPropertyError as unknown as any,
-            breakOnFirstError,
-            typePrefix: type,
-            transform: transformed,
-            upStreamPropertySchemaKeys: this.validatedProperties,
-          })
-        },
+  const objSchema = createBasicSchema2({
+    schemaType: 'object known properties' as const,
+    type,
+    parser,
+    validators: customValidations(),
+  })
+
+  Object.defineProperties(objSchema, {
+    validatedProperties: {
+      get() {
+        return [...upStreamPropertySchemaKeys, ...propertySchemaKeys]
       },
     },
-  )
-
-  // type opts = Omit<ObjectPropertiesOptions<T>, 'propertySchemas'>
-
-  const baseSchemaObj: CreateSchema<
-    O,
-    I,
-    [],
-    Exclude<ObjectKnownPropertiesOptions<T>, 'propertySchema'>,
-    object,
-    SchemaPrototype<object, unknown, 'object known properties', string>
-  > = schemaCreator({
-    createParserFn,
-    createSchemaPrototype: {},
-    schemaPrototype: createSchemaPrototype as SchemaPrototype<
-      object,
-      unknown,
-      'object known properties',
-      string
-    >,
+    extends: {
+      value(extendedPropertySchemas: PropertySchemasDef) {
+        return vObjectKnownProperties({
+          propertySchemas: extendedPropertySchemas,
+          missingPropertyError: missingPropertyError as DefaultErrorFn['missingPropertyError'],
+          breakOnFirstError,
+          typePrefix: type,
+          transform: transformed,
+          upStreamPropertySchemaKeys: this.validatedProperties,
+        })
+      },
+    },
+    merge: {
+      value(additionalPropertySchemas: PropertySchemasDef) {
+        return vObjectKnownProperties({
+          propertySchemas: { ...propertySchemas, ...additionalPropertySchemas },
+          missingPropertyError: missingPropertyError as DefaultErrorFn['missingPropertyError'],
+          breakOnFirstError,
+          typePrefix: typePrefix as string,
+          transform: transformed,
+          upStreamPropertySchemaKeys,
+        })
+      },
+    },
+    pick: {
+      value(...keys: PropertyKey[]) {
+        const newPropertySchemas = Object.fromEntries(
+          Object.entries(propertySchemas).filter(([key]) => keys.includes(key)),
+        )
+        return vObjectKnownProperties({
+          propertySchemas: newPropertySchemas,
+          missingPropertyError: missingPropertyError as DefaultErrorFn['missingPropertyError'],
+          breakOnFirstError,
+          typePrefix: typePrefix as string,
+          transform: transformed,
+          upStreamPropertySchemaKeys,
+        })
+      },
+    },
+    transformed: {
+      get() {
+        return transformed
+      },
+    },
   })
-  const defaultObjectSchema = baseSchemaObj({ validations: [], breakOnFirstError } as any)
-  return Object.setPrototypeOf(
-    function SchemaObjFn(value) {
-      return defaultObjectSchema(value)
-    } as VObjectKnownPropertiesSchema<O, I>,
-    createSchemaPrototype,
-  )
+
+  return objSchema
 }

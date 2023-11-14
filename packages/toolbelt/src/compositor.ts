@@ -7,7 +7,7 @@ type Compositor<
   Last extends Fn = T extends [...any, infer L extends Fn] ? L : never,
 > = T extends [Fn, ...Fn[]]
   ? {
-      <R extends [Fn<ReturnType<Last>, any>, ...Fn[]]>(
+      <const R extends [Fn<ReturnType<Last>, any>, ...Fn[]]>(
         ...fns: R & FunctionChainArray<R>
       ): Compositor<[...T, ...R]>
       /**
@@ -36,7 +36,7 @@ type Compositor<
       ): (fn: S) => CalculatedCompositeFn<T>
     }
   : {
-      <R extends [Fn, ...Fn[]]>(...fns: R & FunctionChainArray<R>): Compositor<[...R]>
+      <const R extends [Fn, ...Fn[]]>(...fns: R & FunctionChainArray<R>): Compositor<[...R]>
       /**
        * calls
        * @param input
@@ -79,7 +79,7 @@ type Compositor<
 //   ...functions: T & ReverseTuple<FunctionChainArray<ReverseT>>
 // ): Compositor<T>
 // function compositor(): Compositor<[]>
-function compositor<T extends Fn[]>(
+function compositor<const T extends Fn[]>(
   ...functions: T & T extends [Fn, ...Fn[]] ? FunctionChainArray<T> : T
 ): Compositor<T> {
   const fnArray: Fn[] = functions || []

@@ -1,6 +1,6 @@
-import { isResult } from '@trevthedev/toolbelt'
-import { SafeParseOutput, ValidationErrors } from './parsers/parsers'
-import { MinimumSchema } from './schema'
+import { isError, isResult } from '@trevthedev/toolbelt'
+import { BaseSafeParseFn, MinimumSchema, SafeParseOutput, ValidationErrors } from './schema'
+import DilavError from './dilav error class'
 
 export function errorFromResultError(resultError: SafeParseOutput<unknown>): ValidationErrors {
   if (isResult(resultError)) throw new Error('was an result, so no error found!')
@@ -59,4 +59,12 @@ export function isTransformed(
   schema: MinimumSchema,
 ): schema is MinimumSchema & { transformed: true } {
   return 'transformed' in schema && schema.transformed === true
+}
+
+export function parse(schema: BaseSafeParseFn) {
+  return function parseFn(input) {
+    const result = schema(input)
+    if (isError(result)) throw new DilavError(result[0])
+    return result[1]
+  }
 }

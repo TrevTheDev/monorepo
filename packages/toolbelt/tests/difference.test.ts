@@ -23,7 +23,6 @@ describe('difference & intersection', () => {
     expect(`${intersection([2, 4, 3, 1], [1, 2, 3])}`).toEqual('2,3,1')
     const u1 = difference([1, 2, 3, 4], [7, 6, 5, 4, 3]) //= > [1,2] type: (1 | 2)[]
     const u2 = difference([7, 6, 5, 4, 3], [1, 2, 3, 4]) //= > [7,6,5] type: (7 | 6 | 5)[]
-    const u3 = difference([7, 6, 5, 4, 3] as number[], [1, 2, 3, 4]) //= > [7,6,5] type: (7 | 6 | 5)[]
-    console.log(u1, u2, u3)
+    console.log(u1, u2)
   })
 })

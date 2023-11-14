@@ -17,23 +17,48 @@
     },
     {
       "path": "packages/webgpu"
+    },
+    {
+      "path": "packages/combinators"
     }
   ],
   "settings": {
     "vitest.disabledWorkspaceFolders": ["root"],
     "cSpell.words": [
+      "ABCC",
+      "ABDC",
+      "ACBC",
+      "ACDB",
+      "ADCB",
+      "cardinalstar",
+      "cardinalstarstar",
       "Chainy",
       "datetime",
+      "eaglebald",
+      "finchstar",
+      "finchstarstar",
       "gerstner",
       "glsl",
       "HJKMNP",
+      "idstar",
+      "idstarstar",
       "keyof",
       "Microtask",
+      "robinstar",
+      "robinstarstar",
+      "schemaproto",
+      "Thiemann's",
+      "toolbelt",
       "treeshake",
+      "unassignable",
       "unauthorised",
       "unmap",
+      "unnest",
+      "vireostar",
+      "vireostarstar",
+      "warblerstar",
+      "warblerstarstar",
       "webgpu"
-    ],
-    "testing.automaticallyOpenPeekView": "never"
+    ]
   }
 }

@@ -15,7 +15,7 @@
     "preserveWatchOutput": true,
     "skipLibCheck": true,
     "strict": true,
-    "noErrorTruncation": true,
+    "noErrorTruncation": false,
     "paths": {
       "@trevthedev/*": ["./packages/*/"]
     }

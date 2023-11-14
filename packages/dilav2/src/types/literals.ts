@@ -1,19 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isError } from '@trevthedev/toolbelt'
-import { builder } from '../builder'
-import defaultErrorFn, { DefaultErrorFn } from '../errorFns'
-import { SafeParseOutput } from '../parsers/parsers'
-import { BaseSafeParseFn, BaseSchemaDefinition, SafeParseFn } from '../schema'
-import { baseSchemaPrototype, basicSchemaCreator, createSchema } from '../schema creator'
+import { ResultError } from '@trevthedev/toolbelt'
+import defaultErrorFn, { DefaultErrorFn } from '../shared/errorFns'
+import { SafeParseOutput, ValidationErrors } from '../parsers/parsers'
 import {
-  ValidationFn,
-  Validations,
-  ValidatorLibrary,
-  customValidations,
-  validate,
-  validationsKey,
-} from '../validations/validations'
-import { BaseVInferSafeParse, VInferSafeParse } from '../infer'
+  BasicSchema2WithCustom,
+  SafeParseFn,
+  SchemaTypes,
+  VAny,
+  VFalse,
+  VNull,
+  VTrue,
+  VUndefined,
+  VUnknown,
+} from '../shared/schema'
+import { createBasicSchema2, createBasicSchema2WithCustom } from '../shared/schema creator'
+import { ValidatorLibrary, customValidations } from '../validations/validations'
 
 type ValidDefaultErrorFns = {
   [P in keyof DefaultErrorFn as DefaultErrorFn[P] extends DefaultErrorFn['parseLiteralError']
@@ -23,29 +24,47 @@ type ValidDefaultErrorFns = {
 
 function vLiteralFn<
   const T,
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  const Validators extends ValidatorLibrary<T> = {},
-  Type extends string = T extends string | number | boolean ? `${T}` : never,
-  const ParseLiteralErrorOptionString extends
-    | (string & keyof ValidDefaultErrorFns)
-    | 'parseLiteralError' = 'parseLiteralError',
+  const Type extends string,
+  const ParseLiteralErrorOptionString extends string & keyof ValidDefaultErrorFns,
+  const Validators extends ValidatorLibrary<T>,
 >(options: {
   literal: T
-  parseLiteralErrorOptionString?: ParseLiteralErrorOptionString
-  validators?: Validators
-  type?: Type
-}) {
+  type: Type
+  parseLiteralErrorOptionString: ParseLiteralErrorOptionString
+  validators: Validators
+}): {
+  output: T
+  input: unknown
+  args: []
+  schemaType: 'literal'
+  type: Type
+  validators: Validators
+  createParserOptions: {
+    [K in ParseLiteralErrorOptionString]?: DefaultErrorFn['parseLiteralError']
+  }
+} extends infer O extends {
+  output: T
+  input: unknown
+  args: unknown[]
+  schemaType: SchemaTypes
+  type: string
+  validators: ValidatorLibrary<T>
+  createParserOptions: object
+}
+  ? BasicSchema2WithCustom<O>
+  : 'never' {
   const {
     type = String(options.literal) as Type,
     literal,
-    parseLiteralErrorOptionString = 'parseLiteralError',
+    parseLiteralErrorOptionString,
+    validators,
   } = options
   function parser(
     opts: {
       [K in ParseLiteralErrorOptionString]?: DefaultErrorFn['parseLiteralError']
     } = {},
   ): SafeParseFn<T, unknown, []> {
-    return (input: unknown): SafeParseOutput<T> => {
+    function parserFn(input: unknown): SafeParseOutput<T> {
       // const { parseLiteralError = defaultParseLiteralError } = opts
       const parseLiteralError: DefaultErrorFn['parseLiteralError'] =
         parseLiteralErrorOptionString in opts
@@ -61,14 +80,13 @@ function vLiteralFn<
             },
           ]
     }
+    return parserFn
   }
-  return basicSchemaCreator({
-    parser: parser as (opts: {
-      [K in ParseLiteralErrorOptionString]?: DefaultErrorFn['parseLiteralError']
-    }) => (input: unknown) => SafeParseOutput<T>,
+  return createBasicSchema2WithCustom({
+    parser,
     type,
     schemaType: 'literal' as const,
-    validators: customValidations<T>(),
+    validators,
   })
 }
 
@@ -76,141 +94,62 @@ export function vLiteral<const T>(options: {
   literal: T
   parseLiteralError?: DefaultErrorFn['parseLiteralError']
 }) {
-  const { literal, parseLiteralError } = options
-  const p = vLiteralFn({
+  const { literal, parseLiteralError = defaultErrorFn.parseLiteralError } = options
+  const def = {
     literal,
     type: `${literal}`,
-  })
-  return parseLiteralError ? p({ parseLiteralError }) : p()
+    parseLiteralErrorOptionString: 'parseLiteralError' as const,
+    validators: customValidations<T>(),
+  }
+  const p = vLiteralFn(def)
+  return p.custom({ parseLiteralError })
 }
 
-export const vUndefined = vLiteralFn({
+export const vUndefined: VUndefined = vLiteralFn({
   literal: undefined,
+  type: 'undefined',
   validators: customValidations<undefined>(),
   parseLiteralErrorOptionString: 'parseUndefinedError',
 })
 
-export const vNull = vLiteralFn({
+export const vNull: VNull = vLiteralFn({
   literal: null,
+  type: 'null',
   validators: customValidations<null>(),
   parseLiteralErrorOptionString: 'parseNullError',
 })
 
-export const vTrue = vLiteralFn({
+export const vTrue: VTrue = vLiteralFn({
   literal: true,
+  type: 'true',
   validators: customValidations<true>(),
   parseLiteralErrorOptionString: 'parseTrueError',
 })
 
-export const vFalse = vLiteralFn({
+export const vFalse: VFalse = vLiteralFn({
   literal: false,
+  type: 'false',
   validators: customValidations<false>(),
   parseLiteralErrorOptionString: 'parseFalseError',
 })
 
-function anyParser(input: unknown): SafeParseOutput<any> {
+function anyParser(input: unknown): ResultError<ValidationErrors, any> {
   return [undefined, input as any]
 }
-
-function safeParseAndValidate<
-  T extends BaseSafeParseFn,
-  X extends BaseVInferSafeParse = VInferSafeParse<T>,
-  O = X['output'],
-  I = X['input'],
-  Args extends unknown[] = X['args'],
->(
-  parser: BaseSafeParseFn,
-  breakOnFirstError: boolean,
-): (options: {
-  validations:
-    | ValidationFn<O>[]
-    | {
-        [validationsKey]: ValidationFn<O>[]
-      }
-}) => SafeParseFn<O, I, Args> {
-  return function createSafeParserFn(options: {
-    validations:
-      | ValidationFn<O>[]
-      | {
-          [validationsKey]: ValidationFn<O>[]
-        }
-  }): SafeParseFn<O, I, Args> {
-    const validationFn = validate({ ...options, breakOnFirstError })
-    return function SafeParseAndValidateFn(value: I, ...args: Args): SafeParseOutput<O> {
-      const parsedOutput = parser(value, ...args)
-      if (isError(parsedOutput)) return parsedOutput
-      const validationErrors = validationFn(parsedOutput[1])
-      return validationErrors !== undefined
-        ? [{ input: value, errors: validationErrors }, undefined]
-        : parsedOutput
-    }
-  }
-}
-
-const anyValidators = customValidations<any>()
-const anyProto = {
-  validations(validations: Validations<any>) {
-    const nextSchemaDef = {
-      ...vAnySchemaDef,
-      schemaPrototype: Object.setPrototypeOf(
-        {
-          validations(validationsN: Validations<any>) {
-            return this.validations([
-              ...(validationsKey in validations ? validations[validationsKey] : validations),
-              ...(validationsKey in validationsN ? validationsN[validationsKey] : validationsN),
-            ])
-          },
-        },
-        baseSchemaPrototype,
-      ),
-      validations,
-    }
-    return createSchema(nextSchemaDef)
-  },
-  builder: builder({
-    schemaPrototype: baseSchemaPrototype,
-    parser: anyParser,
-    schemaType: 'any' as const,
-    type: 'any' as const,
-    breakOnFirstError: false,
-    validators: anyValidators,
-  }),
-  validators: anyValidators,
-}
-
-const vAnySchemaDef = {
-  schemaPrototype: Object.setPrototypeOf(anyProto, baseSchemaPrototype),
-  schemaType: 'any' as const,
-  type: 'any' as const,
-  // builder: anyBuilder,
+export const vAny: VAny = createBasicSchema2({
+  schemaType: 'any',
+  type: 'any',
   parser: anyParser,
-  breakOnFirstError: false,
-} satisfies BaseSchemaDefinition
+  validators: customValidations<any>(),
+})
 
-export const vAny = createSchema(vAnySchemaDef)
+function unknownParser(input: unknown): SafeParseOutput<unknown> {
+  return [undefined, input as unknown]
+}
 
-export const vUnknown = basicSchemaCreator({
-  parser(): SafeParseFn<unknown, unknown, []> {
-    return (input: unknown): SafeParseOutput<unknown> => [undefined, input as unknown]
-  },
+export const vUnknown: VUnknown = createBasicSchema2({
+  schemaType: 'unknown',
   type: 'unknown',
-  schemaType: 'unknown' as const,
+  parser: unknownParser,
   validators: customValidations<unknown>(),
-})()
-
-export const vNever = basicSchemaCreator({
-  parser(
-    options: { parseNeverError?: DefaultErrorFn['parseNeverError'] } = {},
-  ): SafeParseFn<never, unknown, []> {
-    const { parseNeverError } = options
-    return (input: unknown): SafeParseOutput<never> => [
-      {
-        input,
-        errors: [(parseNeverError ?? defaultErrorFn.parseNeverError)(input)],
-      },
-    ]
-  },
-  type: 'never',
-  schemaType: 'never' as const,
-  validators: {},
 })

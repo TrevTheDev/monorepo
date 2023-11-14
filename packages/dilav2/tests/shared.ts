@@ -1,22 +1,28 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-nested-ternary */
 /* eslint-disable no-restricted-syntax */
 import { expect } from 'vitest'
 import { v } from '../src/dilav2'
 import { ValidationFn } from '../src/validations/validations'
-import { Schema, SchemaTypes, CreateSchema, BaseSchemaPrototype } from '../src/schema'
+import { MinimumSchema } from '../src/shared/schema'
+import { BuilderValidations } from '../src/shared/builder'
+import { VInfer, VInferType } from '../src/shared/infer'
 
-export function basicSchemaTests<O, I, SchemaType extends SchemaTypes, Type extends string>(
+export function basicSchemaTests<T extends MinimumSchema, O extends VInferType = VInfer<T>>(
   options: {
-    parser: Schema<O, I, [], BaseSchemaPrototype>
-    type?: Type
-    schemaType?: SchemaType
+    parser: T
+    schemaType?: O['schemaType']
+    type?: O['type']
     transformed?: boolean
-  } & ({ passValues?: { passValue: I; passValueOutput?: O }[] } | { passValue?: I }) &
+  } & (
+    | { passValues?: { passValue: O['input']; passValueOutput?: O['output'] }[] }
+    | { passValue?: O['input'] }
+  ) &
     (
       | {
-          failValues?: { failValue: I; failError?: string }[]
+          failValues?: { failValue: O['input']; failError?: string }[]
         }
-      | { failValue?: I }
+      | { failValue?: O['input'] }
     ),
 ) {
   const passValues = (
@@ -25,14 +31,14 @@ export function basicSchemaTests<O, I, SchemaType extends SchemaTypes, Type exte
       : 'passValue' in options
       ? [{ passValue: options.passValue }]
       : []
-  ) as { passValue: I; passValueOutput?: O }[]
+  ) as { passValue: O['input']; passValueOutput?: O['output'] }[]
   const failValues = (
     'failValues' in options
       ? options.failValues
       : 'failValue' in options
       ? [{ failValue: options.failValue }]
       : []
-  ) as { failValue: I; failError?: string }[]
+  ) as { failValue: O['input']; failError?: string }[]
   const { parser, type, schemaType, transformed } = options
   for (const { failValue, failError } of failValues) {
     const result1 = parser(failValue)
@@ -58,7 +64,7 @@ export function basicSchemaTests<O, I, SchemaType extends SchemaTypes, Type exte
 }
 
 export function testValidations<O>(
-  createParser: Schema<O, unknown, any, any>,
+  createParser: (validations: BuilderValidations<O> | ValidationFn<O>[]) => MinimumSchema,
   validationsToTest: {
     validations: ValidationFn<O>[]
     passValues?: { passValue: O; passValueOutput?: O }[]
@@ -67,7 +73,7 @@ export function testValidations<O>(
 ) {
   for (const validationToTest of validationsToTest) {
     const { validations, passValues, failValues } = validationToTest
-    const parser = createParser({ validations })
+    const parser = createParser(validations)
     basicSchemaTests({
       parser,
       passValues,

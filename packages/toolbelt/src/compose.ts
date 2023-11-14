@@ -1,4 +1,3 @@
-/* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResultError, onlyExecuteOnResult } from './resultError'
 import type { Lookup } from './typescriptUtils'
@@ -9,17 +8,19 @@ export type Fn<InputType = any, ReturnedType = any, Res = (input: InputType) => 
 type LinkedFn<
   F1 extends Fn,
   F2 extends Fn,
-  RT = (input: ReturnType<F1>) => ReturnType<F2>,
-> = RT extends Fn ? RT : never
+  RT extends Fn = ReturnType<F1> extends Parameters<F2>[0]
+    ? F2
+    : (input: ReturnType<F1>) => ReturnType<F2>,
+> = RT
 
 export type FunctionChainArray<
   T extends [Fn, ...Fn[]],
   Input = any,
-  First extends Fn = T extends [infer F extends Fn, ...any] ? F : never,
+  First extends Fn = T[0],
   ModdedT extends Fn[] = [(Input: Input) => Parameters<First>[0], ...T],
-  Res = { [K in keyof T]: LinkedFn<Lookup<ModdedT, K>, T[K]> },
-  RT extends [Fn, ...Fn[]] = Res extends [...infer A extends [Fn, ...Fn[]]] ? A : never, // hack
-> = RT
+> = { [K in keyof T]: LinkedFn<Lookup<ModdedT, K>, T[K]> } extends infer RT extends [Fn, ...Fn[]]
+  ? RT
+  : never
 
 export type CalculatedCompositeFn<
   T extends [Fn, ...Fn[]],
@@ -27,6 +28,72 @@ export type CalculatedCompositeFn<
   Last extends Fn = T extends [...any, infer F extends Fn] ? F : never,
   Res extends Fn = Fn<Parameters<First>[0], ReturnType<Last>>,
 > = Res
+
+// type X21 = {
+//   (input: any, ...args: unknown[]): 'SafeParseOutput<any>'
+//   readonly type: string
+//   readonly schemaType:
+//     | 'string'
+//     | 'number'
+//     | 'bigint'
+//     | 'boolean'
+//     | 'object'
+//     | 'function'
+//     | 'NaN'
+//     | 'coerced string'
+//     | 'coerced number'
+//     | 'coerced bigint'
+//     | 'coerced boolean'
+//     | 'object all properties'
+//     | 'object known properties'
+//     | 'literal'
+//     | 'any'
+//     | 'unknown'
+//     | 'never'
+//     | 'null'
+//     | 'exclude'
+//     | 'union'
+//     | 'literal union'
+//     | 'optional'
+//   parse(input: any): any
+//   toString(): string
+// }
+
+// type X = {
+//   (input: any, ...args: unknown[]): 'SafeParseOutput<any>'
+//   readonly type: string
+//   readonly schemaType:
+//     | 'string'
+//     | 'number'
+//     | 'bigint'
+//     | 'boolean'
+//     | 'object'
+//     | 'function'
+//     | 'NaN'
+//     | 'coerced string'
+//     | 'coerced number'
+//     | 'coerced bigint'
+//     | 'coerced boolean'
+//     | 'object all properties'
+//     | 'object known properties'
+//     | 'literal'
+//     | 'any'
+//     | 'unknown'
+//     | 'never'
+//     | 'null'
+//     | 'exclude'
+//     | 'union'
+//     | 'literal union'
+//     | 'optional'
+//   parse(input: any): any
+//   toString(): string
+// } // | 'placeholder'
+
+// type Z = X21 extends X ? 'T' : 'F'
+
+// type ZZ = FunctionChainArray<[X21, X]>
+
+// type ZZ = FunctionChainArray<[(a: 'a') => 'a'|1, (a: 'a') => 'b']>
 
 /**
  * composes multiple functions, into a single function.  Equivalent to (arg)=>fn3(fn2(fn1(arg)))

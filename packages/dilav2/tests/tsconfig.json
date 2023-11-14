@@ -1,0 +1,10 @@
+{
+  "extends": "tsconfig/nodeBrowser.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    // "declaration": false,
+    "noEmit": true
+  },
+
+  "include": ["**/*.test.ts"]
+}

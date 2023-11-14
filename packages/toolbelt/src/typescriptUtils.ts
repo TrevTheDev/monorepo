@@ -160,6 +160,8 @@ export type Lookup<T, K, Else = never> = K extends keyof T ? T[K] : Else
 
 /**
  * Tests if T is strictly `any` else returns never
+ * type Foo1 = IsStrictAny<'a'>    // never
+ * type Foo2 = IsStrictAny<any>    // any
  */
 export type IsStrictAny<T, Then = T, Else = never> = 0 extends 1 & T ? Then : Else
 
@@ -566,8 +568,8 @@ export function narrowingAssert<T>(toBeAsserted: any): asserts toBeAsserted is T
  * type Foo4 = IsFinite<[arg1: string, ...args: string[]], 'yes', 'no'> // 'no'
  */
 export type IsFinite<T extends any[], Finite = true, Infinite = false> = number extends T['length']
-  ? Finite
-  : Infinite
+  ? Infinite
+  : Finite
 
 /**
  * Prepends item(s) to the front of a tuple
@@ -882,14 +884,12 @@ export type RMerge<T extends ObjectArray, MergedObject = Omit<T[0], keyof T[1]> 
 export type DeepRMerge<T extends ObjectArray> = keyof T[0] extends infer KeyOfT0 extends keyof T[0]
   ? keyof T[1] extends infer KeyOfT1 extends keyof T[1]
     ? keyof T[0] & keyof T[1] extends infer KeyOfT0AndT1 extends keyof T[0] & keyof T[1]
-      ? OptionalKeys<T[0]> &
-          OptionalKeys<T[1]> extends infer OptionalKeyOfT0AndT1 extends KeyOfT0AndT1
+      ? OptionalKeys<T[0]> & OptionalKeys<T[1]> extends infer OptionalKeyOfT0AndT1 extends
+          KeyOfT0AndT1
         ? Omit<T[0], KeyOfT1> &
             Omit<T[1], KeyOfT0> & {
-              [K in Exclude<
-                KeyOfT0AndT1,
-                OptionalKeyOfT0AndT1
-              >]: T[0][K] extends infer T0 extends object
+              [K in Exclude<KeyOfT0AndT1, OptionalKeyOfT0AndT1>]: T[0][K] extends infer T0 extends
+                object
                 ? T[1][K] extends infer T1 extends object
                   ? T0 extends any[]
                     ? T[1][K]
@@ -899,10 +899,8 @@ export type DeepRMerge<T extends ObjectArray> = keyof T[0] extends infer KeyOfT0
                   : T[1][K]
                 : T[1][K]
             } & {
-              [K in OptionalKeyOfT0AndT1]?: Exclude<
-                T[0][K],
-                undefined
-              > extends infer T0 extends object
+              [K in OptionalKeyOfT0AndT1]?: Exclude<T[0][K], undefined> extends infer T0 extends
+                object
                 ? Exclude<T[1][K], undefined> extends infer T1 extends object
                   ? T0 extends any[]
                     ? T[1][K]
@@ -1035,3 +1033,276 @@ export type IntersectType2<T extends [object, ...object[]]> = T extends [
 ]
   ? IntersectType2<[Identity<T1 & T2>, ...R]>
   : T[0]
+
+type TypedPropertyDescriptor<T> = {
+  enumerable?: boolean
+  configurable?: boolean
+} & (
+  | {
+      set?: (value: T) => void
+    }
+  | {
+      get?: () => T
+    }
+  | {
+      writable?: boolean
+      value?: T
+    }
+)
+
+type PropertyDescriptor = {
+  enumerable?: boolean
+  configurable?: boolean
+} & (
+  | {
+      set?: (value: any) => void
+    }
+  | {
+      get?: () => any
+    }
+  | {
+      writable?: boolean
+      value?: any
+    }
+)
+
+type IsReadonly<
+  T extends PropertyDescriptor,
+  WritablePKeys extends PropertyKey,
+> = keyof T extends 'set'
+  ? true
+  : keyof T extends 'value'
+  ? T extends { writable: true }
+    ? true
+    : WritablePKeys extends keyof T
+    ? false
+    : true
+  : false
+declare global {
+  interface ObjectConstructor {
+    setPrototypeOf<T extends object, S extends object>(o: T, proto: S): T & S
+    setPrototypeOf<T extends object>(o: object, proto: object): T
+    defineProperty<
+      Target,
+      Property extends PropertyKey,
+      Descriptor extends TypedPropertyDescriptor<any>,
+      V = Descriptor extends TypedPropertyDescriptor<infer T> ? T : never,
+      W extends boolean = keyof Descriptor extends 'set'
+        ? true
+        : keyof Descriptor extends 'value'
+        ? Descriptor extends { writable: true }
+          ? true
+          : keyof Target extends keyof Property
+          ? false
+          : true
+        : false,
+      RT = Omit<Target, Property> &
+        (W extends true ? { -readonly [K in Property]: V } : { readonly [K in Property]: V }),
+    >(
+      target: Target,
+      property: Property,
+      descriptor: Descriptor & ThisType<RT>,
+    ): RT
+    defineProperties<
+      Target,
+      Properties extends Record<string | symbol, PropertyDescriptor>,
+      PropKeys extends keyof Properties = keyof Properties,
+      RT = Omit<Target, PropKeys> & {
+        readonly [P in PropKeys as IsReadonly<Properties[P], PropKeys> extends true
+          ? P
+          : never]: Properties[P] extends TypedPropertyDescriptor<infer V> ? V : never
+      } & {
+        -readonly [P in PropKeys as IsReadonly<Properties[P], PropKeys> extends false
+          ? P
+          : never]: Properties[P] extends TypedPropertyDescriptor<infer V> ? V : never
+      } extends infer O
+        ? { [P in keyof O]: O[P] }
+        : never,
+    >(
+      target: Target,
+      properties: Properties & ThisType<RT>,
+    ): RT
+  }
+}
+
+type ArrayIntersection2<
+  T1 extends [unknown, ...unknown[]],
+  T2 extends [unknown, ...unknown[]],
+  RestT1 extends [unknown, ...unknown[]] = T1 extends [
+    any,
+    ...infer R extends [unknown, ...unknown[]],
+  ]
+    ? R
+    : never,
+  RestT2 extends [unknown, ...unknown[]] = T2 extends [
+    any,
+    ...infer R extends [unknown, ...unknown[]],
+  ]
+    ? R
+    : never,
+> = [RestT1] extends [never]
+  ? [RestT2] extends [never]
+    ? [T1[0] & T2[0]]
+    : [T1[0] & T2[0], ...ArrayIntersection2<RestT1, RestT2>]
+  : [T1[0] & T2[0], ...ArrayIntersection2<RestT1, RestT2>]
+
+/**
+ * Intersects two arrays
+ * 
+ * @example
+type A1 = ArrayIntersection<[string, 'a', string], [string, 'a' | 'b', number]> // [string, "a", never]
+type A2 = ArrayIntersection<[], [string, number]> // [never,never]
+type A3 = ArrayIntersection<[], []> // []
+ */
+export type ArrayIntersection<
+  T1 extends unknown[],
+  T2 extends unknown[],
+  T1C extends [unknown, ...unknown[]] = T1 extends [unknown, ...unknown[]] ? T1 : never,
+  T2C extends [unknown, ...unknown[]] = T2 extends [unknown, ...unknown[]] ? T2 : never,
+> = [T1C] extends [never]
+  ? [T2C] extends [never]
+    ? []
+    : ArrayIntersection2<T1C, T2C>
+  : ArrayIntersection2<T1C, T2C>
+
+type ArraysIntersection2<
+  T extends [unknown[], ...unknown[][]],
+  Rest extends [unknown[], ...unknown[][]] = T extends [
+    unknown[],
+    ...infer R extends [unknown[], ...unknown[][]],
+  ]
+    ? R
+    : never,
+  RestMore extends unknown[][] = Rest extends [unknown[], ...infer R extends unknown[][]]
+    ? R
+    : never,
+> = [Rest] extends [never]
+  ? T[0]
+  : ArraysIntersection2<[ArrayIntersection<T[0], Rest[0]>, ...RestMore]>
+
+/**
+ * Intersects an array of arrays
+ * 
+ * @example
+type Foo1 = ArraysIntersection<[[string, 'a', string], [string, 'a' | 'b', number]]> // [string, "a", never]
+type Foo2 = ArraysIntersection<[[], [string, number]]> // [never,never]
+type Foo3 = ArraysIntersection<[[], []]> // []
+type Foo4 = ArraysIntersection<
+  [[string, number, 'a'], [string, number, 'a' | 'b'], [string, number, 'a' | 'c']]
+> // [string, number, "a"]
+ */
+export type ArraysIntersection<T extends unknown[][]> = T extends [unknown[], ...unknown[][]]
+  ? ArraysIntersection2<T>
+  : []
+
+/**
+ * Creates a tuple of a specific size
+ * 
+ * @example
+type Foo = FixedSizeTuple<string,3> // [string, string, string]
+ */
+export type FixedSizeTuple<
+  T,
+  SizeOfReturnedTuple extends number,
+  A extends unknown[] = [],
+> = A extends { length: SizeOfReturnedTuple }
+  ? A
+  : FixedSizeTuple<T, SizeOfReturnedTuple, [...A, T]>
+
+/**
+ * Creates a tuple of a specific size with a repeating tuple pattern
+ * 
+ * @example
+type Foo1 = RepeatingFixedSizeTuple<[string, number],5> // [string, number, string, number, string]
+type Foo2 = RepeatingFixedSizeTuple<[string, number],1> // [string]
+type Foo3= RepeatingFixedSizeTuple<[string, number],0> // []
+ */
+export type RepeatingFixedSizeTuple<
+  TupleToRepeat extends [unknown, ...unknown[]],
+  SizeOfReturnedTuple extends number,
+  A extends unknown[] = [],
+  TPart extends [unknown, ...unknown[]] = TupleToRepeat,
+  TailTPart extends [unknown, ...unknown[]] = TPart extends [
+    any,
+    ...infer O extends [unknown, ...unknown[]],
+  ]
+    ? O
+    : TupleToRepeat,
+> = A extends { length: SizeOfReturnedTuple }
+  ? A
+  : RepeatingFixedSizeTuple<TupleToRepeat, SizeOfReturnedTuple, [...A, TPart[0]], TailTPart>
+
+/**
+ * Splits a named tuple (typically parameters) into an tuple containing each element in the named
+ * tuple in its own tuple.
+ * This is typically required to preserve tuple labels
+ * 
+ * @example
+type Foo1 = SplitParams<[foo: number, bar: string, baz: boolean]> // [[foo: number], [bar: string], [baz: boolean]]
+type Foo2 = SplitParams<[foo: number]> // [[foo: number]]
+type Foo3 = SplitParams<[]> // [never]
+ */
+export type SplitParams<
+  Params extends unknown[],
+  ParamsSplitResult extends unknown[][] = [],
+  ParamsRest extends [unknown, ...unknown[]] = Params extends [
+    any,
+    ...infer T extends [unknown, ...unknown[]],
+  ]
+    ? T
+    : never,
+  HeadParam extends unknown[] = Params extends [
+    ...infer A extends [any],
+    ...([ParamsRest] extends [never] ? [] : ParamsRest),
+  ]
+    ? A
+    : never,
+> = [ParamsRest] extends [never]
+  ? [...ParamsSplitResult, HeadParam]
+  : SplitParams<ParamsRest, [...ParamsSplitResult, HeadParam]>
+
+/**
+ * Boolean and
+ * @example
+ * ```typescript
+ * type Foo1 = And<true,true>   // true
+ * type Foo2 = And<false,false> // false
+ * type Foo3 = And<true,false>  // false
+ * type Foo4 = And<false,true>  // false
+ * ```
+ */
+export type And<T1 extends boolean, T2 extends boolean> = T1 extends T2
+  ? T1 extends true
+    ? true
+    : false
+  : false
+
+/**
+ * Boolean or
+ * @example
+ * ```typescript
+ * type Foo1 = Or<true, true>   // true
+ * type Foo2 = Or<false, false> // false
+ * type Foo3 = Or<true, false>  // true
+ * type Foo4 = Or<false, true>  // true
+ * ```
+ */
+export type Or<T1 extends boolean, T2 extends boolean> = T1 extends true ? T1 : T2
+
+/**
+ * Boolean xor
+ * @example
+ * ```typescript
+ * type Foo1 = Xor<true, true>   // false
+ * type Foo2 = Xor<false, false> // false
+ * type Foo3 = Xor<true, false>  // true
+ * type Foo4 = Xor<false, true>  // true
+ * ```
+ */
+export type Xor<T1 extends boolean, T2 extends boolean> = T1 extends T2
+  ? T2 extends T1
+    ? false
+    : true
+  : true
+
+export {}

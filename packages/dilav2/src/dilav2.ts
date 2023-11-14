@@ -1,26 +1,42 @@
-/* eslint-disable import/prefer-default-export */
+// const x = 'a'
+// function foo(a) {
+//   if (a) {
+//     return new Bar()
+//   } else {
+//     process.exit(1)
+//   }
+// }
+
 import { isError, isResult } from '@trevthedev/toolbelt'
 import {
   errorFromResultError,
   firstError,
   firstErrorFromErrors,
   resultFromResultError,
-} from './shared'
+} from './shared/shared'
 
 // import { vObjectKnownProperties } from './types/object known properties'
 // import { vObject } from './types/object'
+import { vAny, vFalse, vLiteral, vNull, vTrue, vUndefined, vUnknown } from './types/literals'
+import { vBigInt, vBoolean, vNumber, vString } from './types/typeof'
+import { vOptional, vUnion, vUnionLiterals } from './types/union'
+import { vNever } from './types/sundry types'
 import {
-  vAny,
-  vFalse,
-  vLiteral,
-  vNever,
-  vNull,
-  vTrue,
-  vUndefined,
-  vUnknown,
-} from './types/literals'
-import { vBoolean, vNumber, vString } from './types/typeof'
-import { vUnionLiterals } from './types/union'
+  vNotAString as notAString,
+  vNotANumber as notANumber,
+  vNotABigInt as notABigInt,
+  vNotABoolean as notABoolean,
+  vNotAFunction as notAFunction,
+  vNotAnArray as notAnArray,
+  vNotAnObject as notAnObject,
+  vNotANaN as notANaN,
+  vNotUndefined as notUndefined,
+  vNotNull as notNull,
+  vNotTrue as notTrue,
+  vNotFalse as notFalse,
+} from './types/exclude'
+import { vObject } from './types/object'
+import { vObjectKnownProperties } from './types/object known properties'
 
 // type VCoerceString = CreateSchema<
 //   string,
@@ -90,12 +106,14 @@ import { vUnionLiterals } from './types/union'
 //   }),
 // })
 
+// eslint-disable-next-line import/prefer-default-export
 export const v = {
   string: vString,
   number: vNumber,
   boolean: vBoolean,
-  // objectProperties: vObjectKnownProperties,
-  // object: vObject,
+  bigint: vBigInt,
+  objectProperties: vObjectKnownProperties,
+  object: vObject,
   never: vNever,
   any: vAny,
   unknown: vUnknown,
@@ -105,6 +123,20 @@ export const v = {
   false: vFalse,
   literal: vLiteral,
   literalUnion: vUnionLiterals,
+  union: vUnion,
+  optional: vOptional,
+  notAString,
+  notANumber,
+  notABigInt,
+  notABoolean,
+  notAFunction,
+  notAnArray,
+  notAnObject,
+  notANaN,
+  notUndefined,
+  notNull,
+  notTrue,
+  notFalse,
   // objectProperties: schemaCreator({
   //   createParserFn: parsers.parseProperties,
   //   validators: objectValidations,

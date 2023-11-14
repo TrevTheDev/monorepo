@@ -9,8 +9,7 @@ import type {
   ChainGenerics,
   ChainNode,
   Resolver,
-  ResultCallTypes,
-  SharedProperties,
+  AsyncFunctionChainArrayType,
 } from './chain'
 
 import type { RMerge } from './typescriptUtils'
@@ -78,92 +77,38 @@ type SyncFunctionChainArray<
   RT extends [Fn, ...Fn[]] = FunctionChainArray<ConstrainedT>,
 > = RT
 
-// type FunctionChainArray<
-//   T extends [Fn, ...Fn[]],
-//   First extends Fn = T extends [infer F extends Fn, ...any] ? F : never,
-//   ModdedT extends Fn[] = [(Input: any) => Parameters<First>[0], ...T],
-//   Res = { [K in keyof T]: LinkedFn<Lookup<ModdedT, K>, T[K]> },
-//   RT extends [Fn, ...Fn[]] = Res extends [...infer A extends [Fn, ...Fn[]]] ? A : never, // hack
-// > = RT
-
-type CalculatedNextChain<
+interface CalculatedNextChain<
   Chain extends ChainGenerics,
   T extends [Fn, ...Fn[]],
-  // First extends Fn = T extends [infer F extends Fn, ...any] ? F : never,
   Last extends Fn = T extends [...any, infer F extends Fn] ? F : never,
-  // Output = ReturnType<Last>,
-  // Input = Parameters<First>[0]
-  // Res extends Fn = Fn<Input, Output>,
-> = {
-  Input: Chain['Input']
-  ErrorResolverController: Chain['ErrorResolverController']
-  AccumulatedErrors: Chain['AccumulatedErrors']
-  AccumulatedResultResolverControllers: Chain['AccumulatedResultResolverControllers']
-  LastNode: {
-    Output: ReturnType<Last>
-    Error: never
-    ResultResolverController: void
+> extends ChainGenerics {
+  input: Chain['input']
+  errorResolverController: Chain['errorResolverController']
+  accumulatedErrors: Chain['accumulatedErrors']
+  accumulatedResultResolverControllers: Chain['accumulatedResultResolverControllers']
+  lastNode: {
+    output: ReturnType<Last>
+    error: never
+    resultResolverController: void
   }
 }
 
 type SyncResultCall<Chain extends ChainGenerics, Options extends EnhanceChainOptions> = <
   T extends [Fn, ...Fn[]],
 >(
-  ...syncFunctions: T & SyncFunctionChainArray<Chain['LastNode']['Output'], T>
+  ...syncFunctions: T & SyncFunctionChainArray<Chain['lastNode']['output'], T>
 ) => EnhancedChainNode<
-  CalculatedNextChain<Chain, SyncFunctionChainArray<Chain['LastNode']['Output'], T>>,
+  CalculatedNextChain<Chain, SyncFunctionChainArray<Chain['lastNode']['output'], T>>,
   Options
 >
-
-/**
- * EnhancedChainNode<
-  CalculatedNextChain<Chain, SyncFunctionChainArray<Chain['LastNode']['Output'], T>>,
-  Options
->
- */
-
-// type Unwrap<T> = T extends Promise<infer U> ? Unwrap<U> : T
-
-// type EnhancedInferAsyncFn<
-//   T extends ValidAsyncFn,
-//   Options extends EnhanceChainOptions,
-//   IAsyncFn extends {
-//     Input: any
-//     ReturnType: any
-//     Resolver: any
-//     ResultCb: any
-//     Output: any
-//     ResultResolverController: any
-//     ErrorCb: any
-//     Error: any
-//     ErrorResolverController: any
-//     ConstrainedAsyncFn: any
-//     AsyncFn: T
-//   } = InferAsyncFn<T>,
-// > = {
-//   Input: IAsyncFn['Input']
-//   ReturnType: Options['resolveReturnedPromises'] extends true ? Unwrap<IAsyncFn['ReturnType']> : IAsyncFn['ReturnType']
-//   Resolver: IAsyncFn['Resolver']
-//   ResultCb: IAsyncFn['ResultCb']
-//   Output: IAsyncFn['Output']
-//   ResultResolverController: IAsyncFn['ResultResolverController']
-//   ErrorCb: IAsyncFn['ErrorCb']
-//   Error: IAsyncFn['Error']
-//   ErrorResolverController: IAsyncFn['ErrorResolverController']
-//   ConstrainedAsyncFn: IAsyncFn['ConstrainedAsyncFn']
-//   AsyncFn: IAsyncFn['AsyncFn']
-// }
 
 type EnhancedResultCall<Chain extends ChainGenerics, Options extends EnhanceChainOptions> = {
   <
     T extends [ValidAsyncFn, ...ValidAsyncFn[]],
-    RT extends {
-      NewChain: ChainGenerics
-      ValidatedAsyncFns: [ValidAsyncFn, ...ValidAsyncFn[]]
-    } = ResultCallTypes<Chain, T>,
+    RT extends AsyncFunctionChainArrayType = AsyncFunctionChainArray<T, Chain>,
   >(
-    ...asyncFunctions: T & RT['ValidatedAsyncFns']
-  ): EnhancedChainNode<RT['NewChain'], Options>
+    ...asyncFunctions: T & RT['asyncFns']
+  ): EnhancedChainNode<RT['lastChain'], Options>
 }
 
 type EnhancedChainNode<
@@ -171,11 +116,11 @@ type EnhancedChainNode<
   Options extends EnhanceChainOptions,
   RT = RMerge<
     [
-      SharedProperties<Chain>,
+      ChainNode<Chain>,
       {
         type: typeof enhancedChainNodeType
         sync: SyncResultCall<Chain, Options>
-        input(input: Chain['Input']): Promise<Chain['LastNode']['Output']>
+        input(input: Chain['input']): Promise<Chain['lastNode']['output']>
       },
     ]
   > &
@@ -183,35 +128,11 @@ type EnhancedChainNode<
 > = RT
 
 type EnhancedChainFn<FinalOptions extends EnhanceChainOptions> = <
-  T extends [ValidAsyncFn, ...ValidAsyncFn[]],
-  ValidT_ = AsyncFunctionChainArray<T, never>,
-  ValidT extends {
-    FirstChain: ChainGenerics
-    LastChain: ChainGenerics
-    AsyncFns: [ValidAsyncFn, ...ValidAsyncFn[]]
-  } = ValidT_ extends {
-    FirstChain: ChainGenerics
-    LastChain: ChainGenerics
-    AsyncFns: [ValidAsyncFn, ...ValidAsyncFn[]]
-  }
-    ? ValidT_
-    : never,
+  const T extends [ValidAsyncFn, ...ValidAsyncFn[]],
+  ValidT extends AsyncFunctionChainArrayType = AsyncFunctionChainArray<T>,
 >(
-  ...asyncFunctions: T & ValidT['AsyncFns']
-) => EnhancedChainNode<ValidT['LastChain'], FinalOptions>
-
-// type EnhancedChain = <
-//   Options extends Partial<EnhanceChainOptions> = {},
-//   FinalOptions extends EnhanceChainOptions = LMerge<
-//     DefaultOptions,
-//     Options
-//   > extends EnhanceChainOptions
-//     ? LMerge<DefaultOptions, Options>
-//     : never,
-// >(
-//   options?: Options,
-//   lifecycleCallbacks?: LifecycleCallbacks,
-// ) => EnhancedChainFn<FinalOptions>
+  ...asyncFunctions: T & ValidT['asyncFns']
+) => EnhancedChainNode<ValidT['lastChain'], FinalOptions>
 
 /**
  * ******************************************************************************************************************************************************************
@@ -394,8 +315,8 @@ const enhanceChainNodeWithSync = (chainNode) =>
 
 const makeChainNodeThenable = <Chain extends ChainGenerics>(chainNode: ChainNode<Chain>) =>
   Object.defineProperty(chainNode, 'input', {
-    value: (input: Chain['Input']) =>
-      new Promise<Chain['LastNode']['Output']>((resolve, reject) => {
+    value: (input: Chain['input']) =>
+      new Promise<Chain['lastNode']['output']>((resolve, reject) => {
         chainNode.await(input, resolve, reject)
       }),
     writable: false,
@@ -487,24 +408,13 @@ function enhancedChain<Options extends PartialOptions = {}>(
   options?: Options,
 ): EnhancedChainFn<FinalOption<Options>>
 function enhancedChain<
-  T extends [ValidAsyncFn, ...ValidAsyncFn[]],
+  const T extends [ValidAsyncFn, ...ValidAsyncFn[]],
   Options extends PartialOptions = {},
-  ValidT_ = AsyncFunctionChainArray<T, never>,
-  ValidT extends {
-    FirstChain: ChainGenerics
-    LastChain: ChainGenerics
-    AsyncFns: [ValidAsyncFn, ...ValidAsyncFn[]]
-  } = ValidT_ extends {
-    FirstChain: ChainGenerics
-    LastChain: ChainGenerics
-    AsyncFns: [ValidAsyncFn, ...ValidAsyncFn[]]
-  }
-    ? ValidT_
-    : never,
+  ValidT extends AsyncFunctionChainArrayType = AsyncFunctionChainArray<T>,
 >(
   options: Options,
-  ...asyncFns: T & ValidT['AsyncFns']
-): EnhancedChainNode<ValidT['LastChain'], FinalOption<Options>>
+  ...asyncFns: T & ValidT['asyncFns']
+): EnhancedChainNode<ValidT['lastChain'], FinalOption<Options>>
 function enhancedChain<T extends ValidAsyncFn[], Options extends PartialOptions = {}>(
   options?: Options,
   ...asyncFns: T

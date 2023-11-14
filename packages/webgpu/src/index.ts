@@ -49,15 +49,14 @@ async function main(): Promise<void> {
 
   // Generate geometry data
   const plane = generatePlane(50, 10, 100, 100)
-  const indexData = new Uint32Array(plane.indices)
-  const vertexData = new Float32Array(plane.vertices)
+  const indexData = plane.indices
   // Create vertex/index buffers
   const vertexBuffer = device.createBuffer({
-    size: vertexData.byteLength,
+    size: plane.vertices.byteLength,
     usage: GPUBufferUsage.VERTEX,
     mappedAtCreation: true,
   })
-  new Float32Array(vertexBuffer.getMappedRange()).set(vertexData)
+  new Float32Array(vertexBuffer.getMappedRange()).set(plane.vertices)
   vertexBuffer.unmap()
 
   const indexBuffer = device.createBuffer({

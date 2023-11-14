@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import defaultErrorFn, { DefaultErrorFn } from '../errorFns'
+import defaultErrorFn, { DefaultErrorFn } from '../shared/errorFns'
 import { SingleValidationError, customValidations } from './validations'
 
 // #TODO: make settable

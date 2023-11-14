@@ -1,0 +1,52 @@
+{
+  "name": "@trevthedev/combinators",
+  "version": "0.0.01",
+  "description": "a typescript version of https://hackage.haskell.org/package/data-aviary-0.4.0/docs/Data-Aviary-Birds.html",
+  "files": [
+    "build/"
+  ],
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "module": "./build/index.mjs",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "build": "rimraf dist && tsup --dts",
+    "build:no": "tsc --noEmit",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint && npm run build",
+    "preversion": "npm run lint",
+    "publish": "npm version patch && git push --tags origin main",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "keywords": [],
+  "author": "TrevTheDev",
+  "license": "MIT",
+  "homepage": "https://github.com/TrevTheDev/monorepo/tree/main/packages/combinators#readme",
+  "bugs": {
+    "url": "https://github.com/TrevTheDev/monorepo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TrevTheDev/monorepo.git",
+    "directory": "packages/toolbelt"
+  },
+  "private": false,
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "prettier": "3.0.3",
+    "rimraf": "^5.0.5",
+    "tsconfig": "workspace:*",
+    "tsup": "^7.2.0",
+    "typedoc": "^0.25.3",
+    "typedoc-plugin-markdown": "^3.17.1",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module"
+}

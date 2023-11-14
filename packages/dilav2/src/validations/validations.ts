@@ -1,34 +1,34 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
-import defaultErrorFn, { DefaultErrorFn } from '../errorFns'
+import defaultErrorFn, { DefaultErrorFn } from '../shared/errorFns'
 
 export type SingleValidationError = string
 
 export type BaseValidationFn = (value: any, ...otherArgs: any) => SingleValidationError | undefined
-export type ValidationFn<T, OtherArgs extends unknown[] = []> = (
-  value: T,
-  ...otherArgs: OtherArgs
-) => SingleValidationError | undefined
+export interface ValidationFn<T, OtherArgs extends unknown[] = []> extends BaseValidationFn {
+  (value: T, ...otherArgs: OtherArgs): SingleValidationError | undefined
+}
 
 export type BaseValidator = (...args: any) => BaseValidationFn
-export type Validator<
-  CreateArgs extends unknown[],
-  O,
-  OtherArgs extends unknown[] = [],
-  RT extends BaseValidator = (...args: CreateArgs) => ValidationFn<O, OtherArgs>,
-> = RT
+export interface Validator<CreateArgs extends unknown[], O, OtherArgs extends unknown[] = []>
+  extends BaseValidator {
+  (...args: CreateArgs): ValidationFn<O, OtherArgs>
+}
 
 export type BaseValidatorLibrary = {
   [P: string]: BaseValidator
 }
-export type ValidatorLibrary<
-  O,
-  RT extends BaseValidatorLibrary = {
-    [P: string]: Validator<any[], O, any[]>
-  },
-> = RT
+export interface ValidatorLibrary<O> extends BaseValidatorLibrary {
+  [P: string]: Validator<any[], O, any[]>
+}
 
-export const customValidations = <T>() => ({
+export interface CustomValidations<T> extends ValidatorLibrary<T> {
+  custom(
+    customValidationFn: (value: T) => SingleValidationError | undefined,
+  ): (value: T) => string | undefined
+}
+
+export const customValidations = <T>(): CustomValidations<T> => ({
   /**
    * include a custom validation function of type: `(value: T) => SingleValidationError | undefined`
    * that returns either a SingleValidationError if validation fails,
@@ -39,12 +39,12 @@ export const customValidations = <T>() => ({
   },
 })
 
-export type ObjectValidations<I extends object> = ReturnType<typeof customValidations<I>>
+// export type ObjectValidations<I extends object> = CustomValidations<I>
 
-export const objectValidations = customValidations<object>()
+// export const objectValidations = customValidations<object>()
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export const functionValidations = customValidations<Function>()
+// // eslint-disable-next-line @typescript-eslint/ban-types
+// export const functionValidations = customValidations<Function>()
 
 export const booleanValidations = {
   /**

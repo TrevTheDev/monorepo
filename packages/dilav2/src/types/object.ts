@@ -1,135 +1,204 @@
-import { isError } from '@trevthedev/toolbelt'
-import { Builder } from '../builder'
-import { DefaultErrorFn } from '../errorFns'
-import { parsers } from '../parsers/parsers'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { KeysMatching, isError } from '@trevthedev/toolbelt'
 import { PropertySchemasDef, ObjectDefToObjectType } from '../parsers/parse object properties'
+import parseUnmatchedKeys, {
+  ParseUnmatchedKeysOptions,
+} from '../parsers/parse unmatched properties'
+import { MinimumSchema, SafeParseOutput, BasicSchema2 } from '../shared/schema'
+import { isNeverSchema } from '../shared/shared'
 import {
-  Schema,
-  SchemaPrototype,
-  MinimumSchema,
-  SafeParseFn,
-  sharedSchemaProperties,
-} from '../schema'
-import {
-  SharedCreateSchemaProperties,
-  sharedCreateSchemaProperties,
-  CreateSchema,
-  schemaCreator,
-} from '../schemaCreator'
-import { ObjectValidations, ValidationFn, objectValidations } from '../validations/validations'
-import { ObjectAllPropertiesOptions, vObjectAllProperties } from './object all properties'
+  ObjectKnownPropertiesOptions,
+  VObjectKnownPropertiesSchema,
+  vObjectKnownProperties,
+} from './object known properties'
+import { CustomValidations, customValidations } from '../validations/validations'
+import { createBasicSchema2 } from '../shared/schema creator'
+import { DefaultErrorFn } from '../shared/errorFns'
+import { vObject as vObjectTypeOf, type VObject as VObjectTypeOf } from './typeof'
+import { VInfer } from '../shared/infer'
 
-interface VObjectSchemaRoot<O extends object = object, I extends object = object>
-  extends Schema<O, I, [], SchemaPrototype<O, I, 'object', string>> {
-  transformed?: boolean
-}
-
-interface VObjectSchema<O extends object = object, I extends object = object>
-  extends VObjectSchemaRoot<O, I>,
-    SharedCreateSchemaProperties<ObjectValidations<O>> {
-  validations(
-    validations?: Builder<ObjectValidations<O>> | ValidationFn<O>[],
-  ): VObjectSchemaRoot<O, I>
+interface VObjectAllPropertiesSchema<
+  O extends object,
+  I extends object,
+  Transformed extends boolean,
+> extends BasicSchema2<{
+    output: O
+    input: I
+    args: []
+    schemaType: 'object'
+    type: string
+    validators: ObjectValidations<O>
+  }> {
   extends<S extends PropertySchemasDef, R extends MinimumSchema>(
     propertySchemas: S,
     unmatchedPropertiesSchema?: R,
-  ): VObjectSchema<O & ObjectDefToObjectType<S>, O>
+  ): VObjectAllPropertiesSchema<O & ObjectDefToObjectType<S>, O, Transformed>
+  readonly transformed: Transformed
 }
 
-interface ObjectOptions<
+interface ObjectAllPropertiesOptions<
   T extends PropertySchemasDef,
   UnmatchedPropertiesSchema extends MinimumSchema,
-> extends ObjectAllPropertiesOptions<T, UnmatchedPropertiesSchema> {
-  parseObjectError?: DefaultErrorFn['parseObjectError']
-}
+> extends Omit<ParseUnmatchedKeysOptions<UnmatchedPropertiesSchema>, 'matchedKeys'>,
+    ObjectKnownPropertiesOptions<T> {}
 
-export type VObject<
+function parseThroughParser(input: object, newObj?: object) {
+  return [undefined, newObj ?? input] as unknown as SafeParseOutput<object>
+}
+Object.defineProperties(parseThroughParser, {
+  validatedProperties: { value: [] },
+  transformed: { value: false },
+})
+
+export type VObjectAllProperties<
   T extends PropertySchemasDef,
   UnmatchedPropertiesSchema extends MinimumSchema,
+  Transformed extends boolean = false,
   I extends object = object,
   O extends object = [keyof I] extends [never]
     ? ObjectDefToObjectType<T>
     : I & ObjectDefToObjectType<T>,
-> = (options?: ObjectOptions<T, UnmatchedPropertiesSchema>) => VObjectSchema<O, I>
+> = (
+  options?: ObjectAllPropertiesOptions<T, UnmatchedPropertiesSchema>,
+) => VObjectAllPropertiesSchema<O, I, Transformed>
+
+export type ObjectValidations<O extends object> = CustomValidations<O>
+interface VObject<O extends object = object>
+  extends BasicSchema2<{
+    output: O
+    input: unknown
+    args: []
+    schemaType: 'object'
+    type: string
+    validators: ObjectValidations<O>
+  }> {
+  extends<S extends PropertySchemasDef, R extends MinimumSchema>(
+    propertySchemas: S,
+    unmatchedPropertiesSchema?: R,
+  ): VObject<O & ObjectDefToObjectType<S>>
+}
+
+export type VObjectFn = typeof vObject
+
+export type MustTransform<T extends PropertySchemasDef> = [
+  KeysMatching<T, { readonly transformed: true }>,
+] extends [never]
+  ? false
+  : true
 
 export function vObject<
   T extends PropertySchemasDef,
-  UnmatchedPropertiesSchema extends MinimumSchema,
-  I extends object = object,
-  O extends object = [keyof I] extends [never]
-    ? ObjectDefToObjectType<T>
-    : I & ObjectDefToObjectType<T>,
->(options: ObjectOptions<T, UnmatchedPropertiesSchema>): VObjectSchema<O, I> {
-  const { breakOnFirstError } = options
-  const objectParser = parsers.object(options)
-  const propertyParser = vObjectAllProperties(options)
-  const { transformed } = propertyParser
+  O extends object = ObjectDefToObjectType<T>,
+>(options: {
+  propertySchemas: T
+  unmatchedPropertiesSchema: MinimumSchema
+  parseObjectError?: DefaultErrorFn['parseObjectError']
+  missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  breakOnFirstError?: boolean
+}): VObject<O>
+export function vObject<
+  T extends PropertySchemasDef,
+  O extends object = ObjectDefToObjectType<T>,
+>(options: {
+  propertySchemas: T
+  parseObjectError?: DefaultErrorFn['parseObjectError']
+  missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  breakOnFirstError?: boolean
+}): VObjectKnownPropertiesSchema<O, unknown, MustTransform<T>>
+export function vObject<T extends MinimumSchema>(options: {
+  unmatchedPropertiesSchema: T
+  parseObjectError?: DefaultErrorFn['parseObjectError']
+  // missingPropertyError?: DefaultErrorFn['missingPropertyError']
+  breakOnFirstError?: boolean
+}): BasicSchema2<{
+  output: { [P in PropertyKey]: VInfer<T>['output'] }
+  input: unknown
+  args: []
+  schemaType: 'object index signature'
+  type: string
+  validators: CustomValidations<{ [P in PropertyKey]: VInfer<T>['output'] }>
+}>
+export function vObject(options?: {
+  parseObjectError?: DefaultErrorFn['parseObjectError']
+  breakOnFirstError?: boolean
+}): VObjectTypeOf
+export function vObject(
+  options: {
+    propertySchemas?: PropertySchemasDef
+    unmatchedPropertiesSchema?: MinimumSchema
+    parseObjectError?: DefaultErrorFn['parseObjectError']
+    missingPropertyError?: DefaultErrorFn['missingPropertyError']
+    typePrefix?: string
+    transform?: boolean
+    upStreamPropertySchemaKeys?: PropertyKey[]
+    breakOnFirstError?: boolean
+    // matchedKeys?: PropertyKey[]
+  } = {},
+): MinimumSchema {
+  const { unmatchedPropertiesSchema, propertySchemas, breakOnFirstError = false } = options
+  const objectTypeOfParser = vObjectTypeOf.custom(options)
 
-  const createParserFn: (...args: any[]) => SafeParseFn<any, any, any[]> = () =>
-    function parser(input) {
-      const result = objectParser(input)
+  if (unmatchedPropertiesSchema !== undefined && propertySchemas !== undefined) {
+    const propertyParser = vObjectKnownProperties(options as any)
+    const unmatchedParser = parseUnmatchedKeys({
+      matchedKeys: propertyParser.validatedProperties,
+      unmatchedPropertiesSchema,
+      breakOnFirstError,
+    })
+
+    const { transformed } = propertyParser
+    const type = isNeverSchema(unmatchedPropertiesSchema)
+      ? propertyParser.type
+      : `${propertyParser.type} & { [P: PropertyKey]: ${unmatchedPropertiesSchema.type} }`
+
+    // eslint-disable-next-line no-inner-declarations
+    function parser(input: object): SafeParseOutput<object> {
+      const result = objectTypeOfParser(input)
       if (isError(result)) return result
-      return propertyParser(input)
+      const result1 = propertyParser(input)
+      if (isError(result1)) return result1
+      return transformed ? unmatchedParser(input, result1[1]) : unmatchedParser(input)
     }
-  const schemaBaseObj = {
-    get type() {
-      return propertyParser.type
-    },
-    schemaType: 'object' as const,
-  }
-  const schemaPrototype = sharedSchemaProperties(schemaBaseObj)
-  if (transformed) {
-    Object.defineProperty(schemaPrototype, 'transformed', {
-      get() {
-        return true
+
+    const objSchema = createBasicSchema2({
+      schemaType: 'object' as const,
+      type,
+      parser,
+      validators: customValidations<object>(),
+    })
+
+    Object.defineProperties(objSchema, {
+      transformed: {
+        get() {
+          return transformed
+        },
       },
     })
+    return objSchema
   }
-
-  const createSchemaPrototype = Object.defineProperties(
-    sharedCreateSchemaProperties({
-      validators: objectValidations,
-      baseObject: Object.create(schemaPrototype),
-    }),
-    {
-      validations: {
-        value(
-          validations: Exclude<
-            Exclude<Parameters<typeof baseSchemaObj>[0], undefined>['validations'],
-            undefined
-          >,
-        ) {
-          return baseSchemaObj({
-            validations,
-            breakOnFirstError,
-          } as any)
-        },
-      },
-      extends: {
-        value(extendedPropertySchemas: PropertySchemasDef) {
-          return propertyParser.extends(extendedPropertySchemas)
-        },
-      },
-    },
-  )
-
-  const baseSchemaObj: CreateSchema<
-    O,
-    I,
-    [],
-    Exclude<ObjectOptions<T, UnmatchedPropertiesSchema>, 'propertySchema'>,
-    object,
-    SchemaPrototype<object, unknown, 'object', string>
-  > = schemaCreator({
-    createParserFn,
-    createSchemaPrototype: {},
-    schemaPrototype: createSchemaPrototype as SchemaPrototype<object, unknown, 'object', string>,
-  })
-  const defaultObjectSchema = baseSchemaObj({ validations: [], breakOnFirstError } as any)
-  return Object.setPrototypeOf(
-    function SchemaObjFn(value) {
-      return defaultObjectSchema(value)
-    } as VObjectSchema<O, I>,
-    createSchemaPrototype,
-  )
+  if (propertySchemas !== undefined) {
+    return vObjectKnownProperties({ ...options, objectTypeOfParser } as any)
+  }
+  if (unmatchedPropertiesSchema !== undefined) {
+    const unmatchedParser = parseUnmatchedKeys({
+      matchedKeys: [],
+      unmatchedPropertiesSchema,
+      breakOnFirstError,
+    })
+    // eslint-disable-next-line no-inner-declarations
+    function parser(input: object): SafeParseOutput<object> {
+      const result = objectTypeOfParser(input)
+      if (isError(result)) return result
+      return unmatchedParser(input)
+    }
+    const type = `{ [P: PropertyKey]: ${unmatchedPropertiesSchema.type} }`
+    const objSchema = createBasicSchema2({
+      schemaType: 'object index signature' as const,
+      type,
+      parser,
+      validators: customValidations<object>(),
+    })
+    return objSchema
+  }
+  return objectTypeOfParser
 }

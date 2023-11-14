@@ -1,33 +1,20 @@
 export { default as reverseForEach, globalReverseForEach } from './reverseForEach'
-export {
-  createUid,
-  capitalise,
-  runFunctionsOnlyOnce,
-  times,
-  isObjectAndHasExecutableProperty,
-  validateFn,
-  capitaliseWords,
-  isGetter,
-  isSetter,
-  isValue,
-  isFunction,
-  callbackTee,
-} from './smallUtils'
+export * from './smallUtils'
+export * from './fn arity'
 
-export { enhancedMap } from './enhancedMap'
 export type { EnhancedMap } from './enhancedMap'
 
 export { default as asyncFnsInParallel, asyncFnsInParallelShort } from './asyncFnsInParallel'
 export type { Resolver as AsyncFnResolver, ValidResolver } from './asyncFnsInParallel'
 
-export { asyncCoupler } from './asyncCoupler'
+export { asyncCoupler, enhancedMap } from './asyncCoupler'
 export type { AsyncCoupler } from './asyncCoupler'
 
 export { default as compose, composeWithError, pipe } from './compose'
 
 export { default as compositor } from './compositor'
 
-export { difference, intersection } from './difference'
+export * from './arrayUtils'
 
 export { default as chain, chainNodeType } from './chain'
 export type { AwaitedChainController, Resolver, AsyncFunc } from './chain'
@@ -69,3 +56,13 @@ export { default as addStateMachine } from './stateMachine'
 export type { ObjectWrappedWithStateMachine } from './stateMachine'
 
 export { default as asyncFunctionLinkedList } from './asyncFunctionLinkedList'
+
+export * from './objectUtils'
+
+// export {
+//   monadicArrayFnToPolyadicFn,
+//   polyadicFnToMonadicArrayFn,
+//   monadicObjectFnToPolyadicFn,
+//   polyadicFnToMonadicObjectFn,
+//   polyadicFnWithPreKnownInputsToMonadicFn,
+// } from './fn arity'
